@@ -12,99 +12,251 @@
     <meta name="bingbot" content="noindex, nofollow">
 
     <link rel="canonical" href="https://it.ramilevystock.com/">
+    <link rel="stylesheet" href="common.css">
 
     <style>
-        body { font-family: Arial; background: #f7f7f7; margin: 0; padding: 40px 16px; }
-        h1 { text-align: center; }
-        .wrap { max-width: 560px; margin: 0 auto; }
-        form { display: flex; gap: 8px; margin-bottom: 20px; }
-        input { flex: 1; padding: 8px; font-size: 14px; }
-        button { padding: 8px 14px; cursor: pointer; }
-        table { width: 100%; border-collapse: collapse; background: #fff; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }
-        th { background: #eee; }
-        .status { text-align: center; color: #777; font-size: 13px; margin-bottom: 10px; }
-        .del { color: #b00; background: none; border: none; cursor: pointer; }
+        .app { display: none; }
+        .app.active { display: block; }
+
+        .hub-content { padding: 32px; display: flex; flex-direction: column; gap: 24px; }
+        .hub-greeting-row { display: flex; align-items: center; gap: 14px; }
+        .hub-user-icon {
+            width: 52px; height: 52px; border-radius: 50%; background: var(--brand-pink-soft);
+            color: var(--brand-pink-dark); display: flex; align-items: center; justify-content: center;
+            font-size: 24px; font-weight: 700; cursor: pointer; border: 2px solid transparent; flex: 0 0 auto;
+        }
+        .hub-user-icon:hover { border-color: var(--brand-pink); }
+        .hub-greeting-text h1 { margin: 0; font-size: 24px; }
+        .hub-greeting-text p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+        .hub-edit-pencil { background: none; border: none; cursor: pointer; font-size: 16px; margin-inline-start: 6px; }
+
+        .hub-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
+        .hub-btn {
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+            padding: 26px 16px; border: 2px solid var(--border); border-radius: 14px; background: var(--white);
+            color: var(--text); font-size: 15px; font-weight: 700; cursor: pointer; transition: 0.15s ease;
+        }
+        .hub-btn:hover { border-color: var(--brand-pink); background: var(--brand-pink-soft); color: var(--brand-pink-dark); }
+        .hub-btn-icon { font-size: 30px; }
+
+        .profile-modal-backdrop {
+            display: none; position: fixed; inset: 0; z-index: 1000; align-items: center; justify-content: center;
+            padding: 18px; background: rgba(17,17,22,0.55);
+        }
+        .profile-modal-backdrop.visible { display: flex; }
+        .profile-modal {
+            width: 100%; max-width: 420px; background: var(--white); border-radius: 16px;
+            box-shadow: 0 24px 70px rgba(0,0,0,0.28);
+        }
+        .profile-modal-header { padding: 18px 20px; border-bottom: 4px solid var(--brand-pink); }
+        .profile-modal-header h2 { margin: 0; font-size: 18px; }
+        .profile-modal-body { padding: 18px 20px; }
+        .profile-modal-actions { display: flex; gap: 10px; padding: 0 20px 20px; }
+
+        .placeholder-view { padding: 60px 40px; text-align: center; color: var(--muted); }
+        .placeholder-view .icon { font-size: 44px; margin-bottom: 14px; }
+
+        .not-found-view { padding: 60px 40px; text-align: center; }
+        .not-found-view .icon { font-size: 44px; margin-bottom: 14px; }
     </style>
 </head>
 
 <body>
-<div class="wrap">
-    <h1>IT Portal</h1>
-    <div class="status" id="status">טוען...</div>
-
-    <form id="add-form">
-        <input id="name" placeholder="שם" required>
-        <input id="value" placeholder="ערך" required>
-        <button type="submit">הוסף</button>
-    </form>
-
-    <table>
-        <thead><tr><th>שם</th><th>ערך</th><th>עודכן</th><th></th></tr></thead>
-        <tbody id="rows"></tbody>
-    </table>
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-box"><div class="spinner"></div><p style="margin:0;font-size:14px;color:#444">טוען...</p></div>
 </div>
 
+<!-- Edit profile modal -->
+<div class="profile-modal-backdrop" id="profileModalBackdrop">
+    <div class="profile-modal">
+        <div class="profile-modal-header"><h2>עריכת פרטים אישיים</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="pfFirstName">שם פרטי</label><input id="pfFirstName" type="text"></div>
+            <div class="field"><label for="pfLastName">שם משפחה</label><input id="pfLastName" type="text"></div>
+            <div class="field"><label for="pfPhone">טלפון</label><input id="pfPhone" type="tel" dir="ltr"></div>
+            <div class="field"><label for="pfBranch">סניף</label><input id="pfBranch" type="text"></div>
+            <div class="field"><label for="pfRole">תפקיד</label><input id="pfRole" type="text"></div>
+            <div id="profileModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="profileSaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="profileCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<div class="app-shell">
+    <div id="headerContainer"></div>
+
+    <!-- VIEW: user not found -->
+    <main class="app" id="view-notfound">
+        <div class="content">
+            <div class="not-found-view">
+                <div class="icon">🔒</div>
+                <h2>לא נמצאת ברשימת המשתמשים</h2>
+                <p style="color:var(--muted)">פנה לצוות ה-IT כדי לשייך את המשתמש שלך למערכת.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- VIEW: hub -->
+    <main class="app" id="view-hub">
+        <div class="hub-content">
+            <div class="hub-greeting-row">
+                <div class="hub-user-icon" id="hubUserIcon" title="עריכת פרטים">👤</div>
+                <div class="hub-greeting-text">
+                    <h1 id="hubGreeting">שלום!<button type="button" class="hub-edit-pencil" id="hubEditPencil" title="עריכת פרטים">✏️</button></h1>
+                    <p id="hubUserInfo"></p>
+                </div>
+            </div>
+
+            <div class="hub-actions" id="hubActions"></div>
+        </div>
+    </main>
+
+    <!-- VIEW: ticket (placeholder - built in a later phase) -->
+    <main class="app" id="view-ticket">
+        <div class="content">
+            <div class="placeholder-view">
+                <div class="icon">📋</div>
+                <h2>פתיחת קריאה</h2>
+                <p>בקרוב</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- VIEW: signature (placeholder - built in a later phase) -->
+    <main class="app" id="view-signature">
+        <div class="content">
+            <div class="placeholder-view">
+                <div class="icon">✍️</div>
+                <h2>יצירת חתימה</h2>
+                <p>בקרוב</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- VIEW: procedures (placeholder - built in a later phase) -->
+    <main class="app" id="view-procedures">
+        <div class="content">
+            <div class="placeholder-view">
+                <div class="icon">📖</div>
+                <h2>נהלי עבודה</h2>
+                <p>בקרוב</p>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="common.js"></script>
 <script>
-    // Deployed Google Apps Script Web App (see apps-script/Code.gs)
-    const API_URL = 'https://script.google.com/macros/s/AKfycbwOkzvQXDsCrGzRzOgaEBWteHSnthbZrjI29taxP4K540W3TwdneWCf5KtUTk8Trvsv/exec';
+    // ── VIEW NAVIGATION ───────────────────────────────────────
+    function showView(id) {
+        document.querySelectorAll('.app').forEach(function (el) { el.classList.remove('active'); });
+        var target = document.getElementById('view-' + id);
+        if (target) target.classList.add('active');
 
-    const statusEl = document.getElementById('status');
-    const rowsEl = document.getElementById('rows');
-    const form = document.getElementById('add-form');
-
-    async function api(body) {
-        const res = await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids CORS preflight
-            body: JSON.stringify(body),
+        renderHeader(document.getElementById('headerContainer'), {
+            showBack: id !== 'hub' && id !== 'notfound',
+            onBack: function () { showView('hub'); },
         });
-        return res.json();
     }
 
-    async function load() {
-        statusEl.textContent = 'טוען...';
-        const res = await fetch(API_URL);
-        const json = await res.json();
-        rowsEl.innerHTML = '';
-        json.data.forEach(row => {
-            const tr = document.createElement('tr');
+    // ── HUB VIEW ──────────────────────────────────────────────
+    var HUB_BUTTONS = [
+        { id: 'ticket', icon: '📋', label: 'פתיחת קריאה' },
+        { id: 'signature', icon: '✍️', label: 'יצירת חתימה' },
+        { id: 'procedures', icon: '📖', label: 'נהלי עבודה' },
+    ];
 
-            const tdName = document.createElement('td');
-            tdName.textContent = row.name;
-            const tdValue = document.createElement('td');
-            tdValue.textContent = row.value;
-            const tdDate = document.createElement('td');
-            tdDate.textContent = new Date(row.updatedAt).toLocaleString('he-IL');
-            const tdDel = document.createElement('td');
-            const delBtn = document.createElement('button');
-            delBtn.className = 'del';
-            delBtn.dataset.id = row.id;
-            delBtn.textContent = 'מחק';
-            tdDel.appendChild(delBtn);
-
-            tr.append(tdName, tdValue, tdDate, tdDel);
-            rowsEl.appendChild(tr);
+    function renderHubActions() {
+        var container = document.getElementById('hubActions');
+        container.innerHTML = '';
+        HUB_BUTTONS.forEach(function (btn) {
+            var el = document.createElement('button');
+            el.className = 'hub-btn';
+            el.type = 'button';
+            el.innerHTML = '<span class="hub-btn-icon">' + btn.icon + '</span>' + escapeHtml(btn.label);
+            el.addEventListener('click', function () { showView(btn.id); });
+            container.appendChild(el);
         });
-        statusEl.textContent = json.data.length ? '' : 'אין נתונים עדיין';
     }
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const name = document.getElementById('name').value;
-        const value = document.getElementById('value').value;
-        await api({ action: 'create', name, value });
-        form.reset();
-        load();
+    function renderHubGreeting() {
+        var user = Portal.getUser();
+        var greetingEl = document.getElementById('hubGreeting');
+        var infoEl = document.getElementById('hubUserInfo');
+        var name = [user.firstName, user.lastName].filter(Boolean).join(' ');
+        greetingEl.innerHTML = 'שלום' + (name ? ', ' + escapeHtml(name) : '') +
+            '<button type="button" class="hub-edit-pencil" id="hubEditPencil" title="עריכת פרטים">✏️</button>';
+        document.getElementById('hubEditPencil').addEventListener('click', openProfileModal);
+        infoEl.textContent = [user.role, user.branch].filter(Boolean).join(' | ');
+    }
+
+    // ── PROFILE EDIT MODAL ────────────────────────────────────
+    var profileModal = document.getElementById('profileModalBackdrop');
+    var profileError = document.getElementById('profileModalError');
+
+    function openProfileModal() {
+        var user = Portal.getUser();
+        document.getElementById('pfFirstName').value = user.firstName || '';
+        document.getElementById('pfLastName').value = user.lastName || '';
+        document.getElementById('pfPhone').value = user.phone || '';
+        document.getElementById('pfBranch').value = user.branch || '';
+        document.getElementById('pfRole').value = user.role || '';
+        profileError.style.display = 'none';
+        profileModal.classList.add('visible');
+    }
+
+    function closeProfileModal() { profileModal.classList.remove('visible'); }
+
+    document.getElementById('hubUserIcon').addEventListener('click', openProfileModal);
+    document.getElementById('profileCancelBtn').addEventListener('click', closeProfileModal);
+    profileModal.addEventListener('click', function (e) { if (e.target === profileModal) closeProfileModal(); });
+
+    document.getElementById('profileSaveBtn').addEventListener('click', async function () {
+        var user = Portal.getUser();
+        var payload = {
+            email: user.email,
+            firstName: document.getElementById('pfFirstName').value.trim(),
+            lastName: document.getElementById('pfLastName').value.trim(),
+            phone: document.getElementById('pfPhone').value.trim(),
+            branch: document.getElementById('pfBranch').value.trim(),
+            role: document.getElementById('pfRole').value.trim(),
+        };
+        showLoading(true);
+        try {
+            var res = await apiPost('users', 'updateProfile', payload);
+            showLoading(false);
+            if (res.ok) {
+                Portal.setUser(res.data);
+                renderHubGreeting();
+                closeProfileModal();
+            } else {
+                profileError.textContent = res.error || 'שגיאה בשמירה';
+                profileError.style.display = 'block';
+            }
+        } catch (e) {
+            showLoading(false);
+            profileError.textContent = 'שגיאה בחיבור לשרת';
+            profileError.style.display = 'block';
+        }
     });
 
-    rowsEl.addEventListener('click', async (e) => {
-        if (!e.target.matches('.del')) return;
-        await api({ action: 'delete', id: e.target.dataset.id });
-        load();
-    });
+    // ── INIT ──────────────────────────────────────────────────
+    (async function init() {
+        showLoading(true);
+        await Portal.loadIdentity();
+        showLoading(false);
 
-    load().catch(() => { statusEl.textContent = 'שגיאה בטעינת הנתונים'; });
+        if (!Portal.getUser()) {
+            showView('notfound');
+            return;
+        }
+        renderHubGreeting();
+        renderHubActions();
+        showView('hub');
+    })();
 </script>
 </body>
 </html>

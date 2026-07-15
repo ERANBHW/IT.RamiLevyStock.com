@@ -1,7 +1,7 @@
 // Shared infrastructure for every page of the IT Portal SPA.
 // Keep this file dependency-free (no build step - plain script tag on GitHub Pages).
 
-var APP_VERSION = '1.0.0'; // keep in sync with /VERSION - bumped every shipped change
+var APP_VERSION = '1.1.0'; // keep in sync with /VERSION - bumped every shipped change
 var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwOkzvQXDsCrGzRzOgaEBWteHSnthbZrjI29taxP4K540W3TwdneWCf5KtUTk8Trvsv/exec';
 var LOGO_URL = 'https://rami-levy-stock.co.il/sing.png';
 
@@ -89,7 +89,11 @@ function renderHeader(containerEl, opts) {
     '</header>';
 
   var backBtn = containerEl.querySelector('[data-nav-back]');
-  if (backBtn) backBtn.addEventListener('click', function () { window.location.href = opts.backHref || 'index.html' + window.location.hash; });
+  if (backBtn) {
+    backBtn.addEventListener('click', opts.onBack || function () {
+      window.location.href = opts.backHref || 'index.html' + window.location.hash;
+    });
+  }
 }
 
 function showLoading(visible) {
