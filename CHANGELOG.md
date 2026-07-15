@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0 (in progress)
+- Backend: `computers.getAssigned`, `tickets.create` (TK-#### numbering via Counters +
+  LockService, sends IT/admin + employee confirmation emails from EmailSettings), and
+  `tickets.listMine`. Frontend ticket page still to come.
+
 ## 1.1.0
 - Home hub: personalized greeting resolved from the launcher's `#email=` hash, editable
   profile (first/last name, phone, branch, role) syncing back to the Users sheet.

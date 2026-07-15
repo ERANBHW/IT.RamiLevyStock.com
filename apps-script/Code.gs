@@ -124,11 +124,100 @@ function users_updateProfile_(payload) {
   return { ok: true, data: rows[rowIndex - 2] };
 }
 
+// ── ENTITY: computers ─────────────────────────────────────────
+function computers_getAssigned_(params) {
+  var sheet = getSheet_('Computers');
+  var rowIndex = findRowByColumn_(sheet, 'AssignedUserEmail', params.email);
+  if (rowIndex === -1) return { ok: true, data: null };
+  var rows = rowsToObjects_(sheet);
+  return { ok: true, data: rows[rowIndex - 2] };
+}
+
+// ── ENTITY: tickets ───────────────────────────────────────────
+var TICKET_STATUS_OPEN = 'פתוחה';
+var TICKET_STATUS_PROGRESS = 'בטיפול';
+var TICKET_STATUS_CLOSED = 'סגורה';
+
+function formatTicketNumber_(n) {
+  return 'TK-' + ('0000' + n).slice(-4);
+}
+
+function getEmailSetting_(key) {
+  var sheet = getSheet_('EmailSettings');
+  var rowIndex = findRowByColumn_(sheet, 'Key', key);
+  if (rowIndex === -1) return '';
+  return String(sheet.getRange(rowIndex, 2).getValue() || '').trim();
+}
+
+function sendTicketEmails_(ticket) {
+  var itEmail = getEmailSetting_('ITCompanyEmail');
+  var adminEmail = getEmailSetting_('AdminEmail');
+  var subject = 'קריאת שירות חדשה ' + ticket.TicketNumber + ' - ' + ticket.Category;
+  var body = [
+    'קריאה: ' + ticket.TicketNumber,
+    'שם: ' + ticket.UserName,
+    'טלפון: ' + ticket.Phone,
+    'סניף: ' + ticket.Branch,
+    'מחשב: ' + ticket.ComputerName + ' | IP: ' + ticket.IP,
+    'מדפסת: ' + ticket.Printer + ' | AnyDesk: ' + ticket.AnyDeskId,
+    'קטגוריה: ' + ticket.Category,
+    'דחיפות: ' + ticket.Urgency,
+    '',
+    'תיאור:',
+    ticket.Description,
+  ].join('\n');
+
+  var staffRecipients = [itEmail, adminEmail].filter(Boolean).join(',');
+  if (staffRecipients) MailApp.sendEmail(staffRecipients, subject, body);
+
+  if (ticket.UserEmail) {
+    var userSubject = 'הקריאה שלך נפתחה - ' + ticket.TicketNumber;
+    var userBody = 'שלום ' + ticket.UserName + ',\n\nהקריאה שלך נפתחה בהצלחה.\n\n' + body;
+    MailApp.sendEmail(ticket.UserEmail, userSubject, userBody);
+  }
+}
+
+function tickets_create_(payload) {
+  var sheet = getSheet_('Tickets');
+  var number = formatTicketNumber_(getNextNumber_('Ticket'));
+  var now = new Date().toISOString();
+
+  var row = {
+    TicketNumber: number, Timestamp: now, UserEmail: payload.userEmail || '',
+    UserName: payload.userName || '', Phone: payload.phone || '', Branch: payload.branch || '',
+    ComputerName: payload.computerName || '', IP: payload.ip || '', Printer: payload.printer || '',
+    AnyDeskId: payload.anyDeskId || '', Category: payload.category || '', Urgency: payload.urgency || '',
+    Description: payload.description || '', Status: TICKET_STATUS_OPEN, ClosedAt: '', UpdatedAt: now,
+  };
+  sheet.appendRow(SHEET_SCHEMAS.Tickets.map(function (h) { return row[h]; }));
+
+  sendTicketEmails_(row);
+
+  return { ok: true, data: { ticketNumber: number } };
+}
+
+function tickets_listMine_(params) {
+  var sheet = getSheet_('Tickets');
+  var rows = rowsToObjects_(sheet);
+  var mine = rows.filter(function (r) {
+    return String(r.userEmail).trim().toLowerCase() === String(params.email).trim().toLowerCase();
+  });
+  mine.sort(function (a, b) { return new Date(b.timestamp) - new Date(a.timestamp); });
+  return { ok: true, data: mine };
+}
+
 // ── ROUTER ────────────────────────────────────────────────────
 var ROUTES = {
   users: {
     identify: users_identify_,
     updateProfile: users_updateProfile_,
+  },
+  computers: {
+    getAssigned: computers_getAssigned_,
+  },
+  tickets: {
+    create: tickets_create_,
+    listMine: tickets_listMine_,
   },
 };
 
