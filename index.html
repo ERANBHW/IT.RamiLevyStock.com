@@ -102,6 +102,13 @@
         .procedure-actions { display: flex; gap: 6px; }
         .procedure-card-content { display: none; padding: 0 14px 14px; font-size: 13px; color: #333; white-space: pre-wrap; line-height: 1.6; }
         .procedure-card.expanded .procedure-card-content { display: block; }
+
+        .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .admin-table th, .admin-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+        .admin-table th { background: var(--background); position: sticky; top: 0; }
+        .role-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; background: var(--brand-pink-soft); color: var(--brand-pink-dark); margin-inline-end: 4px; }
+        .admin-row-actions { display: flex; gap: 4px; }
+        .anydesk-link { color: var(--brand-pink-dark); text-decoration: none; font-weight: 700; }
     </style>
 </head>
 
@@ -155,6 +162,11 @@
             </div>
 
             <div class="hub-actions" id="hubActions"></div>
+
+            <div id="hubAdminSection" style="display:none">
+                <h3 class="procedure-category-title">ניהול</h3>
+                <div class="hub-actions" id="hubAdminActions"></div>
+            </div>
         </div>
     </main>
 
@@ -258,6 +270,106 @@
             <div id="proceduresList"></div>
         </div>
     </main>
+
+    <!-- VIEW: admin users -->
+    <main class="app" id="view-admin-users">
+        <div class="content">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h1 class="page-title" style="margin:0">ניהול משתמשים</h1>
+                <button type="button" class="primary-button" id="userAdminAddBtn">+ הוסף משתמש</button>
+            </div>
+            <div style="overflow-x:auto">
+                <table class="admin-table" id="usersTable">
+                    <thead>
+                        <tr><th>מייל</th><th>שם</th><th>סניף</th><th>תפקיד</th><th>הרשאות</th><th>מחשב</th><th></th></tr>
+                    </thead>
+                    <tbody id="usersTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- VIEW: admin computers -->
+    <main class="app" id="view-admin-computers">
+        <div class="content">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h1 class="page-title" style="margin:0">ניהול מחשבים</h1>
+                <button type="button" class="primary-button" id="computerAdminAddBtn">+ הוסף מחשב</button>
+            </div>
+            <div style="overflow-x:auto">
+                <table class="admin-table" id="computersTable">
+                    <thead>
+                        <tr><th>שם מחשב</th><th>סוג</th><th>IP</th><th>מדפסת</th><th>AnyDesk</th><th>משתמש</th><th></th></tr>
+                    </thead>
+                    <tbody id="computersTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- User admin modal -->
+<div class="profile-modal-backdrop" id="userAdminModalBackdrop">
+    <div class="profile-modal" style="max-width:480px">
+        <div class="profile-modal-header"><h2 id="userAdminModalTitle">משתמש חדש</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="uaEmail">מייל (ה-UPN)</label><input id="uaEmail" type="email" dir="ltr"></div>
+            <div class="grid-2">
+                <div class="field"><label for="uaFirstName">שם פרטי</label><input id="uaFirstName" type="text"></div>
+                <div class="field"><label for="uaLastName">שם משפחה</label><input id="uaLastName" type="text"></div>
+                <div class="field"><label for="uaPhone">טלפון</label><input id="uaPhone" type="tel" dir="ltr"></div>
+                <div class="field"><label for="uaBranch">סניף</label><input id="uaBranch" type="text"></div>
+            </div>
+            <div class="field"><label for="uaRole">תפקיד</label><input id="uaRole" type="text"></div>
+            <div class="field"><label for="uaComputer">מחשב משוייך</label><select id="uaComputer"></select></div>
+            <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+                <input id="uaIsITAdmin" type="checkbox" style="width:auto"><label for="uaIsITAdmin" style="margin:0">הרשאת ניהול IT (מחשבים)</label>
+            </div>
+            <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+                <input id="uaIsProceduresAdmin" type="checkbox" style="width:auto"><label for="uaIsProceduresAdmin" style="margin:0">הרשאת ניהול נהלים</label>
+            </div>
+            <div id="userAdminModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="userAdminSaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="userAdminCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<!-- Computer admin modal -->
+<div class="profile-modal-backdrop" id="computerAdminModalBackdrop">
+    <div class="profile-modal" style="max-width:480px">
+        <div class="profile-modal-header"><h2 id="computerAdminModalTitle">מחשב חדש</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="caComputerName">שם מחשב</label><input id="caComputerName" type="text" dir="ltr"></div>
+            <div class="grid-2">
+                <div class="field"><label for="caType">סוג</label><input id="caType" type="text" placeholder="נייח / נייד"></div>
+                <div class="field"><label for="caRam">זיכרון (RAM)</label><input id="caRam" type="text" placeholder="16GB"></div>
+                <div class="field"><label for="caIp">IP</label><input id="caIp" type="text" dir="ltr"></div>
+                <div class="field"><label for="caPrinter">מדפסת</label><input id="caPrinter" type="text"></div>
+                <div class="field"><label for="caAnyDesk">AnyDesk</label><input id="caAnyDesk" type="text" dir="ltr"></div>
+                <div class="field"><label for="caBranch">סניף</label><input id="caBranch" type="text"></div>
+            </div>
+            <div class="field"><label for="caNotes">הערות</label><textarea id="caNotes" rows="3"></textarea></div>
+            <div id="computerAdminModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="computerAdminSaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="computerAdminCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<!-- Computer ticket history modal -->
+<div class="profile-modal-backdrop" id="computerHistoryBackdrop">
+    <div class="profile-modal" style="max-width:520px">
+        <div class="profile-modal-header"><h2 id="computerHistoryTitle">היסטוריית קריאות</h2></div>
+        <div class="profile-modal-body" id="computerHistoryBody"></div>
+        <div class="profile-modal-actions">
+            <button type="button" class="secondary-button" style="flex:1" id="computerHistoryCloseBtn">סגור</button>
+        </div>
+    </div>
 </div>
 
 <!-- Procedure edit modal -->
@@ -293,6 +405,8 @@
 
         if (id === 'ticket') loadTicketPage();
         if (id === 'procedures') loadProceduresPage();
+        if (id === 'admin-users') loadUsersAdminPage();
+        if (id === 'admin-computers') loadComputersAdminPage();
     }
 
     // ── HUB VIEW ──────────────────────────────────────────────
@@ -302,10 +416,14 @@
         { id: 'procedures', icon: '📖', label: 'נהלי עבודה' },
     ];
 
-    function renderHubActions() {
-        var container = document.getElementById('hubActions');
+    var HUB_ADMIN_BUTTONS = [
+        { id: 'admin-users', icon: '👥', label: 'ניהול משתמשים', check: function () { return Portal.isSuperAdmin(); } },
+        { id: 'admin-computers', icon: '💻', label: 'ניהול מחשבים', check: function () { return Portal.isITAdmin(); } },
+    ];
+
+    function renderHubButtons(container, buttons) {
         container.innerHTML = '';
-        HUB_BUTTONS.forEach(function (btn) {
+        buttons.forEach(function (btn) {
             var el = document.createElement('button');
             el.className = 'hub-btn';
             el.type = 'button';
@@ -313,6 +431,14 @@
             el.addEventListener('click', function () { showView(btn.id); });
             container.appendChild(el);
         });
+    }
+
+    function renderHubActions() {
+        renderHubButtons(document.getElementById('hubActions'), HUB_BUTTONS);
+
+        var adminButtons = HUB_ADMIN_BUTTONS.filter(function (b) { return b.check(); });
+        document.getElementById('hubAdminSection').style.display = adminButtons.length ? 'block' : 'none';
+        renderHubButtons(document.getElementById('hubAdminActions'), adminButtons);
     }
 
     function renderHubGreeting() {
@@ -685,6 +811,226 @@
         if (res.ok) loadProceduresPage();
         else alert(res.error || 'שגיאה במחיקה');
     }
+
+    // ── ADMIN: USERS ──────────────────────────────────────────
+    var editingUserEmail = null;
+    var computersCache = [];
+
+    async function loadUsersAdminPage() {
+        showLoading(true);
+        var requesterEmail = Portal.getUser().email;
+        var usersRes = await apiGet('users', 'list', { requesterEmail: requesterEmail });
+        var compRes = await apiGet('computers', 'list', { requesterEmail: requesterEmail });
+        showLoading(false);
+        computersCache = compRes.ok ? compRes.data : [];
+        renderUsersTable(usersRes.ok ? usersRes.data : []);
+    }
+
+    function computerAssignedTo(email) {
+        return computersCache.find(function (c) { return String(c.assignedUserEmail).toLowerCase() === String(email).toLowerCase(); });
+    }
+
+    function renderUsersTable(users) {
+        var body = document.getElementById('usersTableBody');
+        body.innerHTML = '';
+        users.forEach(function (u) {
+            var tr = document.createElement('tr');
+            var badges = '';
+            if (u.isSuperAdmin) badges += '<span class="role-badge">מנהל-על</span>';
+            if (u.isITAdmin) badges += '<span class="role-badge">IT</span>';
+            if (u.isProceduresAdmin) badges += '<span class="role-badge">נהלים</span>';
+            var comp = computerAssignedTo(u.email);
+
+            tr.innerHTML =
+                '<td dir="ltr">' + escapeHtml(u.email) + '</td>' +
+                '<td>' + escapeHtml([u.firstName, u.lastName].filter(Boolean).join(' ')) + '</td>' +
+                '<td>' + escapeHtml(u.branch) + '</td>' +
+                '<td>' + escapeHtml(u.role) + '</td>' +
+                '<td>' + (badges || '-') + '</td>' +
+                '<td>' + escapeHtml(comp ? comp.computerName : '-') + '</td>' +
+                '<td class="admin-row-actions"><button type="button" class="icon-button" data-edit>✏️</button>' +
+                (u.isSuperAdmin ? '' : '<button type="button" class="icon-button" data-delete>🗑️</button>') + '</td>';
+
+            tr.querySelector('[data-edit]').addEventListener('click', function () { openUserAdminModal(u); });
+            var delBtn = tr.querySelector('[data-delete]');
+            if (delBtn) delBtn.addEventListener('click', function () { deleteAdminUser(u); });
+            body.appendChild(tr);
+        });
+    }
+
+    function populateComputerSelect(selectedComputerName) {
+        var sel = document.getElementById('uaComputer');
+        sel.innerHTML = '<option value="">ללא מחשב</option>' +
+            computersCache.map(function (c) {
+                return '<option value="' + escapeHtml(c.computerName) + '"' + (c.computerName === selectedComputerName ? ' selected' : '') + '>' + escapeHtml(c.computerName) + '</option>';
+            }).join('');
+    }
+
+    function openUserAdminModal(user) {
+        editingUserEmail = user ? user.email : null;
+        document.getElementById('userAdminModalTitle').textContent = user ? 'עריכת משתמש' : 'משתמש חדש';
+        document.getElementById('uaEmail').value = user ? user.email : '';
+        document.getElementById('uaEmail').disabled = !!user;
+        document.getElementById('uaFirstName').value = user ? user.firstName : '';
+        document.getElementById('uaLastName').value = user ? user.lastName : '';
+        document.getElementById('uaPhone').value = user ? user.phone : '';
+        document.getElementById('uaBranch').value = user ? user.branch : '';
+        document.getElementById('uaRole').value = user ? user.role : '';
+        document.getElementById('uaIsITAdmin').checked = !!(user && user.isITAdmin);
+        document.getElementById('uaIsProceduresAdmin').checked = !!(user && user.isProceduresAdmin);
+        var assignedComp = user ? computerAssignedTo(user.email) : null;
+        populateComputerSelect(assignedComp ? assignedComp.computerName : '');
+        document.getElementById('userAdminModalError').style.display = 'none';
+        document.getElementById('userAdminModalBackdrop').classList.add('visible');
+    }
+
+    function closeUserAdminModal() { document.getElementById('userAdminModalBackdrop').classList.remove('visible'); }
+
+    document.getElementById('userAdminAddBtn').addEventListener('click', function () { openUserAdminModal(null); });
+    document.getElementById('userAdminCancelBtn').addEventListener('click', closeUserAdminModal);
+    document.getElementById('userAdminModalBackdrop').addEventListener('click', function (e) { if (e.target === this) closeUserAdminModal(); });
+
+    document.getElementById('userAdminSaveBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('userAdminModalError');
+        var payload = {
+            requesterEmail: Portal.getUser().email,
+            email: document.getElementById('uaEmail').value.trim().toLowerCase(),
+            firstName: document.getElementById('uaFirstName').value.trim(),
+            lastName: document.getElementById('uaLastName').value.trim(),
+            phone: document.getElementById('uaPhone').value.trim(),
+            branch: document.getElementById('uaBranch').value.trim(),
+            role: document.getElementById('uaRole').value.trim(),
+            isITAdmin: document.getElementById('uaIsITAdmin').checked,
+            isProceduresAdmin: document.getElementById('uaIsProceduresAdmin').checked,
+            assignedComputerName: document.getElementById('uaComputer').value,
+        };
+        if (!payload.email) { errEl.textContent = 'יש למלא מייל'; errEl.style.display = 'block'; return; }
+
+        showLoading(true);
+        var res = await apiPost('users', editingUserEmail ? 'adminUpdate' : 'create', payload);
+        showLoading(false);
+        if (res.ok) { closeUserAdminModal(); loadUsersAdminPage(); }
+        else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
+    });
+
+    async function deleteAdminUser(user) {
+        if (!confirm('למחוק את המשתמש ' + user.email + '?')) return;
+        showLoading(true);
+        var res = await apiPost('users', 'delete', { requesterEmail: Portal.getUser().email, email: user.email });
+        showLoading(false);
+        if (res.ok) loadUsersAdminPage(); else alert(res.error || 'שגיאה במחיקה');
+    }
+
+    // ── ADMIN: COMPUTERS ──────────────────────────────────────
+    var editingComputerName = null;
+
+    async function loadComputersAdminPage() {
+        showLoading(true);
+        var res = await apiGet('computers', 'list', { requesterEmail: Portal.getUser().email });
+        showLoading(false);
+        computersCache = res.ok ? res.data : [];
+        renderComputersTable(computersCache);
+    }
+
+    function renderComputersTable(computers) {
+        var body = document.getElementById('computersTableBody');
+        body.innerHTML = '';
+        computers.forEach(function (c) {
+            var tr = document.createElement('tr');
+            var anyDeskCell = c.anyDeskId
+                ? '<a class="anydesk-link" href="anydesk:' + encodeURIComponent(c.anyDeskId) + '" title="התחברות מרחוק דרך AnyDesk">🖥️ ' + escapeHtml(c.anyDeskId) + '</a>'
+                : '-';
+            tr.innerHTML =
+                '<td dir="ltr">' + escapeHtml(c.computerName) + '</td>' +
+                '<td>' + escapeHtml(c.type) + '</td>' +
+                '<td dir="ltr">' + escapeHtml(c.ip) + '</td>' +
+                '<td>' + escapeHtml(c.printer) + '</td>' +
+                '<td>' + anyDeskCell + '</td>' +
+                '<td dir="ltr">' + escapeHtml(c.assignedUserEmail || '-') + '</td>' +
+                '<td class="admin-row-actions">' +
+                '<button type="button" class="icon-button" data-history title="היסטוריית קריאות">🕘</button>' +
+                '<button type="button" class="icon-button" data-edit title="עריכה">✏️</button>' +
+                '<button type="button" class="icon-button" data-delete title="מחיקה">🗑️</button></td>';
+
+            tr.querySelector('[data-edit]').addEventListener('click', function () { openComputerAdminModal(c); });
+            tr.querySelector('[data-delete]').addEventListener('click', function () { deleteAdminComputer(c); });
+            tr.querySelector('[data-history]').addEventListener('click', function () { openComputerHistory(c); });
+            body.appendChild(tr);
+        });
+    }
+
+    function openComputerAdminModal(comp) {
+        editingComputerName = comp ? comp.computerName : null;
+        document.getElementById('computerAdminModalTitle').textContent = comp ? 'עריכת מחשב' : 'מחשב חדש';
+        document.getElementById('caComputerName').value = comp ? comp.computerName : '';
+        document.getElementById('caComputerName').disabled = !!comp;
+        document.getElementById('caType').value = comp ? comp.type : '';
+        document.getElementById('caRam').value = comp ? comp.ram : '';
+        document.getElementById('caIp').value = comp ? comp.ip : '';
+        document.getElementById('caPrinter').value = comp ? comp.printer : '';
+        document.getElementById('caAnyDesk').value = comp ? comp.anyDeskId : '';
+        document.getElementById('caBranch').value = comp ? comp.branch : '';
+        document.getElementById('caNotes').value = comp ? comp.notes : '';
+        document.getElementById('computerAdminModalError').style.display = 'none';
+        document.getElementById('computerAdminModalBackdrop').classList.add('visible');
+    }
+
+    function closeComputerAdminModal() { document.getElementById('computerAdminModalBackdrop').classList.remove('visible'); }
+
+    document.getElementById('computerAdminAddBtn').addEventListener('click', function () { openComputerAdminModal(null); });
+    document.getElementById('computerAdminCancelBtn').addEventListener('click', closeComputerAdminModal);
+    document.getElementById('computerAdminModalBackdrop').addEventListener('click', function (e) { if (e.target === this) closeComputerAdminModal(); });
+
+    document.getElementById('computerAdminSaveBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('computerAdminModalError');
+        var payload = {
+            requesterEmail: Portal.getUser().email,
+            computerName: document.getElementById('caComputerName').value.trim(),
+            type: document.getElementById('caType').value.trim(),
+            ram: document.getElementById('caRam').value.trim(),
+            ip: document.getElementById('caIp').value.trim(),
+            printer: document.getElementById('caPrinter').value.trim(),
+            anyDeskId: document.getElementById('caAnyDesk').value.trim(),
+            branch: document.getElementById('caBranch').value.trim(),
+            notes: document.getElementById('caNotes').value.trim(),
+        };
+        if (!payload.computerName) { errEl.textContent = 'יש למלא שם מחשב'; errEl.style.display = 'block'; return; }
+
+        showLoading(true);
+        var res = await apiPost('computers', editingComputerName ? 'update' : 'create', payload);
+        showLoading(false);
+        if (res.ok) { closeComputerAdminModal(); loadComputersAdminPage(); }
+        else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
+    });
+
+    async function deleteAdminComputer(comp) {
+        if (!confirm('למחוק את המחשב ' + comp.computerName + '?')) return;
+        showLoading(true);
+        var res = await apiPost('computers', 'delete', { requesterEmail: Portal.getUser().email, computerName: comp.computerName });
+        showLoading(false);
+        if (res.ok) loadComputersAdminPage(); else alert(res.error || 'שגיאה במחיקה');
+    }
+
+    async function openComputerHistory(comp) {
+        document.getElementById('computerHistoryTitle').textContent = 'היסטוריית קריאות - ' + comp.computerName;
+        var body = document.getElementById('computerHistoryBody');
+        body.innerHTML = '<p style="color:var(--muted);font-size:13px">טוען...</p>';
+        document.getElementById('computerHistoryBackdrop').classList.add('visible');
+
+        var res = await apiGet('computers', 'ticketHistory', { requesterEmail: Portal.getUser().email, computerName: comp.computerName });
+        var tickets = res.ok ? res.data : [];
+        body.innerHTML = '';
+        if (!tickets.length) {
+            body.innerHTML = '<p style="color:var(--muted);font-size:13px">אין קריאות עבור מחשב זה.</p>';
+            return;
+        }
+        tickets.forEach(function (t) { body.appendChild(buildTicketCard(t)); });
+    }
+
+    document.getElementById('computerHistoryCloseBtn').addEventListener('click', function () {
+        document.getElementById('computerHistoryBackdrop').classList.remove('visible');
+    });
+    document.getElementById('computerHistoryBackdrop').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('visible'); });
 
     // ── INIT ──────────────────────────────────────────────────
     (async function init() {

@@ -38,6 +38,9 @@ function ensureAllSheets_() {
 }
 
 function toCamel_(header) {
+  // Handles all-caps abbreviation headers (e.g. "RAM", "IP") in addition to
+  // ordinary PascalCase headers (e.g. "FirstName" -> "firstName").
+  if (header === header.toUpperCase()) return header.toLowerCase();
   return header.charAt(0).toLowerCase() + header.slice(1);
 }
 
@@ -131,6 +134,133 @@ function computers_getAssigned_(params) {
   if (rowIndex === -1) return { ok: true, data: null };
   var rows = rowsToObjects_(sheet);
   return { ok: true, data: rows[rowIndex - 2] };
+}
+
+function computers_clearAssignmentForUser_(email) {
+  if (!email) return;
+  var sheet = getSheet_('Computers');
+  var rowIndex = findRowByColumn_(sheet, 'AssignedUserEmail', email);
+  if (rowIndex !== -1) setRowValues_(sheet, rowIndex, { AssignedUserEmail: '' });
+}
+
+function computers_list_(params) {
+  if (!userHasRole_(params.requesterEmail, 'isITAdmin')) return { ok: false, error: 'אין הרשאה' };
+  var sheet = getSheet_('Computers');
+  return { ok: true, data: rowsToObjects_(sheet) };
+}
+
+var EDITABLE_COMPUTER_FIELDS = ['Type', 'RAM', 'IP', 'Printer', 'AnyDeskId', 'AssignedUserEmail', 'Branch', 'Notes'];
+
+function computers_create_(payload) {
+  if (!userHasRole_(payload.requesterEmail, 'isITAdmin')) return { ok: false, error: 'אין הרשאה' };
+  var sheet = getSheet_('Computers');
+  if (findRowByColumn_(sheet, 'ComputerName', payload.computerName) !== -1) {
+    return { ok: false, error: 'מחשב עם שם זה כבר קיים' };
+  }
+  var now = new Date().toISOString();
+  var row = { ComputerName: payload.computerName || '', CreatedAt: now, UpdatedAt: now };
+  EDITABLE_COMPUTER_FIELDS.forEach(function (h) { row[h] = payload[toCamel_(h)] || ''; });
+  sheet.appendRow(SHEET_SCHEMAS.Computers.map(function (h) { return row[h]; }));
+  return { ok: true };
+}
+
+function computers_update_(payload) {
+  if (!userHasRole_(payload.requesterEmail, 'isITAdmin')) return { ok: false, error: 'אין הרשאה' };
+  var sheet = getSheet_('Computers');
+  var rowIndex = findRowByColumn_(sheet, 'ComputerName', payload.computerName);
+  if (rowIndex === -1) return { ok: false, error: 'המחשב לא נמצא' };
+
+  var updates = { UpdatedAt: new Date().toISOString() };
+  EDITABLE_COMPUTER_FIELDS.forEach(function (h) {
+    var key = toCamel_(h);
+    if (Object.prototype.hasOwnProperty.call(payload, key)) updates[h] = payload[key];
+  });
+  setRowValues_(sheet, rowIndex, updates);
+  return { ok: true };
+}
+
+function computers_delete_(payload) {
+  if (!userHasRole_(payload.requesterEmail, 'isITAdmin')) return { ok: false, error: 'אין הרשאה' };
+  var sheet = getSheet_('Computers');
+  var rowIndex = findRowByColumn_(sheet, 'ComputerName', payload.computerName);
+  if (rowIndex === -1) return { ok: false, error: 'המחשב לא נמצא' };
+  sheet.deleteRow(rowIndex);
+  return { ok: true };
+}
+
+function computers_ticketHistory_(params) {
+  if (!userHasRole_(params.requesterEmail, 'isITAdmin')) return { ok: false, error: 'אין הרשאה' };
+  var sheet = getSheet_('Tickets');
+  var rows = rowsToObjects_(sheet);
+  var forComputer = rows.filter(function (r) {
+    return String(r.computerName).trim().toLowerCase() === String(params.computerName).trim().toLowerCase();
+  });
+  forComputer.sort(function (a, b) { return new Date(b.timestamp) - new Date(a.timestamp); });
+  return { ok: true, data: forComputer };
+}
+
+// ── ADMIN: users management (SuperAdmin only) ─────────────────
+var EDITABLE_ADMIN_USER_FIELDS = ['FirstName', 'LastName', 'Phone', 'Branch', 'Role', 'IsITAdmin', 'IsProceduresAdmin'];
+
+function users_list_(params) {
+  if (!userHasRole_(params.requesterEmail, 'isSuperAdmin')) return { ok: false, error: 'אין הרשאה' };
+  var sheet = getSheet_('Users');
+  return { ok: true, data: rowsToObjects_(sheet) };
+}
+
+function users_create_(payload) {
+  if (!userHasRole_(payload.requesterEmail, 'isSuperAdmin')) return { ok: false, error: 'אין הרשאה' };
+  var sheet = getSheet_('Users');
+  if (findRowByColumn_(sheet, 'Email', payload.email) !== -1) return { ok: false, error: 'משתמש עם מייל זה כבר קיים' };
+
+  var now = new Date().toISOString();
+  var row = {
+    Email: (payload.email || '').trim().toLowerCase(), IsSuperAdmin: false,
+    IsITAdmin: !!payload.isITAdmin, IsProceduresAdmin: !!payload.isProceduresAdmin,
+    CreatedAt: now, UpdatedAt: now,
+  };
+  ['FirstName', 'LastName', 'Phone', 'Branch', 'Role'].forEach(function (h) { row[h] = payload[toCamel_(h)] || ''; });
+  sheet.appendRow(SHEET_SCHEMAS.Users.map(function (h) { return row[h]; }));
+
+  if (payload.assignedComputerName) computers_setAssignment_(payload.assignedComputerName, row.Email);
+  return { ok: true };
+}
+
+function computers_setAssignment_(computerName, email) {
+  computers_clearAssignmentForUser_(email);
+  var sheet = getSheet_('Computers');
+  var rowIndex = findRowByColumn_(sheet, 'ComputerName', computerName);
+  if (rowIndex !== -1) setRowValues_(sheet, rowIndex, { AssignedUserEmail: email, UpdatedAt: new Date().toISOString() });
+}
+
+function users_adminUpdate_(payload) {
+  if (!userHasRole_(payload.requesterEmail, 'isSuperAdmin')) return { ok: false, error: 'אין הרשאה' };
+  var sheet = getSheet_('Users');
+  var rowIndex = findRowByColumn_(sheet, 'Email', payload.email);
+  if (rowIndex === -1) return { ok: false, error: 'המשתמש לא נמצא' };
+
+  var updates = { UpdatedAt: new Date().toISOString() };
+  EDITABLE_ADMIN_USER_FIELDS.forEach(function (h) {
+    var key = toCamel_(h);
+    if (Object.prototype.hasOwnProperty.call(payload, key)) updates[h] = payload[key];
+  });
+  setRowValues_(sheet, rowIndex, updates);
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'assignedComputerName')) {
+    computers_clearAssignmentForUser_(payload.email);
+    if (payload.assignedComputerName) computers_setAssignment_(payload.assignedComputerName, payload.email);
+  }
+  return { ok: true };
+}
+
+function users_delete_(payload) {
+  if (!userHasRole_(payload.requesterEmail, 'isSuperAdmin')) return { ok: false, error: 'אין הרשאה' };
+  if (userHasRole_(payload.email, 'isSuperAdmin')) return { ok: false, error: 'לא ניתן למחוק מנהל-על' };
+  var sheet = getSheet_('Users');
+  var rowIndex = findRowByColumn_(sheet, 'Email', payload.email);
+  if (rowIndex === -1) return { ok: false, error: 'המשתמש לא נמצא' };
+  sheet.deleteRow(rowIndex);
+  return { ok: true };
 }
 
 // ── ENTITY: tickets ───────────────────────────────────────────
@@ -282,9 +412,18 @@ var ROUTES = {
   users: {
     identify: users_identify_,
     updateProfile: users_updateProfile_,
+    list: users_list_,
+    create: users_create_,
+    adminUpdate: users_adminUpdate_,
+    delete: users_delete_,
   },
   computers: {
     getAssigned: computers_getAssigned_,
+    list: computers_list_,
+    create: computers_create_,
+    update: computers_update_,
+    delete: computers_delete_,
+    ticketHistory: computers_ticketHistory_,
   },
   tickets: {
     create: tickets_create_,

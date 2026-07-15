@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.4.0
+- Admin panels, both gated server-side (not just hidden in the UI):
+  - Users (`IsSuperAdmin`): add/edit/delete employees, toggle `IsITAdmin`/`IsProceduresAdmin`,
+    assign a computer from the Computers list.
+  - Computers (`IsITAdmin`): add/edit/delete machines (type, RAM, IP, printer, AnyDesk ID,
+    branch, notes), per-computer ticket history, one-click `anydesk:<id>` connect link.
+  - Both surfaced as conditional buttons under a "ניהול" section on the hub, visible only
+    to users with the matching role.
+  - Seeded the requester as the first `IsSuperAdmin` (one-time bootstrap, since the admin
+    panels would otherwise be inaccessible to everyone with an empty Users sheet).
+- Bug fix: `toCamel_` only lowercased the first character of sheet headers, so all-caps
+  headers like `RAM`/`IP` serialized as `rAM`/`iP` instead of `ram`/`ip` - silently broken
+  since Phase 2 (the ticket IP field) and would have broken Computers entirely. Now handles
+  all-caps headers correctly.
+- Hardening: the backend now refuses to delete a super-admin via the API, not just hides the
+  delete button client-side.
+
 ## 1.3.0
 - Procedures page: grouped by category, expandable cards. Employees with the
   `IsProceduresAdmin` flag (or `IsSuperAdmin`) see add/edit/delete controls; the
