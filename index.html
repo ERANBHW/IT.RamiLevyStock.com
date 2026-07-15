@@ -58,6 +58,40 @@
 
         .not-found-view { padding: 60px 40px; text-align: center; }
         .not-found-view .icon { font-size: 44px; margin-bottom: 14px; }
+
+        .page-title { margin: 0 0 4px; font-size: 22px; }
+        .page-subtitle { margin: 0 0 20px; color: var(--muted); font-size: 13px; }
+        .section { margin-bottom: 20px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; }
+        .section-title { margin: 0 0 14px; padding-right: 10px; border-right: 4px solid var(--brand-pink); font-size: 16px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        @media (max-width: 560px) { .grid-2 { grid-template-columns: 1fr; } }
+
+        .ticket-banner {
+            border: 2px solid #f59e0b; background: #fff8e6; border-radius: 12px;
+            padding: 14px 16px; margin-bottom: 20px; cursor: pointer;
+            animation: blink-border 1.4s ease-in-out infinite;
+        }
+        @keyframes blink-border {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.35); }
+            50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+        }
+        .ticket-banner-title { font-weight: 700; font-size: 14px; }
+        .ticket-banner-list { margin-top: 10px; display: none; flex-direction: column; gap: 8px; }
+        .ticket-banner-list.expanded { display: flex; }
+
+        .ticket-card { padding: 14px; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; background: var(--white); }
+        .ticket-card:hover { border-color: var(--brand-pink); }
+        .ticket-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 10px; }
+        .ticket-meta { font-size: 12px; color: var(--muted); }
+
+        .urgency-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; cursor: pointer; margin-bottom: 8px; border: 1px solid transparent; }
+        .urgency-row input { margin: 0; }
+        .urgency-normal { background: linear-gradient(90deg, #fff9c7, #ffe985); border-color: #edd76f; }
+        .urgency-high { background: linear-gradient(90deg, #ffe8ca, #ffa640); border-color: #e99b36; }
+        .urgency-down { background: linear-gradient(90deg, #ffd5d5, #ed5d5d); border-color: #d94e4e; }
+
+        .closed-tickets-toggle { margin-bottom: 16px; }
+        #closedTicketsList { display: flex; flex-direction: column; gap: 10px; }
     </style>
 </head>
 
@@ -114,16 +148,83 @@
         </div>
     </main>
 
-    <!-- VIEW: ticket (placeholder - built in a later phase) -->
+    <!-- VIEW: ticket -->
     <main class="app" id="view-ticket">
         <div class="content">
-            <div class="placeholder-view">
-                <div class="icon">📋</div>
-                <h2>פתיחת קריאה</h2>
-                <p>בקרוב</p>
+            <div id="openTicketsBanner" class="ticket-banner" style="display:none">
+                <div class="ticket-banner-title" id="openTicketsBannerTitle"></div>
+                <div class="ticket-banner-list" id="openTicketsBannerList"></div>
             </div>
+
+            <div id="ticketFormContainer">
+                <h1 class="page-title">פתיחת קריאת שירות</h1>
+                <p class="page-subtitle">מלאו את פרטי התקלה ונחזור אליכם בהקדם.</p>
+
+                <section class="section">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                        <h2 class="section-title" style="margin:0">פרטי הפונה והמחשב</h2>
+                        <button type="button" class="icon-button" id="ticketComputerEditBtn" title="עריכה נקודתית לקריאה זו">✏️</button>
+                    </div>
+                    <div class="grid-2">
+                        <div class="field"><label>שם</label><input id="tkName" readonly></div>
+                        <div class="field"><label>טלפון</label><input id="tkPhone" readonly dir="ltr"></div>
+                        <div class="field"><label>סניף</label><input id="tkBranch" readonly></div>
+                        <div class="field"><label>מחשב</label><input id="tkComputerName" readonly dir="ltr"></div>
+                        <div class="field"><label>IP</label><input id="tkIp" readonly dir="ltr"></div>
+                        <div class="field"><label>מדפסת</label><input id="tkPrinter" readonly></div>
+                        <div class="field"><label>AnyDesk</label><input id="tkAnyDesk" readonly dir="ltr"></div>
+                    </div>
+                    <p style="font-size:12px;color:var(--muted);margin:8px 0 0">לחצו על העיפרון אם אתם פותחים קריאה עבור מחשב/משתמש אחר - השינוי ישפיע רק על הקריאה הזו.</p>
+                </section>
+
+                <section class="section">
+                    <h2 class="section-title">פרטי התקלה</h2>
+                    <div class="field">
+                        <label for="tkCategory">סוג התקלה</label>
+                        <select id="tkCategory"></select>
+                    </div>
+                    <div class="field">
+                        <label>דחיפות</label>
+                        <div id="tkUrgencyOptions"></div>
+                    </div>
+                    <div class="field">
+                        <label for="tkDescription">תיאור התקלה</label>
+                        <textarea id="tkDescription" rows="5" placeholder="תארו מה קרה, ומתי התחילה התקלה."></textarea>
+                    </div>
+                </section>
+
+                <div id="ticketSubmitError" style="display:none;color:var(--danger);font-size:13px;margin-bottom:12px"></div>
+                <button type="button" class="primary-button" style="width:100%" id="ticketSubmitBtn">שלח קריאה</button>
+            </div>
+
+            <div id="ticketConfirmation" style="display:none;text-align:center;padding:40px 20px">
+                <div style="font-size:44px">✅</div>
+                <h2 style="color:var(--success);margin:10px 0 6px">הקריאה נשלחה בהצלחה!</h2>
+                <div style="display:inline-block;padding:8px 20px;border-radius:30px;background:var(--success-bg);color:var(--success);font-weight:700;margin:6px 0 14px" id="confirmTicketNumber"></div>
+                <p style="color:var(--muted)">נשלח אליך מייל אישור עם הפרטים המלאים.</p>
+                <div style="display:flex;gap:10px;justify-content:center;margin-top:16px">
+                    <button type="button" class="primary-button" id="ticketNewBtn">פתח קריאה נוספת</button>
+                    <button type="button" class="secondary-button" id="ticketHomeBtn">חזור לדף הבית</button>
+                </div>
+            </div>
+
+            <div class="closed-tickets-toggle">
+                <button type="button" class="secondary-button" id="closedTicketsToggleBtn">קריאות סגורות</button>
+            </div>
+            <div id="closedTicketsList" style="display:none"></div>
         </div>
     </main>
+
+    <!-- Ticket detail modal -->
+    <div class="profile-modal-backdrop" id="ticketDetailBackdrop">
+        <div class="profile-modal" style="max-width:520px">
+            <div class="profile-modal-header"><h2 id="ticketDetailTitle"></h2></div>
+            <div class="profile-modal-body" id="ticketDetailBody"></div>
+            <div class="profile-modal-actions">
+                <button type="button" class="secondary-button" style="flex:1" id="ticketDetailCloseBtn">סגור</button>
+            </div>
+        </div>
+    </div>
 
     <!-- VIEW: signature (placeholder - built in a later phase) -->
     <main class="app" id="view-signature">
@@ -160,6 +261,8 @@
             showBack: id !== 'hub' && id !== 'notfound',
             onBack: function () { showView('hub'); },
         });
+
+        if (id === 'ticket') loadTicketPage();
     }
 
     // ── HUB VIEW ──────────────────────────────────────────────
@@ -242,6 +345,198 @@
             profileError.style.display = 'block';
         }
     });
+
+    // ── TICKET VIEW ───────────────────────────────────────────
+    var TICKET_CATEGORIES = [
+        'מחשב / Windows', 'Outlook / דואר אלקטרוני', 'Microsoft 365', 'מדפסת / סורק',
+        'אינטרנט / רשת', 'תוכנה ארגונית', 'הרשאות / סיסמה', 'ציוד היקפי', 'אחר',
+    ];
+    var TICKET_URGENCIES = [
+        { value: 'רגילה', cls: 'urgency-normal', desc: 'ניתן להמשיך לעבוד' },
+        { value: 'גבוהה', cls: 'urgency-high', desc: 'העבודה נפגעה משמעותית' },
+        { value: 'משבית', cls: 'urgency-down', desc: 'לא ניתן לעבוד' },
+    ];
+    var assignedComputer = null;
+    var myTickets = [];
+
+    function renderCategoryOptions() {
+        var sel = document.getElementById('tkCategory');
+        sel.innerHTML = '<option value="">בחרו סוג תקלה</option>' +
+            TICKET_CATEGORIES.map(function (c) { return '<option>' + escapeHtml(c) + '</option>'; }).join('');
+    }
+
+    function renderUrgencyOptions() {
+        var container = document.getElementById('tkUrgencyOptions');
+        container.innerHTML = TICKET_URGENCIES.map(function (u, i) {
+            return '<label class="urgency-row ' + u.cls + '"><input type="radio" name="tkUrgency" value="' + u.value + '"' + (i === 0 ? ' checked' : '') + '>' +
+                '<span><strong>' + u.value + '</strong> - ' + u.desc + '</span></label>';
+        }).join('');
+    }
+
+    function setComputerFieldsReadonly(readonly) {
+        ['tkComputerName', 'tkIp', 'tkPrinter', 'tkAnyDesk'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (readonly) el.setAttribute('readonly', 'readonly'); else el.removeAttribute('readonly');
+        });
+    }
+
+    function fillComputerFields(data) {
+        var user = Portal.getUser();
+        document.getElementById('tkName').value = [user.firstName, user.lastName].filter(Boolean).join(' ');
+        document.getElementById('tkPhone').value = user.phone || '';
+        document.getElementById('tkBranch').value = user.branch || '';
+        document.getElementById('tkComputerName').value = data ? (data.computerName || '') : '';
+        document.getElementById('tkIp').value = data ? (data.ip || '') : '';
+        document.getElementById('tkPrinter').value = data ? (data.printer || '') : '';
+        document.getElementById('tkAnyDesk').value = data ? (data.anyDeskId || '') : '';
+        setComputerFieldsReadonly(true);
+    }
+
+    document.getElementById('ticketComputerEditBtn').addEventListener('click', function () { setComputerFieldsReadonly(false); });
+
+    async function loadTicketPage() {
+        renderCategoryOptions();
+        renderUrgencyOptions();
+        document.getElementById('ticketFormContainer').style.display = 'block';
+        document.getElementById('ticketConfirmation').style.display = 'none';
+        document.getElementById('closedTicketsList').style.display = 'none';
+
+        var user = Portal.getUser();
+        showLoading(true);
+        var compRes = await apiGet('computers', 'getAssigned', { email: user.email });
+        assignedComputer = compRes.ok ? compRes.data : null;
+        fillComputerFields(assignedComputer);
+        await refreshMyTickets();
+        showLoading(false);
+    }
+
+    async function refreshMyTickets() {
+        var user = Portal.getUser();
+        var res = await apiGet('tickets', 'listMine', { email: user.email });
+        myTickets = res.ok ? res.data : [];
+        renderOpenBanner();
+        renderClosedTickets();
+    }
+
+    function buildTicketCard(t) {
+        var card = document.createElement('div');
+        card.className = 'ticket-card';
+        var statusClass = t.status === 'סגורה' ? 'status-closed' : (t.status === 'בטיפול' ? 'status-progress' : 'status-open');
+        card.innerHTML =
+            '<div class="ticket-card-header"><strong>' + escapeHtml(t.ticketNumber) + '</strong>' +
+            '<span class="status-badge ' + statusClass + '">' + escapeHtml(t.status) + '</span></div>' +
+            '<div class="ticket-meta">' + formatDateTime(t.timestamp) + ' | ' + escapeHtml(t.category) + ' | ' + escapeHtml(t.urgency) + '</div>';
+        card.addEventListener('click', function () { openTicketDetail(t); });
+        return card;
+    }
+
+    function renderOpenBanner() {
+        var open = myTickets.filter(function (t) { return t.status !== 'סגורה'; });
+        var banner = document.getElementById('openTicketsBanner');
+        var title = document.getElementById('openTicketsBannerTitle');
+        var list = document.getElementById('openTicketsBannerList');
+        if (!open.length) { banner.style.display = 'none'; list.classList.remove('expanded'); return; }
+
+        banner.style.display = 'block';
+        title.textContent = 'יש לך ' + open.length + ' קריאות פתוחות: ' + open.map(function (t) { return t.ticketNumber; }).join(', ') + ' (לחצו להצגה)';
+        list.innerHTML = '';
+        open.forEach(function (t) { list.appendChild(buildTicketCard(t)); });
+    }
+
+    document.getElementById('openTicketsBanner').addEventListener('click', function (e) {
+        if (e.target.closest('.ticket-card')) return;
+        document.getElementById('openTicketsBannerList').classList.toggle('expanded');
+    });
+
+    function renderClosedTickets() {
+        var closed = myTickets.filter(function (t) { return t.status === 'סגורה'; });
+        var container = document.getElementById('closedTicketsList');
+        container.innerHTML = closed.length ? '' : '<p style="color:var(--muted);font-size:13px">אין קריאות סגורות.</p>';
+        closed.forEach(function (t) { container.appendChild(buildTicketCard(t)); });
+    }
+
+    document.getElementById('closedTicketsToggleBtn').addEventListener('click', function () {
+        var el = document.getElementById('closedTicketsList');
+        el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+    });
+
+    function openTicketDetail(t) {
+        document.getElementById('ticketDetailTitle').textContent = t.ticketNumber;
+        document.getElementById('ticketDetailBody').innerHTML =
+            '<div style="display:grid;gap:10px;font-size:14px">' +
+            '<div><strong>סטטוס:</strong> ' + escapeHtml(t.status) + '</div>' +
+            '<div><strong>קטגוריה:</strong> ' + escapeHtml(t.category) + '</div>' +
+            '<div><strong>דחיפות:</strong> ' + escapeHtml(t.urgency) + '</div>' +
+            '<div><strong>מחשב:</strong> ' + escapeHtml(t.computerName) + ' | IP: ' + escapeHtml(t.ip) + '</div>' +
+            '<div><strong>תאריך פתיחה:</strong> ' + formatDateTime(t.timestamp) + '</div>' +
+            '<div><strong>תיאור:</strong><br><span style="white-space:pre-wrap">' + escapeHtml(t.description) + '</span></div>' +
+            '</div>';
+        document.getElementById('ticketDetailBackdrop').classList.add('visible');
+    }
+
+    document.getElementById('ticketDetailCloseBtn').addEventListener('click', function () {
+        document.getElementById('ticketDetailBackdrop').classList.remove('visible');
+    });
+    document.getElementById('ticketDetailBackdrop').addEventListener('click', function (e) {
+        if (e.target === this) this.classList.remove('visible');
+    });
+
+    document.getElementById('ticketSubmitBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('ticketSubmitError');
+        errEl.style.display = 'none';
+
+        var category = document.getElementById('tkCategory').value;
+        var urgencyEl = document.querySelector('input[name="tkUrgency"]:checked');
+        var description = document.getElementById('tkDescription').value.trim();
+        if (!category || !urgencyEl || !description) {
+            errEl.textContent = 'יש למלא את כל שדות החובה.';
+            errEl.style.display = 'block';
+            return;
+        }
+
+        var user = Portal.getUser();
+        var payload = {
+            userEmail: user.email,
+            userName: document.getElementById('tkName').value,
+            phone: document.getElementById('tkPhone').value,
+            branch: document.getElementById('tkBranch').value,
+            computerName: document.getElementById('tkComputerName').value,
+            ip: document.getElementById('tkIp').value,
+            printer: document.getElementById('tkPrinter').value,
+            anyDeskId: document.getElementById('tkAnyDesk').value,
+            category: category,
+            urgency: urgencyEl.value,
+            description: description,
+        };
+
+        showLoading(true);
+        try {
+            var res = await apiPost('tickets', 'create', payload);
+            showLoading(false);
+            if (res.ok) {
+                document.getElementById('confirmTicketNumber').textContent = res.data.ticketNumber;
+                document.getElementById('ticketFormContainer').style.display = 'none';
+                document.getElementById('ticketConfirmation').style.display = 'block';
+                refreshMyTickets();
+            } else {
+                errEl.textContent = res.error || 'שגיאה בשליחת הקריאה';
+                errEl.style.display = 'block';
+            }
+        } catch (e) {
+            showLoading(false);
+            errEl.textContent = 'שגיאה בחיבור לשרת';
+            errEl.style.display = 'block';
+        }
+    });
+
+    document.getElementById('ticketNewBtn').addEventListener('click', function () {
+        document.getElementById('ticketFormContainer').style.display = 'block';
+        document.getElementById('ticketConfirmation').style.display = 'none';
+        document.getElementById('tkCategory').value = '';
+        document.getElementById('tkDescription').value = '';
+        fillComputerFields(assignedComputer);
+    });
+    document.getElementById('ticketHomeBtn').addEventListener('click', function () { showView('hub'); });
 
     // ── INIT ──────────────────────────────────────────────────
     (async function init() {

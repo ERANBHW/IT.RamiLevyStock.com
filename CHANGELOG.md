@@ -1,9 +1,15 @@
 # Changelog
 
-## 1.2.0 (in progress)
+## 1.2.0
+- Support ticket page: form prefilled from the employee's assigned computer (pencil to
+  override for a single ticket, e.g. opening a ticket for a colleague), category/urgency
+  selection, submit flow with a confirmation screen showing the new `TK-####` number.
 - Backend: `computers.getAssigned`, `tickets.create` (TK-#### numbering via Counters +
-  LockService, sends IT/admin + employee confirmation emails from EmailSettings), and
-  `tickets.listMine`. Frontend ticket page still to come.
+  LockService, sends IT/admin + employee confirmation emails from EmailSettings, sender
+  name "IT-Rami-Levy-Stock"), and `tickets.listMine`.
+- Hub: blinking bordered banner on the ticket page when open tickets exist, listing their
+  numbers and expanding to ticket cards; a "קריאות סגורות" toggle for closed tickets;
+  click-through ticket detail modal.
 
 ## 1.1.0
 - Home hub: personalized greeting resolved from the launcher's `#email=` hash, editable
