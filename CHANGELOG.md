@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.5.0
+- Deployment tooling only — no change to the running web app (in-app version badge stays
+  at 1.4.0).
+- `deployment/`: `launch-it-portal.vbs` (whoami /upn → Edge app-mode launch, unchanged from
+  Phase 1), `it-portal.ico` (generated from the company logo), `Install.ps1`/`Uninstall.ps1`
+  (create/remove the desktop shortcut in the current user's profile — must run in USER
+  context, not SYSTEM, for `whoami /upn` and the desktop path to resolve to the actual
+  employee), and a packaging `README.md` with Intune Win32 app steps. These PowerShell/VBS
+  scripts could not be executed here (no Windows host in this environment) — verify on a
+  real machine before wide rollout.
+
 ## 1.4.0
 - Admin panels, both gated server-side (not just hidden in the UI):
   - Users (`IsSuperAdmin`): add/edit/delete employees, toggle `IsITAdmin`/`IsProceduresAdmin`,
