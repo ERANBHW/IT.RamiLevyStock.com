@@ -92,6 +92,16 @@
 
         .closed-tickets-toggle { margin-bottom: 16px; }
         #closedTicketsList { display: flex; flex-direction: column; gap: 10px; }
+
+        .procedure-category-title { margin: 22px 0 10px; font-size: 15px; color: var(--brand-pink-dark); }
+        .procedure-category-title:first-child { margin-top: 0; }
+        .procedure-card { border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
+        .procedure-card-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; cursor: pointer; background: var(--white); }
+        .procedure-card-header:hover { background: var(--background); }
+        .procedure-card-title { font-weight: 700; font-size: 14px; }
+        .procedure-actions { display: flex; gap: 6px; }
+        .procedure-card-content { display: none; padding: 0 14px 14px; font-size: 13px; color: #333; white-space: pre-wrap; line-height: 1.6; }
+        .procedure-card.expanded .procedure-card-content { display: block; }
     </style>
 </head>
 
@@ -237,16 +247,35 @@
         </div>
     </main>
 
-    <!-- VIEW: procedures (placeholder - built in a later phase) -->
+    <!-- VIEW: procedures -->
     <main class="app" id="view-procedures">
         <div class="content">
-            <div class="placeholder-view">
-                <div class="icon">📖</div>
-                <h2>נהלי עבודה</h2>
-                <p>בקרוב</p>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <h1 class="page-title" style="margin:0">נהלי עבודה</h1>
+                <button type="button" class="primary-button" id="procedureAddBtn" style="display:none">+ הוסף נוהל</button>
             </div>
+            <p class="page-subtitle">נהלי בטיחות, אבטחת מידע ומחשוב</p>
+            <div id="proceduresList"></div>
         </div>
     </main>
+</div>
+
+<!-- Procedure edit modal -->
+<div class="profile-modal-backdrop" id="procedureModalBackdrop">
+    <div class="profile-modal" style="max-width:520px">
+        <div class="profile-modal-header"><h2 id="procedureModalTitle">נוהל חדש</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="prCategory">קטגוריה</label><input id="prCategory" type="text" placeholder="לדוגמה: בטיחות"></div>
+            <div class="field"><label for="prTitle">כותרת</label><input id="prTitle" type="text"></div>
+            <div class="field"><label for="prOrder">סדר הצגה (מספר)</label><input id="prOrder" type="number" value="1"></div>
+            <div class="field"><label for="prContent">תוכן הנוהל</label><textarea id="prContent" rows="6"></textarea></div>
+            <div id="procedureModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="procedureSaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="procedureCancelBtn">ביטול</button>
+        </div>
+    </div>
 </div>
 
 <script src="common.js"></script>
@@ -263,6 +292,7 @@
         });
 
         if (id === 'ticket') loadTicketPage();
+        if (id === 'procedures') loadProceduresPage();
     }
 
     // ── HUB VIEW ──────────────────────────────────────────────
@@ -537,6 +567,124 @@
         fillComputerFields(assignedComputer);
     });
     document.getElementById('ticketHomeBtn').addEventListener('click', function () { showView('hub'); });
+
+    // ── PROCEDURES VIEW ───────────────────────────────────────
+    var editingProcedureId = null;
+
+    async function loadProceduresPage() {
+        document.getElementById('procedureAddBtn').style.display = Portal.isProceduresAdmin() ? 'inline-block' : 'none';
+        showLoading(true);
+        var res = await apiGet('procedures', 'list', {});
+        showLoading(false);
+        renderProcedures(res.ok ? res.data : []);
+    }
+
+    function renderProcedures(list) {
+        var container = document.getElementById('proceduresList');
+        container.innerHTML = '';
+        if (!list.length) {
+            container.innerHTML = '<p style="color:var(--muted);font-size:13px">אין נהלים עדיין.</p>';
+            return;
+        }
+        var lastCategory = null;
+        var isAdmin = Portal.isProceduresAdmin();
+        list.forEach(function (proc) {
+            if (proc.category !== lastCategory) {
+                lastCategory = proc.category;
+                var heading = document.createElement('h3');
+                heading.className = 'procedure-category-title';
+                heading.textContent = proc.category || 'כללי';
+                container.appendChild(heading);
+            }
+
+            var card = document.createElement('div');
+            card.className = 'procedure-card';
+
+            var actionsHtml = '';
+            if (isAdmin) {
+                actionsHtml =
+                    '<div class="procedure-actions">' +
+                    '<button type="button" class="icon-button" data-edit title="עריכה">✏️</button>' +
+                    '<button type="button" class="icon-button" data-delete title="מחיקה">🗑️</button>' +
+                    '</div>';
+            }
+
+            var header = document.createElement('div');
+            header.className = 'procedure-card-header';
+            header.innerHTML = '<span class="procedure-card-title">' + escapeHtml(proc.title) + '</span>' + actionsHtml;
+
+            var content = document.createElement('div');
+            content.className = 'procedure-card-content';
+            content.textContent = proc.content;
+
+            header.addEventListener('click', function (e) {
+                if (e.target.closest('[data-edit],[data-delete]')) return;
+                card.classList.toggle('expanded');
+            });
+            if (isAdmin) {
+                header.querySelector('[data-edit]').addEventListener('click', function () { openProcedureModal(proc); });
+                header.querySelector('[data-delete]').addEventListener('click', function () { deleteProcedure(proc); });
+            }
+
+            card.appendChild(header);
+            card.appendChild(content);
+            container.appendChild(card);
+        });
+    }
+
+    function openProcedureModal(proc) {
+        editingProcedureId = proc ? proc.id : null;
+        document.getElementById('procedureModalTitle').textContent = proc ? 'עריכת נוהל' : 'נוהל חדש';
+        document.getElementById('prCategory').value = proc ? proc.category : '';
+        document.getElementById('prTitle').value = proc ? proc.title : '';
+        document.getElementById('prOrder').value = proc ? proc.order : 1;
+        document.getElementById('prContent').value = proc ? proc.content : '';
+        document.getElementById('procedureModalError').style.display = 'none';
+        document.getElementById('procedureModalBackdrop').classList.add('visible');
+    }
+
+    function closeProcedureModal() { document.getElementById('procedureModalBackdrop').classList.remove('visible'); }
+
+    document.getElementById('procedureAddBtn').addEventListener('click', function () { openProcedureModal(null); });
+    document.getElementById('procedureCancelBtn').addEventListener('click', closeProcedureModal);
+    document.getElementById('procedureModalBackdrop').addEventListener('click', function (e) { if (e.target === this) closeProcedureModal(); });
+
+    document.getElementById('procedureSaveBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('procedureModalError');
+        var payload = {
+            requesterEmail: Portal.getUser().email,
+            category: document.getElementById('prCategory').value.trim(),
+            title: document.getElementById('prTitle').value.trim(),
+            order: Number(document.getElementById('prOrder').value) || 1,
+            content: document.getElementById('prContent').value.trim(),
+        };
+        if (!payload.category || !payload.title || !payload.content) {
+            errEl.textContent = 'יש למלא קטגוריה, כותרת ותוכן.';
+            errEl.style.display = 'block';
+            return;
+        }
+        if (editingProcedureId) payload.id = editingProcedureId;
+
+        showLoading(true);
+        var res = await apiPost('procedures', editingProcedureId ? 'update' : 'create', payload);
+        showLoading(false);
+        if (res.ok) {
+            closeProcedureModal();
+            loadProceduresPage();
+        } else {
+            errEl.textContent = res.error || 'שגיאה בשמירה';
+            errEl.style.display = 'block';
+        }
+    });
+
+    async function deleteProcedure(proc) {
+        if (!confirm('למחוק את הנוהל "' + proc.title + '"?')) return;
+        showLoading(true);
+        var res = await apiPost('procedures', 'delete', { requesterEmail: Portal.getUser().email, id: proc.id });
+        showLoading(false);
+        if (res.ok) loadProceduresPage();
+        else alert(res.error || 'שגיאה במחיקה');
+    }
 
     // ── INIT ──────────────────────────────────────────────────
     (async function init() {

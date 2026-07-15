@@ -223,6 +223,60 @@ function tickets_listMine_(params) {
   return { ok: true, data: mine };
 }
 
+// ── ENTITY: procedures ────────────────────────────────────────
+function userHasRole_(email, roleField) {
+  var sheet = getSheet_('Users');
+  var rowIndex = findRowByColumn_(sheet, 'Email', email);
+  if (rowIndex === -1) return false;
+  var rows = rowsToObjects_(sheet);
+  var user = rows[rowIndex - 2];
+  return !!(user.isSuperAdmin || user[roleField]);
+}
+
+function procedures_list_(params) {
+  var sheet = getSheet_('Procedures');
+  var rows = rowsToObjects_(sheet);
+  rows.sort(function (a, b) {
+    var catCompare = String(a.category).localeCompare(String(b.category), 'he');
+    if (catCompare !== 0) return catCompare;
+    return (Number(a.order) || 0) - (Number(b.order) || 0);
+  });
+  return { ok: true, data: rows };
+}
+
+function procedures_create_(payload) {
+  if (!userHasRole_(payload.requesterEmail, 'isProceduresAdmin')) return { ok: false, error: 'אין הרשאה' };
+  var sheet = getSheet_('Procedures');
+  var now = new Date().toISOString();
+  var row = {
+    Id: Utilities.getUuid(), Title: payload.title || '', Content: payload.content || '',
+    Category: payload.category || '', Order: payload.order || 0, UpdatedAt: now, UpdatedBy: payload.requesterEmail || '',
+  };
+  sheet.appendRow(SHEET_SCHEMAS.Procedures.map(function (h) { return row[h]; }));
+  return { ok: true };
+}
+
+function procedures_update_(payload) {
+  if (!userHasRole_(payload.requesterEmail, 'isProceduresAdmin')) return { ok: false, error: 'אין הרשאה' };
+  var sheet = getSheet_('Procedures');
+  var rowIndex = findRowByColumn_(sheet, 'Id', payload.id);
+  if (rowIndex === -1) return { ok: false, error: 'הנוהל לא נמצא' };
+  setRowValues_(sheet, rowIndex, {
+    Title: payload.title || '', Content: payload.content || '', Category: payload.category || '',
+    Order: payload.order || 0, UpdatedAt: new Date().toISOString(), UpdatedBy: payload.requesterEmail || '',
+  });
+  return { ok: true };
+}
+
+function procedures_delete_(payload) {
+  if (!userHasRole_(payload.requesterEmail, 'isProceduresAdmin')) return { ok: false, error: 'אין הרשאה' };
+  var sheet = getSheet_('Procedures');
+  var rowIndex = findRowByColumn_(sheet, 'Id', payload.id);
+  if (rowIndex === -1) return { ok: false, error: 'הנוהל לא נמצא' };
+  sheet.deleteRow(rowIndex);
+  return { ok: true };
+}
+
 // ── ROUTER ────────────────────────────────────────────────────
 var ROUTES = {
   users: {
@@ -235,6 +289,12 @@ var ROUTES = {
   tickets: {
     create: tickets_create_,
     listMine: tickets_listMine_,
+  },
+  procedures: {
+    list: procedures_list_,
+    create: procedures_create_,
+    update: procedures_update_,
+    delete: procedures_delete_,
   },
 };
 

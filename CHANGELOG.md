@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.0
+- Procedures page: grouped by category, expandable cards. Employees with the
+  `IsProceduresAdmin` flag (or `IsSuperAdmin`) see add/edit/delete controls; the
+  permission check is enforced server-side, not just hidden client-side.
+- Backend: `procedures.list/create/update/delete`. Seeded 6 example procedures across
+  בטיחות/אבטחת מידע/מחשוב.
+
 ## 1.2.0
 - Support ticket page: form prefilled from the employee's assigned computer (pencil to
   override for a single ticket, e.g. opening a ticket for a colleague), category/urgency
