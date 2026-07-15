@@ -12,12 +12,99 @@
     <meta name="bingbot" content="noindex, nofollow">
 
     <link rel="canonical" href="https://it.ramilevystock.com/">
+
+    <style>
+        body { font-family: Arial; background: #f7f7f7; margin: 0; padding: 40px 16px; }
+        h1 { text-align: center; }
+        .wrap { max-width: 560px; margin: 0 auto; }
+        form { display: flex; gap: 8px; margin-bottom: 20px; }
+        input { flex: 1; padding: 8px; font-size: 14px; }
+        button { padding: 8px 14px; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; background: #fff; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }
+        th { background: #eee; }
+        .status { text-align: center; color: #777; font-size: 13px; margin-bottom: 10px; }
+        .del { color: #b00; background: none; border: none; cursor: pointer; }
+    </style>
 </head>
 
-<body style="font-family:Arial;text-align:center;padding-top:100px;background:#f7f7f7;">
+<body>
+<div class="wrap">
+    <h1>IT Portal</h1>
+    <div class="status" id="status">טוען...</div>
 
-<h1>IT Portal</h1>
-<p>Access Restricted</p>
+    <form id="add-form">
+        <input id="name" placeholder="שם" required>
+        <input id="value" placeholder="ערך" required>
+        <button type="submit">הוסף</button>
+    </form>
 
+    <table>
+        <thead><tr><th>שם</th><th>ערך</th><th>עודכן</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+    </table>
+</div>
+
+<script>
+    // Deployed Google Apps Script Web App (see apps-script/Code.gs)
+    const API_URL = 'https://script.google.com/macros/s/AKfycbwOkzvQXDsCrGzRzOgaEBWteHSnthbZrjI29taxP4K540W3TwdneWCf5KtUTk8Trvsv/exec';
+
+    const statusEl = document.getElementById('status');
+    const rowsEl = document.getElementById('rows');
+    const form = document.getElementById('add-form');
+
+    async function api(body) {
+        const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids CORS preflight
+            body: JSON.stringify(body),
+        });
+        return res.json();
+    }
+
+    async function load() {
+        statusEl.textContent = 'טוען...';
+        const res = await fetch(API_URL);
+        const json = await res.json();
+        rowsEl.innerHTML = '';
+        json.data.forEach(row => {
+            const tr = document.createElement('tr');
+
+            const tdName = document.createElement('td');
+            tdName.textContent = row.name;
+            const tdValue = document.createElement('td');
+            tdValue.textContent = row.value;
+            const tdDate = document.createElement('td');
+            tdDate.textContent = new Date(row.updatedAt).toLocaleString('he-IL');
+            const tdDel = document.createElement('td');
+            const delBtn = document.createElement('button');
+            delBtn.className = 'del';
+            delBtn.dataset.id = row.id;
+            delBtn.textContent = 'מחק';
+            tdDel.appendChild(delBtn);
+
+            tr.append(tdName, tdValue, tdDate, tdDel);
+            rowsEl.appendChild(tr);
+        });
+        statusEl.textContent = json.data.length ? '' : 'אין נתונים עדיין';
+    }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('name').value;
+        const value = document.getElementById('value').value;
+        await api({ action: 'create', name, value });
+        form.reset();
+        load();
+    });
+
+    rowsEl.addEventListener('click', async (e) => {
+        if (!e.target.matches('.del')) return;
+        await api({ action: 'delete', id: e.target.dataset.id });
+        load();
+    });
+
+    load().catch(() => { statusEl.textContent = 'שגיאה בטעינת הנתונים'; });
+</script>
 </body>
 </html>
