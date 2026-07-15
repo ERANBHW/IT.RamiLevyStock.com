@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.6.0
+- Deployment tooling only — no change to the running web app.
+- Replaced the multi-file, per-user Intune Win32 app packaging from 1.5.0 with a single
+  self-contained `deployment/Install-ITPortal.ps1`: the launcher script and desktop icon
+  are both embedded inside it (verified the embedded icon decodes back byte-identical to
+  the source `.ico`). An IT admin runs this one file, once per machine, with administrator
+  rights; it installs machine-wide (`C:\ProgramData\ITPortal`) and creates the shortcut on
+  the shared Public desktop, so every employee who logs into that machine sees the icon
+  with no install step of their own — matches the actual identification model, since
+  `whoami /upn` is resolved at *launch* time by whoever double-clicks the icon, not at
+  install time.
+- Added `Uninstall-ITPortal.ps1` (small, no embedded assets needed) and rewrote the README
+  around Intune's simpler **Devices → Scripts** feature (run as SYSTEM, device-targeted)
+  instead of Win32 app `.intunewin` wrapping, since a single `.ps1` doesn't need it.
+- Still could not execute-test on a real Windows host (none available in this environment).
+
 ## 1.5.0
 - Deployment tooling only — no change to the running web app (in-app version badge stays
   at 1.4.0).

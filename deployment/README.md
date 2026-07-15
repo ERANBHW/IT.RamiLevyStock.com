@@ -1,57 +1,63 @@
-# IT Portal desktop icon — Intune packaging
+# IT Portal desktop icon
 
-Files in this folder:
+## The installer
 
-- `launch-it-portal.vbs` — the actual launcher. Reads the signed-in user's UPN via
-  `whoami /upn` and opens Microsoft Edge in app mode (`--app=`, no address bar) with it in
-  the URL hash: `https://it.ramilevystock.com/index.html#email=<upn>`.
-- `it-portal.ico` — desktop shortcut icon, generated from the company logo.
-- `Install.ps1` / `Uninstall.ps1` — copy the launcher + icon into the current user's profile
-  and create/remove the `IT Portal.lnk` desktop shortcut.
-
-## Critical requirement: install as the logged-on user, not SYSTEM
-
-Both scripts write to `%LOCALAPPDATA%` and `[Environment]::GetFolderPath('Desktop')`, which
-resolve to *whichever account the script runs as*. Intune Win32 apps default to running as
-SYSTEM. If this one runs as SYSTEM, the shortcut lands in SYSTEM's own (invisible) profile,
-not the employee's desktop — nothing will appear for the user.
-
-In the Win32 app's **Program** settings, install and uninstall command lines are fine as-is,
-but under **Requirements**, and more importantly wherever Intune exposes it for this app
-type, install behavior must be set to run **in the user's context** (Win32 apps: this is
-controlled by *not* using the "Install for system" all-users option and instead assigning
-the app to a **user group** rather than a **device group** — user-targeted Win32 app
-installs run as the logged-on user). Test on one machine before wide rollout.
-
-## Packaging steps
-
-1. Download `IntuneWinAppUtil.exe` (Microsoft Win32 Content Prep Tool).
-2. Put `launch-it-portal.vbs`, `it-portal.ico`, `Install.ps1`, `Uninstall.ps1` in one source
-   folder (this `deployment/` folder works as-is).
-3. Run:
-   ```
-   IntuneWinAppUtil.exe -c deployment -s Install.ps1 -o out
-   ```
-   This produces `Install.intunewin`.
-4. In Intune admin center → **Apps → Windows → Add → Windows app (Win32)**:
-   - Upload `Install.intunewin`.
-   - Install command: `powershell.exe -ExecutionPolicy Bypass -File Install.ps1`
-   - Uninstall command: `powershell.exe -ExecutionPolicy Bypass -File Uninstall.ps1`
-   - Install behavior: user context (see above).
-   - Detection rule: **File** exists,
-     path `%LOCALAPPDATA%\Microsoft\Windows\Desktop\IT Portal.lnk`
-     (or the actual Desktop folder path on target machines — confirm with
-     `[Environment]::GetFolderPath('Desktop')` on a test machine, some redirected-profile
-     setups differ).
-5. Assign to a **user group** containing the target employees.
-
-## Testing changes locally before pushing to Intune
-
-On a real Windows machine (not this sandbox — there's no Windows host available here to run
-or verify these scripts):
+**`Install-ITPortal.ps1`** is a single, self-contained file — the launcher script and the
+desktop icon are both embedded inside it as text, nothing else needs to be copied alongside
+it. An IT admin runs it once per machine (with administrator rights); every regular employee
+who logs into that machine afterward sees an "IT Portal" icon on the shared desktop and just
+double-clicks it — no install step of their own.
 
 ```powershell
-.\Install.ps1   # creates the shortcut
-# double-click "IT Portal" on the desktop, confirm Edge opens in app mode with your UPN
-.\Uninstall.ps1 # removes it
+powershell.exe -ExecutionPolicy Bypass -File Install-ITPortal.ps1
+```
+
+or right-click the file → **Run with PowerShell** (as administrator).
+
+It writes to `C:\ProgramData\ITPortal` (machine-wide) and creates
+`IT Portal.lnk` on the **Public** desktop (`C:\Users\Public\Desktop`), which Windows shows
+on every user's desktop on that machine. Needs admin rights for both of those locations —
+that's why `#Requires -RunAsAdministrator` is at the top.
+
+**`Uninstall-ITPortal.ps1`** reverses it (also needs admin rights).
+
+## Why admin-only at install time, but no admin needed to use it
+
+Installing writes to machine-wide, admin-only locations (`ProgramData`, the Public desktop).
+Actually *launching* the portal only runs `whoami /upn`, which works for any standard
+(non-admin) Windows account — that's the whole point of this design: install once as admin,
+every employee just uses the icon afterward with zero permissions of their own.
+
+## Distributing to many machines: Intune
+
+The simplest fit is Intune's **Devices → Scripts** feature (not a Win32 app / `.intunewin`
+package — that's unnecessary complexity here since this is one self-contained `.ps1`):
+
+1. **Intune admin center → Devices → Scripts and remediations → Platform scripts → Add**
+2. Upload `Install-ITPortal.ps1`.
+3. **Run this script using the logged-on credentials**: **No** — run as SYSTEM, which has
+   the administrator rights the installer needs. This is fine because the script doesn't
+   care who's logged in at install time; user identity is resolved later, each time the
+   *icon* is actually launched, via `whoami /upn` in that moment's session.
+4. Assign to a **device group** (not user group — this only needs to run once per machine).
+5. Set the script to run once (not repeatedly) unless you want it to self-heal if someone
+   deletes the shortcut.
+
+## Regenerating the installer after changing the launcher or the icon
+
+`Install-ITPortal.ps1` embeds copies of `launch-it-portal.vbs` and `it-portal.ico`. If either
+of those source files changes, the embedded copies inside the installer need to be
+regenerated to match — ask Claude to rebuild it next time either source file changes, rather
+than hand-editing the giant base64 blob inside the `.ps1`.
+
+## Testing before wide rollout
+
+This environment has no Windows host to run or verify these scripts. Test on one real
+machine first:
+
+```powershell
+.\Install-ITPortal.ps1
+# double-click "IT Portal" on the Public desktop, confirm Edge opens in app mode
+# with your UPN in the URL
+.\Uninstall-ITPortal.ps1
 ```
