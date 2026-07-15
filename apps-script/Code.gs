@@ -149,6 +149,8 @@ function getEmailSetting_(key) {
   return String(sheet.getRange(rowIndex, 2).getValue() || '').trim();
 }
 
+var MAIL_SENDER_NAME = 'IT-Rami-Levy-Stock';
+
 function sendTicketEmails_(ticket) {
   var itEmail = getEmailSetting_('ITCompanyEmail');
   var adminEmail = getEmailSetting_('AdminEmail');
@@ -168,13 +170,28 @@ function sendTicketEmails_(ticket) {
   ].join('\n');
 
   var staffRecipients = [itEmail, adminEmail].filter(Boolean).join(',');
-  if (staffRecipients) MailApp.sendEmail(staffRecipients, subject, body);
+  if (staffRecipients) {
+    MailApp.sendEmail({ to: staffRecipients, subject: subject, body: body, name: MAIL_SENDER_NAME });
+  }
 
   if (ticket.UserEmail) {
     var userSubject = 'הקריאה שלך נפתחה - ' + ticket.TicketNumber;
     var userBody = 'שלום ' + ticket.UserName + ',\n\nהקריאה שלך נפתחה בהצלחה.\n\n' + body;
-    MailApp.sendEmail(ticket.UserEmail, userSubject, userBody);
+    MailApp.sendEmail({ to: ticket.UserEmail, subject: userSubject, body: userBody, name: MAIL_SENDER_NAME });
   }
+}
+
+// One-time helper: run this manually from the Apps Script editor to trigger the
+// MailApp authorization prompt (doGet/doPost alone never reach MailApp, so running
+// those doesn't ask for the send_mail scope). Sends a harmless test email to the
+// deploying account itself. Safe to leave in the project.
+function authorizeMailScope_() {
+  MailApp.sendEmail({
+    to: Session.getActiveUser().getEmail(),
+    subject: 'IT Portal - בדיקת הרשאת שליחת מיילים',
+    body: 'אם קיבלת את המייל הזה, ההרשאה לשליחת מיילים אושרה בהצלחה.',
+    name: MAIL_SENDER_NAME,
+  });
 }
 
 function tickets_create_(payload) {
