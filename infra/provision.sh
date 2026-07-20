@@ -36,8 +36,8 @@ SQL_SERVER="it-portal-sql-${NAME_SUFFIX}"        # must be globally unique
 SQL_DATABASE="it-portal-db"
 
 # Mail settings — fill in your real Exchange Online addresses before running "appsettings"/"all"
-SHARED_MAILBOX_UPN="it-support@rami-levy-stock.co.il"   # the shared mailbox Graph sends from
-IT_COMPANY_EMAIL="it-support@rami-levy-stock.co.il"     # recipient for new-ticket notifications
+SHARED_MAILBOX_UPN="support@rami-levy-stock.co.il"      # the shared mailbox Graph sends from
+IT_COMPANY_EMAIL="support@rami-levy-stock.co.il"        # recipient for new-ticket notifications — swap for the real IT company mailbox after go-live
 ADMIN_EMAIL="eran@rami-levy-stock.co.il"                # recipient for new-ticket notifications
 # ─────────────────────────────────────────────────────────────────────────
 
