@@ -8,10 +8,10 @@ var LOGO_URL = 'https://rami-levy-stock.co.il/sing.png';
 // Filled in once infra/provision.sh (steps "resources" + "appregs") has run — copy the
 // values from infra/.provision-state. Nothing here is a secret; the SPA is a public
 // client (PKCE, no client secret) by design.
-var MSAL_TENANT_ID = '<TENANT_ID>';
-var MSAL_SPA_CLIENT_ID = '<SPA_APP_ID>';
-var MSAL_API_CLIENT_ID = '<API_APP_ID>';
-var API_BASE_URL = 'https://<FUNCTION_APP_NAME>.azurewebsites.net/api/dispatch';
+var MSAL_TENANT_ID = '9831f885-99f6-47db-9d56-c5a7136ccfe7';
+var MSAL_SPA_CLIENT_ID = 'b9997216-1b46-41b5-b003-9ad947c3cc84';
+var MSAL_API_CLIENT_ID = 'a211569e-5213-4ae4-8883-f03186890e58';
+var API_BASE_URL = 'https://it-portal-api-490fb4.azurewebsites.net/api/dispatch';
 var API_SCOPE = 'api://' + MSAL_API_CLIENT_ID + '/access_as_user';
 
 var msalInstance = new msal.PublicClientApplication({
