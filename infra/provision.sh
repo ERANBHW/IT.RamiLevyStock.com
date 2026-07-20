@@ -56,9 +56,19 @@ say() { echo -e "\n\033[1;36m▶ $1\033[0m"; }
 # ── STEP: core resources ────────────────────────────────────────────────
 step_resources() {
   say "Storage account for the Function App"
-  az storage account show --name "$STORAGE_ACCOUNT" --resource-group "$RESOURCE_GROUP" &>/dev/null || \
+  EXISTING_STORAGE_LOCATION="$(az storage account show --name "$STORAGE_ACCOUNT" --resource-group "$RESOURCE_GROUP" \
+    --query location -o tsv 2>/dev/null || true)"
+  if [ -z "$EXISTING_STORAGE_LOCATION" ]; then
     az storage account create --name "$STORAGE_ACCOUNT" --resource-group "$RESOURCE_GROUP" \
       --location "$LOCATION" --sku Standard_LRS
+  elif [ "$EXISTING_STORAGE_LOCATION" != "$LOCATION" ]; then
+    # A Consumption-plan Function App needs its storage account in the SAME region — a
+    # mismatch here (e.g. left over from an earlier LOCATION value that got changed after
+    # a failed attempt) causes the app to come up perpetually 503, with no useful error.
+    echo "  ✗ Storage account '$STORAGE_ACCOUNT' already exists in '$EXISTING_STORAGE_LOCATION', but LOCATION is now '$LOCATION'."
+    echo "    Either change LOCATION back to '$EXISTING_STORAGE_LOCATION', or pick a new STORAGE_ACCOUNT name so a fresh one is created in '$LOCATION'."
+    exit 1
+  fi
 
   say "Function App (Node 24, Linux Consumption)"
   az functionapp show --name "$FUNCTION_APP" --resource-group "$RESOURCE_GROUP" &>/dev/null || \
