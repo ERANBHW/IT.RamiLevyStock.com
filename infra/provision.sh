@@ -102,6 +102,9 @@ step_appregs() {
   fi
   API_OBJECT_ID="$(az ad app show --id "$API_APP_ID" --query id -o tsv)"
   az ad app update --id "$API_APP_ID" --identifier-uris "api://${API_APP_ID}"
+  # A Service Principal (Enterprise Application) is required for admin consent to work
+  # against this app — "az ad app create" alone does not create one.
+  az ad sp create --id "$API_APP_ID" &>/dev/null || true
 
   SCOPE_ID="$(az ad app show --id "$API_APP_ID" --query "api.oauth2PermissionScopes[?value=='access_as_user'].id" -o tsv)"
   if [ -z "$SCOPE_ID" ]; then
@@ -117,6 +120,7 @@ step_appregs() {
     SPA_APP_ID="$(az ad app create --display-name it-portal-spa --sign-in-audience AzureADMyOrg --query appId -o tsv)"
   fi
   SPA_OBJECT_ID="$(az ad app show --id "$SPA_APP_ID" --query id -o tsv)"
+  az ad sp create --id "$SPA_APP_ID" &>/dev/null || true
   az rest --method PATCH --uri "https://graph.microsoft.com/v1.0/applications/${SPA_OBJECT_ID}" \
     --headers "Content-Type=application/json" \
     --body "{\"spa\":{\"redirectUris\":[\"${FRONTEND_URL}/index.html\"]}}"
