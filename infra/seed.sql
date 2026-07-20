@@ -1,5 +1,5 @@
 -- IT Portal v2 — initial seed. Run once, after schema.sql.
--- Creates the one and only Super Admin row. IsSuperAdmin can never be granted through
+-- Creates the initial Super Admin rows. IsSuperAdmin can never be granted through
 -- any API endpoint — this INSERT is the only way that flag is ever set to 1.
 
 -- FirstName/LastName left blank on purpose (not guessed) — editable from the profile
@@ -7,4 +7,9 @@
 IF NOT EXISTS (SELECT 1 FROM Users WHERE Email = N'eran@rami-levy-stock.co.il')
 INSERT INTO Users (Email, FirstName, LastName, IsSuperAdmin, IsITAdmin, IsProceduresAdmin)
 VALUES (N'eran@rami-levy-stock.co.il', N'', N'', 1, 1, 1);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM Users WHERE Email = N'admin@rami-levy-stock.co.il')
+INSERT INTO Users (Email, FirstName, LastName, IsSuperAdmin, IsITAdmin, IsProceduresAdmin)
+VALUES (N'admin@rami-levy-stock.co.il', N'', N'', 1, 1, 1);
 GO
