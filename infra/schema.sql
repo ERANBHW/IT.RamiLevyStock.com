@@ -43,7 +43,7 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Tickets')
 CREATE TABLE Tickets (
     TicketId        INT IDENTITY(1,1)  NOT NULL PRIMARY KEY,
-    TicketNumber    AS ('TK-' + RIGHT('0000' + CAST(TicketId AS VARCHAR(10)), 4)) PERSISTED,
+    TicketNumber    AS (CAST('TK-' + RIGHT('0000' + CAST(TicketId AS VARCHAR(10)), 4) AS NVARCHAR(20))) PERSISTED,
     Timestamp       DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
     UserEmail       NVARCHAR(320)   NOT NULL,
     UserName        NVARCHAR(200)   NOT NULL DEFAULT '',
