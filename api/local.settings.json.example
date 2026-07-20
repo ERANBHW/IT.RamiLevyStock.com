@@ -1,0 +1,17 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "SQL_SERVER": "it-portal-sql-xxxxxx.database.windows.net",
+    "SQL_DATABASE": "it-portal-db",
+    "GRAPH_TENANT_ID": "<tenant-id>",
+    "GRAPH_CLIENT_ID": "<it-portal-mail app id>",
+    "GRAPH_CLIENT_SECRET": "<local dev only — never commit>",
+    "GRAPH_SENDER_MAILBOX": "it-support@rami-levy-stock.co.il",
+    "IT_COMPANY_EMAIL": "it-support@rami-levy-stock.co.il",
+    "ADMIN_EMAIL": "eran@rami-levy-stock.co.il",
+    "MAIL_SENDER_NAME": "IT-Rami-Levy-Stock",
+    "DEV_FAKE_IDENTITY": "eran@rami-levy-stock.co.il"
+  }
+}

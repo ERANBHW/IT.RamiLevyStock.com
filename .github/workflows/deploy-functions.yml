@@ -1,0 +1,63 @@
+name: Deploy Azure Functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - '.github/workflows/deploy-functions.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write   # required for OIDC login (azure/login), no stored secret
+  contents: read
+
+env:
+  AZURE_FUNCTIONAPP_NAME: ${{ vars.AZURE_FUNCTIONAPP_NAME }}   # repo Variable (not secret), e.g. it-portal-api-xxxxxx
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: 'api'
+  NODE_VERSION: '20'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        working-directory: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+        run: npm install --omit=dev
+
+      # OIDC login — no client secret stored in GitHub. Requires a federated credential
+      # on the it-portal-automation app registration for this repo/branch (see infra/README.md):
+      #   az ad app federated-credential create --id <it-portal-automation appId> --parameters '{
+      #     "name": "github-actions-main",
+      #     "issuer": "https://token.actions.githubusercontent.com",
+      #     "subject": "repo:eranbhw/it.ramilevystock.com:ref:refs/heads/main",
+      #     "audiences": ["api://AzureADTokenExchange"]
+      #   }'
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to Azure Functions
+        uses: azure/functions-action@v1
+        with:
+          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+
+      # Simpler alternative if OIDC federation is too fiddly to set up: skip the
+      # azure/login step above and pass publish-profile directly instead —
+      #   uses: azure/functions-action@v1
+      #   with:
+      #     app-name: ...
+      #     package: ...
+      #     publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+      # (download the profile from Function App → Overview → Get publish profile,
+      # add it as a GitHub Actions secret — never paste it into chat).

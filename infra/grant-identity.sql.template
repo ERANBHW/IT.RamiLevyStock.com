@@ -1,0 +1,7 @@
+-- Run this against the it-portal-db database (Portal Query editor or sqlcmd),
+-- AFTER the Function App's Managed Identity has been assigned (infra/provision.sh identity).
+-- Grants the Function App's own identity read/write access — no SQL password anywhere.
+
+CREATE USER [{{FUNCTION_APP_NAME}}] FROM EXTERNAL PROVIDER;
+ALTER ROLE db_datareader ADD MEMBER [{{FUNCTION_APP_NAME}}];
+ALTER ROLE db_datawriter ADD MEMBER [{{FUNCTION_APP_NAME}}];
