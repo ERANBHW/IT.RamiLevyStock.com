@@ -161,6 +161,9 @@ EOF
 # ── STEP: Easy Auth v2 on the Function App ──────────────────────────────
 step_easyauth() {
   source "${SCRIPT_DIR}/.provision-state"
+  say "Upgrading auth config to v2 (new Function Apps default to v1, which rejects 'az webapp auth set')"
+  az webapp auth config-version upgrade --resource-group "$RESOURCE_GROUP" --name "$FUNCTION_APP" >/dev/null || true
+
   say "Configuring Easy Auth (App Service Authentication) — bearer-token validation only, no login redirect needed"
   TMP_JSON="$(mktemp)"
   sed -e "s#{{TENANT_ID}}#${TENANT_ID}#g" \
