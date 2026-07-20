@@ -27,7 +27,7 @@ set -euo pipefail
 
 # ── EDIT THESE ────────────────────────────────────────────────────────────
 RESOURCE_GROUP="it-portal-rg"
-LOCATION="israelcentral"                 # falls back to westeurope if unavailable
+LOCATION="northeurope"                  # israelcentral/westeurope unavailable to this subscription
 FRONTEND_URL="https://it.ramilevystock.com"
 NAME_SUFFIX="$(az account show --query id -o tsv | cut -c1-6)"   # deterministic, unique-ish
 STORAGE_ACCOUNT="itportalst${NAME_SUFFIX}"       # must be globally unique, <=24 chars, lowercase
@@ -54,11 +54,11 @@ step_resources() {
     az storage account create --name "$STORAGE_ACCOUNT" --resource-group "$RESOURCE_GROUP" \
       --location "$LOCATION" --sku Standard_LRS
 
-  say "Function App (Node 20, Linux Consumption)"
+  say "Function App (Node 24, Linux Consumption)"
   az functionapp show --name "$FUNCTION_APP" --resource-group "$RESOURCE_GROUP" &>/dev/null || \
     az functionapp create --name "$FUNCTION_APP" --resource-group "$RESOURCE_GROUP" \
       --storage-account "$STORAGE_ACCOUNT" --consumption-plan-location "$LOCATION" \
-      --runtime node --runtime-version 20 --functions-version 4 --os-type Linux
+      --runtime node --runtime-version 24 --functions-version 4 --os-type Linux
 
   say "Azure SQL logical server (Azure AD-only auth, you as admin)"
   MY_UPN="$(az ad signed-in-user show --query userPrincipalName -o tsv)"
