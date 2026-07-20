@@ -112,6 +112,34 @@ Intune admin center → Devices → Configuration → **Settings Catalog** →
 "Startup URLs" = `https://it.ramilevystock.com` → שיוך לקבוצת המכשירים הרלוונטית.
 אין צורך בשום קובץ התקנה/קיצור דרך — זו מדיניות בלבד.
 
+## תקלות אמיתיות שנתקלנו בהן בהרצה בפועל (שווה להכיר)
+
+- **Node 24 לא יציב על Linux Consumption** — גרם ל-503 קבוע על האתר וגם על ה-SCM,
+  ולא נפתר בשום ריסטארט/תיקון אחר. המעבר ל-`--runtime-version 22` (כבר מוגדר
+  בסקריפט) פתר מיידית. אם בעתיד `provision.sh` ישודרג לגרסת Node חדשה יותר —
+  לבדוק קודם שהיא באמת עובדת על Linux Consumption (לא רק מופיעה ב-
+  `az functionapp list-runtimes`).
+- **Storage Account חייב להיות **באותו אזור** בדיוק כמו ה-Function App** —
+  אחרת ה-Consumption plan נתקע ב-503 קבוע בלי שגיאה ברורה. הסקריפט בודק את זה
+  עכשיו ונכשל בבירור אם יש חוסר-התאמה, במקום להיכשל בשקט.
+- **`SCM_DO_BUILD_DURING_DEPLOYMENT=true`** חובה כדי ש-Azure יריץ `npm install`
+  בזמן פריסה. בלעדיו, פריסת zip "מצליחה" (exit code 0) אבל שום פונקציה לא
+  נרשמת בפועל כי `node_modules` אף פעם לא הותקן.
+- **Deploy אמין**: אם `az functionapp deploy`/`config-zip` מחזירים הצלחה
+  מפוקפקת (בלי פלט, בלי רישום ב-deployment history) — `func azure functionapp
+  publish <name> --javascript` (מתוך תיקיית `api/`, אחרי `npm install` מקומי)
+  הרבה יותר אמין ומדפיס בבירור אילו functions זוהו בסוף.
+- **`az ad app create` לא יוצר Service Principal** לאפליקציה — בלי זה, admin
+  consent נכשל עם "Your organization does not have a subscription (or service
+  principal) for the following API(s)". צריך `az ad sp create --id <appId>`
+  בנוסף (כבר מתוקן בסקריפט לכל שלוש האפליקציות).
+- **SQL Serverless נרדם** (`autoPauseDelay` — אחרי חוסר פעילות) — כל חיבור
+  ראשון אחרי תקופת שקט ייכשל/יתעכב כמה עשרות שניות בזמן שהוא מתעורר. נסו שוב.
+- שמות גלובליים (Storage Account, Function App, SQL Server) שנכשלו ביצירה
+  **נשארים "תפוסים"** לזמן מה גם אם המשאב מעולם לא נוצר בפועל — אם מקבלים
+  "already exists in location X" למרות ש-`show` מחזיר ResourceNotFound, זה
+  באג ידוע ב-Azure; הפתרון הוא שם חדש.
+
 ## אבטחה
 
 - ה-SQL secret היחיד שנוצר (Graph mail client secret) נכתב ישירות ל-App Settings
