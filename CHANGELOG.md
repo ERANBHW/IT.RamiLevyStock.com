@@ -1,5 +1,34 @@
 # Changelog
 
+## 2.0.0 — migration to Azure / Entra ID
+- The Google account backing v1 (`apps-script/`, Google Sheets as the DB) was permanently
+  blocked by Google for Terms of Service violations — not a normal reauth prompt. Rather
+  than fight to restore a personal Gmail account with no Google Workspace behind it, the
+  backend was rebuilt from scratch on Azure, reusing the frontend structure and business
+  logic that v1 had already proven out. No v1 data carried over (it was sample/test data).
+- **Backend**: `apps-script/Code.gs` → `api/` (Azure Functions, Node.js), same
+  entity/action router shape. Google Sheets → Azure SQL Database (real column types,
+  `IDENTITY` ticket numbering instead of the Counters+LockService hack).
+- **Auth**: the biggest change. v1 trusted an `#email=` URL parameter the client sent —
+  no cryptographic proof of identity. v2 uses MSAL.js (`common.js`) against Entra ID with
+  `ssoSilent()`, and every API request is gated by Easy Auth on the Function App, which
+  validates the signed token *before* any application code runs. No endpoint accepts a
+  client-supplied email/id for identity purposes anymore.
+- **Mail**: `MailApp.sendEmail` (personal Gmail) → Microsoft Graph `sendMail` from a
+  dedicated Exchange Online shared mailbox, via a confidential-client app registration.
+- **Permissions**: extended beyond v1. `IsSuperAdmin` (immutable, DB-only) is now the only
+  role that can grant `IsITAdmin`/`IsProceduresAdmin` to other users; those admins can
+  manage plain users but not other admins.
+- **Tickets**: added a full audit trail. Every field edit, IT-admin "take" (self-assign),
+  reassignment, status change, and closing note is written to `TicketLog` server-side
+  (actor identity from Easy Auth, never from the client) and rendered as a timeline in the
+  ticket detail view. The requester can edit their own ticket only while it's still
+  unclaimed (`פתוחה`); once an IT admin takes it, only IT can change it further.
+- **Deployment**: `deployment/*.vbs`/`*.ps1` (desktop shortcut installer) removed —
+  replaced by an Intune Settings Catalog policy that sets the portal as Microsoft Edge's
+  startup URL, no install step at all. GitHub Pages frontend and DNS are unchanged.
+- See `infra/README.md` for the Azure provisioning steps this release depends on.
+
 ## 1.5.0
 - Deployment tooling only — no change to the running web app (in-app version badge stays
   at 1.4.0).

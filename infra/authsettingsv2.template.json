@@ -1,0 +1,34 @@
+{
+  "platform": {
+    "enabled": true
+  },
+  "globalValidation": {
+    "requireAuthentication": true,
+    "unauthenticatedClientAction": "Return401"
+  },
+  "identityProviders": {
+    "azureActiveDirectory": {
+      "enabled": true,
+      "registration": {
+        "clientId": "{{API_APP_ID}}",
+        "openIdIssuer": "https://login.microsoftonline.com/{{TENANT_ID}}/v2.0"
+      },
+      "validation": {
+        "allowedAudiences": [
+          "api://{{API_APP_ID}}"
+        ],
+        "defaultAuthorizationPolicy": {
+          "allowedApplications": [
+            "{{API_APP_ID}}",
+            "{{SPA_APP_ID}}"
+          ]
+        }
+      }
+    }
+  },
+  "login": {
+    "tokenStore": {
+      "enabled": false
+    }
+  }
+}

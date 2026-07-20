@@ -306,6 +306,15 @@
             </div>
         </div>
     </main>
+
+    <!-- VIEW: admin tickets queue -->
+    <main class="app" id="view-admin-tickets">
+        <div class="content">
+            <h1 class="page-title">תור קריאות</h1>
+            <p class="page-subtitle">כל הקריאות הפתוחות ובטיפול, מכל המשתמשים</p>
+            <div id="ticketsQueueList" style="display:flex;flex-direction:column;gap:10px"></div>
+        </div>
+    </main>
 </div>
 
 <!-- User admin modal -->
@@ -322,11 +331,13 @@
             </div>
             <div class="field"><label for="uaRole">תפקיד</label><input id="uaRole" type="text"></div>
             <div class="field"><label for="uaComputer">מחשב משוייך</label><select id="uaComputer"></select></div>
-            <div class="field" style="flex-direction:row;align-items:center;gap:8px">
-                <input id="uaIsITAdmin" type="checkbox" style="width:auto"><label for="uaIsITAdmin" style="margin:0">הרשאת ניהול IT (מחשבים)</label>
-            </div>
-            <div class="field" style="flex-direction:row;align-items:center;gap:8px">
-                <input id="uaIsProceduresAdmin" type="checkbox" style="width:auto"><label for="uaIsProceduresAdmin" style="margin:0">הרשאת ניהול נהלים</label>
+            <div id="uaAdminFlagsSection">
+                <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+                    <input id="uaIsITAdmin" type="checkbox" style="width:auto"><label for="uaIsITAdmin" style="margin:0">הרשאת ניהול IT (מחשבים)</label>
+                </div>
+                <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+                    <input id="uaIsProceduresAdmin" type="checkbox" style="width:auto"><label for="uaIsProceduresAdmin" style="margin:0">הרשאת ניהול נהלים</label>
+                </div>
             </div>
             <div id="userAdminModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
         </div>
@@ -390,6 +401,7 @@
     </div>
 </div>
 
+<script src="https://alcdn.msauth.net/browser/3.24.0/js/msal-browser.min.js"></script>
 <script src="common.js"></script>
 <script>
     // ── VIEW NAVIGATION ───────────────────────────────────────
@@ -407,6 +419,7 @@
         if (id === 'procedures') loadProceduresPage();
         if (id === 'admin-users') loadUsersAdminPage();
         if (id === 'admin-computers') loadComputersAdminPage();
+        if (id === 'admin-tickets') loadTicketsAdminPage();
     }
 
     // ── HUB VIEW ──────────────────────────────────────────────
@@ -417,8 +430,11 @@
     ];
 
     var HUB_ADMIN_BUTTONS = [
-        { id: 'admin-users', icon: '👥', label: 'ניהול משתמשים', check: function () { return Portal.isSuperAdmin(); } },
+        { id: 'admin-users', icon: '👥', label: 'ניהול משתמשים', check: function () {
+            return Portal.isSuperAdmin() || Portal.isITAdmin() || Portal.isProceduresAdmin();
+        } },
         { id: 'admin-computers', icon: '💻', label: 'ניהול מחשבים', check: function () { return Portal.isITAdmin(); } },
+        { id: 'admin-tickets', icon: '🎫', label: 'תור קריאות', check: function () { return Portal.isITAdmin(); } },
     ];
 
     function renderHubButtons(container, buttons) {
@@ -474,9 +490,7 @@
     profileModal.addEventListener('click', function (e) { if (e.target === profileModal) closeProfileModal(); });
 
     document.getElementById('profileSaveBtn').addEventListener('click', async function () {
-        var user = Portal.getUser();
         var payload = {
-            email: user.email,
             firstName: document.getElementById('pfFirstName').value.trim(),
             lastName: document.getElementById('pfLastName').value.trim(),
             phone: document.getElementById('pfPhone').value.trim(),
@@ -557,9 +571,8 @@
         document.getElementById('ticketConfirmation').style.display = 'none';
         document.getElementById('closedTicketsList').style.display = 'none';
 
-        var user = Portal.getUser();
         showLoading(true);
-        var compRes = await apiGet('computers', 'getAssigned', { email: user.email });
+        var compRes = await apiGet('computers', 'getAssigned', {});
         assignedComputer = compRes.ok ? compRes.data : null;
         fillComputerFields(assignedComputer);
         await refreshMyTickets();
@@ -567,8 +580,7 @@
     }
 
     async function refreshMyTickets() {
-        var user = Portal.getUser();
-        var res = await apiGet('tickets', 'listMine', { email: user.email });
+        var res = await apiGet('tickets', 'listMine', {});
         myTickets = res.ok ? res.data : [];
         renderOpenBanner();
         renderClosedTickets();
@@ -616,8 +628,56 @@
         el.style.display = el.style.display === 'none' ? 'flex' : 'none';
     });
 
-    function openTicketDetail(t) {
-        document.getElementById('ticketDetailTitle').textContent = t.ticketNumber;
+    var TICKET_FIELD_LABELS = {
+        Category: 'קטגוריה', Urgency: 'דחיפות', Description: 'תיאור', ComputerName: 'מחשב',
+        IP: 'IP', Printer: 'מדפסת', AnyDeskId: 'AnyDesk', Status: 'סטטוס',
+    };
+
+    function renderLogEntry(entry) {
+        var text;
+        if (entry.action === 'field_updated') {
+            text = (TICKET_FIELD_LABELS[entry.fieldName] || entry.fieldName) + ' שונה: "' +
+                (entry.oldValue || '') + '" ← "' + (entry.newValue || '') + '"';
+        } else if (entry.action === 'status_changed') {
+            text = 'סטטוס שונה: ' + entry.oldValue + ' ← ' + entry.newValue;
+        } else {
+            text = entry.message || entry.action;
+        }
+        return '<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">' +
+            '<div style="color:var(--muted)">' + formatDateTime(entry.timestamp) + ' - ' + escapeHtml(entry.actorName || entry.actorEmail) + '</div>' +
+            '<div style="margin-top:2px">' + escapeHtml(text) + '</div></div>';
+    }
+
+    // Every mutation is refetched from the server, never trusted from local state.
+    function refreshTicketViews() {
+        if (document.getElementById('view-ticket').classList.contains('active')) refreshMyTickets();
+        if (Portal.isITAdmin() && document.getElementById('view-admin-tickets').classList.contains('active')) loadTicketsAdminPage();
+    }
+
+    async function openTicketDetail(ticketSummary) {
+        document.getElementById('ticketDetailTitle').textContent = ticketSummary.ticketNumber;
+        document.getElementById('ticketDetailBody').innerHTML = '<p style="color:var(--muted);font-size:13px">טוען...</p>';
+        document.getElementById('ticketDetailBackdrop').classList.add('visible');
+
+        var res = await apiGet('tickets', 'get', { ticketNumber: ticketSummary.ticketNumber });
+        if (!res.ok) {
+            document.getElementById('ticketDetailBody').innerHTML = '<p style="color:var(--danger)">' + escapeHtml(res.error || 'שגיאה בטעינה') + '</p>';
+            return;
+        }
+        renderTicketDetail(res.data.ticket, res.data.log);
+    }
+
+    function renderTicketDetail(t, log) {
+        var user = Portal.getUser();
+        var isOwner = String(t.userEmail).toLowerCase() === String(user.email).toLowerCase();
+        var canEdit = isOwner && t.status === 'פתוחה';
+        var isIT = Portal.isITAdmin();
+
+        var actionsHtml = '';
+        if (canEdit) actionsHtml += '<button type="button" class="secondary-button" id="ticketDetailEditBtn">ערוך קריאה</button>';
+        if (isIT && t.status === 'פתוחה') actionsHtml += '<button type="button" class="primary-button" id="ticketDetailTakeBtn">קח קריאה</button>';
+        if (isIT && t.status !== 'סגורה') actionsHtml += '<button type="button" class="secondary-button" id="ticketDetailCloseTicketBtn">סגור קריאה</button>';
+
         document.getElementById('ticketDetailBody').innerHTML =
             '<div style="display:grid;gap:10px;font-size:14px">' +
             '<div><strong>סטטוס:</strong> ' + escapeHtml(t.status) + '</div>' +
@@ -625,9 +685,63 @@
             '<div><strong>דחיפות:</strong> ' + escapeHtml(t.urgency) + '</div>' +
             '<div><strong>מחשב:</strong> ' + escapeHtml(t.computerName) + ' | IP: ' + escapeHtml(t.ip) + '</div>' +
             '<div><strong>תאריך פתיחה:</strong> ' + formatDateTime(t.timestamp) + '</div>' +
+            (t.assignedToName ? '<div><strong>מטופל ע"י:</strong> ' + escapeHtml(t.assignedToName) + '</div>' : '') +
             '<div><strong>תיאור:</strong><br><span style="white-space:pre-wrap">' + escapeHtml(t.description) + '</span></div>' +
+            '<div id="ticketDetailEditForm" style="display:none"></div>' +
+            (actionsHtml ? '<div style="display:flex;gap:8px;flex-wrap:wrap">' + actionsHtml + '</div>' : '') +
+            '<div><strong>היסטוריה:</strong><div style="margin-top:6px">' +
+            (log.length ? log.map(renderLogEntry).join('') : '<span style="color:var(--muted);font-size:12px">אין רשומות</span>') +
+            '</div></div>' +
             '</div>';
-        document.getElementById('ticketDetailBackdrop').classList.add('visible');
+
+        var editBtn = document.getElementById('ticketDetailEditBtn');
+        if (editBtn) editBtn.addEventListener('click', function () { openTicketEditForm(t); });
+        var takeBtn = document.getElementById('ticketDetailTakeBtn');
+        if (takeBtn) takeBtn.addEventListener('click', function () { takeTicket(t); });
+        var closeTicketBtn = document.getElementById('ticketDetailCloseTicketBtn');
+        if (closeTicketBtn) closeTicketBtn.addEventListener('click', function () { closeTicketWithNote(t); });
+    }
+
+    function openTicketEditForm(t) {
+        var container = document.getElementById('ticketDetailEditForm');
+        container.style.display = 'block';
+        container.innerHTML =
+            '<div class="field"><label>קטגוריה</label><select id="tdEditCategory"></select></div>' +
+            '<div class="field"><label>תיאור</label><textarea id="tdEditDescription" rows="4"></textarea></div>' +
+            '<button type="button" class="primary-button" id="tdEditSaveBtn" style="width:100%">שמירת שינויים</button>';
+        var sel = container.querySelector('#tdEditCategory');
+        sel.innerHTML = TICKET_CATEGORIES.map(function (c) {
+            return '<option' + (c === t.category ? ' selected' : '') + '>' + escapeHtml(c) + '</option>';
+        }).join('');
+        container.querySelector('#tdEditDescription').value = t.description || '';
+        container.querySelector('#tdEditSaveBtn').addEventListener('click', async function () {
+            showLoading(true);
+            var res = await apiPost('tickets', 'update', {
+                ticketNumber: t.ticketNumber,
+                category: sel.value,
+                description: container.querySelector('#tdEditDescription').value.trim(),
+            });
+            showLoading(false);
+            if (res.ok) { refreshTicketViews(); openTicketDetail(t); }
+            else alert(res.error || 'שגיאה בשמירה');
+        });
+    }
+
+    async function takeTicket(t) {
+        showLoading(true);
+        var res = await apiPost('tickets', 'take', { ticketNumber: t.ticketNumber });
+        showLoading(false);
+        if (res.ok) { refreshTicketViews(); openTicketDetail(t); }
+        else alert(res.error || 'שגיאה');
+    }
+
+    async function closeTicketWithNote(t) {
+        var note = prompt('הערת סגירה (אופציונלי):', '') || '';
+        showLoading(true);
+        var res = await apiPost('tickets', 'updateStatus', { ticketNumber: t.ticketNumber, status: 'סגורה', message: note });
+        showLoading(false);
+        if (res.ok) { refreshTicketViews(); openTicketDetail(t); }
+        else alert(res.error || 'שגיאה');
     }
 
     document.getElementById('ticketDetailCloseBtn').addEventListener('click', function () {
@@ -636,6 +750,40 @@
     document.getElementById('ticketDetailBackdrop').addEventListener('click', function (e) {
         if (e.target === this) this.classList.remove('visible');
     });
+
+    // ── ADMIN: TICKETS QUEUE ──────────────────────────────────
+    async function loadTicketsAdminPage() {
+        showLoading(true);
+        var res = await apiGet('tickets', 'list', {});
+        showLoading(false);
+        renderTicketsQueue(res.ok ? res.data : []);
+    }
+
+    function renderTicketsQueue(list) {
+        var container = document.getElementById('ticketsQueueList');
+        container.innerHTML = '';
+        if (!list.length) {
+            container.innerHTML = '<p style="color:var(--muted);font-size:13px">אין קריאות פתוחות.</p>';
+            return;
+        }
+        list.forEach(function (t) {
+            var card = buildTicketCard(t);
+            var meta = document.createElement('div');
+            meta.style.cssText = 'font-size:12px;color:var(--muted);margin-top:4px';
+            meta.textContent = (t.userName || t.userEmail) + (t.assignedToName ? ' | מטופל ע"י ' + t.assignedToName : '');
+            card.appendChild(meta);
+            if (t.status === 'פתוחה') {
+                var takeBtn = document.createElement('button');
+                takeBtn.type = 'button';
+                takeBtn.className = 'primary-button';
+                takeBtn.textContent = 'קח קריאה';
+                takeBtn.style.marginTop = '8px';
+                takeBtn.addEventListener('click', function (e) { e.stopPropagation(); takeTicket(t); });
+                card.appendChild(takeBtn);
+            }
+            container.appendChild(card);
+        });
+    }
 
     document.getElementById('ticketSubmitBtn').addEventListener('click', async function () {
         var errEl = document.getElementById('ticketSubmitError');
@@ -650,9 +798,7 @@
             return;
         }
 
-        var user = Portal.getUser();
         var payload = {
-            userEmail: user.email,
             userName: document.getElementById('tkName').value,
             phone: document.getElementById('tkPhone').value,
             branch: document.getElementById('tkBranch').value,
@@ -778,7 +924,6 @@
     document.getElementById('procedureSaveBtn').addEventListener('click', async function () {
         var errEl = document.getElementById('procedureModalError');
         var payload = {
-            requesterEmail: Portal.getUser().email,
             category: document.getElementById('prCategory').value.trim(),
             title: document.getElementById('prTitle').value.trim(),
             order: Number(document.getElementById('prOrder').value) || 1,
@@ -806,7 +951,7 @@
     async function deleteProcedure(proc) {
         if (!confirm('למחוק את הנוהל "' + proc.title + '"?')) return;
         showLoading(true);
-        var res = await apiPost('procedures', 'delete', { requesterEmail: Portal.getUser().email, id: proc.id });
+        var res = await apiPost('procedures', 'delete', { id: proc.id });
         showLoading(false);
         if (res.ok) loadProceduresPage();
         else alert(res.error || 'שגיאה במחיקה');
@@ -818,9 +963,8 @@
 
     async function loadUsersAdminPage() {
         showLoading(true);
-        var requesterEmail = Portal.getUser().email;
-        var usersRes = await apiGet('users', 'list', { requesterEmail: requesterEmail });
-        var compRes = await apiGet('computers', 'list', { requesterEmail: requesterEmail });
+        var usersRes = await apiGet('users', 'list', {});
+        var compRes = await apiGet('computers', 'list', {});
         showLoading(false);
         computersCache = compRes.ok ? compRes.data : [];
         renderUsersTable(usersRes.ok ? usersRes.data : []);
@@ -840,6 +984,9 @@
             if (u.isITAdmin) badges += '<span class="role-badge">IT</span>';
             if (u.isProceduresAdmin) badges += '<span class="role-badge">נהלים</span>';
             var comp = computerAssignedTo(u.email);
+            // Only a SuperAdmin may touch other admins — matches server-side enforcement.
+            var targetIsAdmin = u.isSuperAdmin || u.isITAdmin || u.isProceduresAdmin;
+            var canManage = Portal.isSuperAdmin() || !targetIsAdmin;
 
             tr.innerHTML =
                 '<td dir="ltr">' + escapeHtml(u.email) + '</td>' +
@@ -848,10 +995,12 @@
                 '<td>' + escapeHtml(u.role) + '</td>' +
                 '<td>' + (badges || '-') + '</td>' +
                 '<td>' + escapeHtml(comp ? comp.computerName : '-') + '</td>' +
-                '<td class="admin-row-actions"><button type="button" class="icon-button" data-edit>✏️</button>' +
-                (u.isSuperAdmin ? '' : '<button type="button" class="icon-button" data-delete>🗑️</button>') + '</td>';
+                '<td class="admin-row-actions">' +
+                (canManage ? '<button type="button" class="icon-button" data-edit>✏️</button>' : '') +
+                (canManage && !u.isSuperAdmin ? '<button type="button" class="icon-button" data-delete>🗑️</button>' : '') + '</td>';
 
-            tr.querySelector('[data-edit]').addEventListener('click', function () { openUserAdminModal(u); });
+            var editBtn = tr.querySelector('[data-edit]');
+            if (editBtn) editBtn.addEventListener('click', function () { openUserAdminModal(u); });
             var delBtn = tr.querySelector('[data-delete]');
             if (delBtn) delBtn.addEventListener('click', function () { deleteAdminUser(u); });
             body.appendChild(tr);
@@ -878,6 +1027,9 @@
         document.getElementById('uaRole').value = user ? user.role : '';
         document.getElementById('uaIsITAdmin').checked = !!(user && user.isITAdmin);
         document.getElementById('uaIsProceduresAdmin').checked = !!(user && user.isProceduresAdmin);
+        // Only a SuperAdmin may grant admin flags — a plain IT/Procedures admin creating
+        // a user never sees this section (matches server-side enforcement).
+        document.getElementById('uaAdminFlagsSection').style.display = Portal.isSuperAdmin() ? 'block' : 'none';
         var assignedComp = user ? computerAssignedTo(user.email) : null;
         populateComputerSelect(assignedComp ? assignedComp.computerName : '');
         document.getElementById('userAdminModalError').style.display = 'none';
@@ -893,7 +1045,6 @@
     document.getElementById('userAdminSaveBtn').addEventListener('click', async function () {
         var errEl = document.getElementById('userAdminModalError');
         var payload = {
-            requesterEmail: Portal.getUser().email,
             email: document.getElementById('uaEmail').value.trim().toLowerCase(),
             firstName: document.getElementById('uaFirstName').value.trim(),
             lastName: document.getElementById('uaLastName').value.trim(),
@@ -916,7 +1067,7 @@
     async function deleteAdminUser(user) {
         if (!confirm('למחוק את המשתמש ' + user.email + '?')) return;
         showLoading(true);
-        var res = await apiPost('users', 'delete', { requesterEmail: Portal.getUser().email, email: user.email });
+        var res = await apiPost('users', 'delete', { email: user.email });
         showLoading(false);
         if (res.ok) loadUsersAdminPage(); else alert(res.error || 'שגיאה במחיקה');
     }
@@ -926,7 +1077,7 @@
 
     async function loadComputersAdminPage() {
         showLoading(true);
-        var res = await apiGet('computers', 'list', { requesterEmail: Portal.getUser().email });
+        var res = await apiGet('computers', 'list', {});
         showLoading(false);
         computersCache = res.ok ? res.data : [];
         renderComputersTable(computersCache);
@@ -984,7 +1135,6 @@
     document.getElementById('computerAdminSaveBtn').addEventListener('click', async function () {
         var errEl = document.getElementById('computerAdminModalError');
         var payload = {
-            requesterEmail: Portal.getUser().email,
             computerName: document.getElementById('caComputerName').value.trim(),
             type: document.getElementById('caType').value.trim(),
             ram: document.getElementById('caRam').value.trim(),
@@ -1006,7 +1156,7 @@
     async function deleteAdminComputer(comp) {
         if (!confirm('למחוק את המחשב ' + comp.computerName + '?')) return;
         showLoading(true);
-        var res = await apiPost('computers', 'delete', { requesterEmail: Portal.getUser().email, computerName: comp.computerName });
+        var res = await apiPost('computers', 'delete', { computerName: comp.computerName });
         showLoading(false);
         if (res.ok) loadComputersAdminPage(); else alert(res.error || 'שגיאה במחיקה');
     }
@@ -1017,7 +1167,7 @@
         body.innerHTML = '<p style="color:var(--muted);font-size:13px">טוען...</p>';
         document.getElementById('computerHistoryBackdrop').classList.add('visible');
 
-        var res = await apiGet('computers', 'ticketHistory', { requesterEmail: Portal.getUser().email, computerName: comp.computerName });
+        var res = await apiGet('computers', 'ticketHistory', { computerName: comp.computerName });
         var tickets = res.ok ? res.data : [];
         body.innerHTML = '';
         if (!tickets.length) {
