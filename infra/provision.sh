@@ -28,11 +28,17 @@ set -euo pipefail
 # ── EDIT THESE ────────────────────────────────────────────────────────────
 RESOURCE_GROUP="it-portal-rg"
 LOCATION="northeurope"                  # israelcentral/westeurope unavailable to this subscription
+SQL_LOCATION="swedencentral"            # Azure SQL specifically rejected northeurope/eastus/uksouth/
+                                         # francecentral/westus2/germanywestcentral for this subscription —
+                                         # swedencentral was the first that worked. Try other regions here
+                                         # if this ever needs to be re-run somewhere it's since closed off.
 FRONTEND_URL="https://it.ramilevystock.com"
 NAME_SUFFIX="$(az account show --query id -o tsv | cut -c1-6)"   # deterministic, unique-ish
 STORAGE_ACCOUNT="itportalst${NAME_SUFFIX}"       # must be globally unique, <=24 chars, lowercase
 FUNCTION_APP="it-portal-api-${NAME_SUFFIX}"      # must be globally unique
-SQL_SERVER="it-portal-sql-${NAME_SUFFIX}"        # must be globally unique
+SQL_SERVER="it-portal-sql-${NAME_SUFFIX}x"       # must be globally unique — "x" suffix because Azure
+                                                  # poisons a global name for a while after ANY failed
+                                                  # create attempt under it, even in the wrong region
 SQL_DATABASE="it-portal-db"
 
 # Mail settings — fill in your real Exchange Online addresses before running "appsettings"/"all"
@@ -65,7 +71,7 @@ step_resources() {
   MY_OID="$(az ad signed-in-user show --query id -o tsv)"
   az sql server show --name "$SQL_SERVER" --resource-group "$RESOURCE_GROUP" &>/dev/null || \
     az sql server create --name "$SQL_SERVER" --resource-group "$RESOURCE_GROUP" \
-      --location "$LOCATION" --enable-ad-only-auth \
+      --location "$SQL_LOCATION" --enable-ad-only-auth \
       --external-admin-principal-type User \
       --external-admin-name "$MY_UPN" --external-admin-sid "$MY_OID"
 
