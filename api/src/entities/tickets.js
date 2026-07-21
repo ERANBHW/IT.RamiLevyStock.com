@@ -112,6 +112,26 @@ async function list(_payload, caller) {
   return { ok: true, data: result.recordset.map(rowToTicket) };
 }
 
+// v2.1, section 5 — home-page dashboard. Open/in-progress counts and the per-branch
+// breakdown are derived client-side from list() (already fetching those rows); closed
+// tickets are numerous enough over time that they get their own lightweight count here
+// instead of being fetched on every dashboard auto-refresh.
+async function closedCount(_payload, caller) {
+  if (!caller.isITAdmin) return { ok: false, error: 'אין הרשאה' };
+  const pool = await getPool();
+  const result = await pool.request().input('closed', sql.NVarChar, STATUS_CLOSED)
+    .query('SELECT COUNT(*) AS cnt FROM Tickets WHERE Status = @closed');
+  return { ok: true, data: { count: result.recordset[0].cnt } };
+}
+
+async function listClosed(_payload, caller) {
+  if (!caller.isITAdmin) return { ok: false, error: 'אין הרשאה' };
+  const pool = await getPool();
+  const result = await pool.request().input('closed', sql.NVarChar, STATUS_CLOSED)
+    .query('SELECT * FROM Tickets WHERE Status = @closed ORDER BY ClosedAt DESC');
+  return { ok: true, data: result.recordset.map(rowToTicket) };
+}
+
 async function get(payload, caller) {
   const pool = await getPool();
   const ticketNumber = String(payload.ticketNumber || '');
@@ -239,4 +259,4 @@ async function updateStatus(payload, caller) {
   return { ok: true };
 }
 
-module.exports = { create, listMine, list, get, update, take, reassign, updateStatus, rowToTicket };
+module.exports = { create, listMine, list, closedCount, listClosed, get, update, take, reassign, updateStatus, rowToTicket };

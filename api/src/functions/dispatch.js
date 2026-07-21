@@ -34,6 +34,7 @@ const ROUTES = {
   computers: {
     getAssigned: computers.getAssigned,
     list: computers.list,
+    listNames: computers.listNames,
     create: computers.create,
     update: computers.update,
     delete: computers.remove,
@@ -43,6 +44,8 @@ const ROUTES = {
     create: tickets.create,
     listMine: tickets.listMine,
     list: tickets.list,
+    closedCount: tickets.closedCount,
+    listClosed: tickets.listClosed,
     get: tickets.get,
     update: tickets.update,
     take: tickets.take,

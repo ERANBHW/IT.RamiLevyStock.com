@@ -117,6 +117,19 @@
         .email-suffix-row { display: flex; align-items: center; gap: 8px; }
         .email-suffix-row input { flex: 1; }
         .email-suffix { color: var(--muted); font-size: 13px; white-space: nowrap; }
+
+        .dashboard-counters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .dashboard-counter { border-radius: 12px; padding: 14px 10px; text-align: center; border: 1px solid var(--border); }
+        .dashboard-counter span { display: block; font-size: 26px; font-weight: 700; }
+        .dashboard-counter label { font-size: 12px; color: var(--muted); }
+        .dashboard-counter.dc-open { background: #fff8e6; }
+        .dashboard-counter.dc-progress { background: #e8f1ff; }
+        .dashboard-counter.dc-closed { background: #f0fdf6; }
+        .dashboard-branch-breakdown { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .dashboard-branch-chip { padding: 4px 10px; border-radius: 20px; background: var(--background); font-size: 12px; border: 1px solid var(--border); }
+
+        .ticket-summary-line { font-size: 17px; margin: 0; line-height: 2; }
+        .ticket-summary-line .icon-button { padding: 2px 6px; font-size: 13px; margin: 0 2px; vertical-align: middle; }
     </style>
 </head>
 
@@ -174,6 +187,25 @@
             <div id="hubAdminSection" style="display:none">
                 <h3 class="procedure-category-title">ניהול</h3>
                 <div class="hub-actions" id="hubAdminActions"></div>
+
+                <div id="hubTicketsDashboard" style="display:none">
+                    <h3 class="procedure-category-title">קריאות שירות</h3>
+                    <div class="dashboard-counters">
+                        <div class="dashboard-counter dc-open"><span id="dashOpenCount">0</span><label>פתוחות</label></div>
+                        <div class="dashboard-counter dc-progress"><span id="dashProgressCount">0</span><label>בטיפול</label></div>
+                        <div class="dashboard-counter dc-closed"><span id="dashClosedCount">0</span><label>סגורות</label></div>
+                    </div>
+                    <div id="dashBranchBreakdown" class="dashboard-branch-breakdown"></div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin:14px 0 8px;flex-wrap:wrap">
+                        <select id="dashUserFilter" style="max-width:220px"></select>
+                        <div style="display:flex;gap:8px">
+                            <button type="button" class="secondary-button" id="dashClosedToggleBtn">קריאות סגורות</button>
+                            <button type="button" class="secondary-button" id="dashViewAllBtn">לכל הקריאות</button>
+                        </div>
+                    </div>
+                    <div id="dashTicketsList" style="display:flex;flex-direction:column;gap:8px"></div>
+                    <div id="dashClosedTicketsList" style="display:none;flex-direction:column;gap:8px;margin-top:8px"></div>
+                </div>
             </div>
         </div>
     </main>
@@ -191,30 +223,40 @@
                 <p class="page-subtitle">מלאו את פרטי התקלה ונחזור אליכם בהקדם.</p>
 
                 <section class="section">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-                        <h2 class="section-title" style="margin:0">פרטי הפונה והמחשב</h2>
-                        <button type="button" class="icon-button" id="ticketComputerEditBtn" title="עריכה נקודתית לקריאה זו">✏️</button>
+                    <p class="ticket-summary-line">
+                        פותח/ת קריאה בשם <strong id="tkNameDisplay"></strong><button type="button" class="icon-button" id="tkNameEditBtn" title="שינוי שם לקריאה זו">✏️</button>
+                        על <strong id="tkComputerDisplay"></strong><button type="button" class="icon-button" id="tkComputerEditBtn" title="שינוי מחשב/מדפסת לקריאה זו">✏️</button>
+                    </p>
+                    <p style="font-size:12px;color:var(--muted);margin:2px 0 10px">השינויים בעיפרונות משפיעים רק על הקריאה הזו.</p>
+
+                    <div class="field" id="tkNameEditField" style="display:none">
+                        <label for="tkName">שם (לקריאה זו בלבד)</label>
+                        <input id="tkName" type="text">
                     </div>
-                    <div class="field">
-                        <label>עבור</label>
-                        <div style="display:flex;gap:16px">
-                            <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="tkForType" value="computer" checked style="width:auto">המחשב שלי</label>
-                            <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="tkForType" value="printer" style="width:auto">מדפסת</label>
+
+                    <div id="tkComputerEditSection" style="display:none">
+                        <div class="field">
+                            <label>עבור</label>
+                            <div style="display:flex;gap:16px">
+                                <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="tkForType" value="computer" checked style="width:auto">מחשב</label>
+                                <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="tkForType" value="printer" style="width:auto">מדפסת</label>
+                            </div>
+                        </div>
+                        <div class="field" id="tkComputerSelectField">
+                            <label for="tkComputerSelect">מחשב</label>
+                            <select id="tkComputerSelect"></select>
+                        </div>
+                        <div class="field" id="tkPrinterSelectField" style="display:none">
+                            <label for="tkPrinterSelect">מדפסת</label>
+                            <select id="tkPrinterSelect"></select>
                         </div>
                     </div>
-                    <div class="field" id="tkPrinterSelectField" style="display:none">
-                        <label for="tkPrinterSelect">מדפסת</label>
-                        <select id="tkPrinterSelect"></select>
-                    </div>
-                    <div class="grid-2">
-                        <div class="field"><label>שם</label><input id="tkName" readonly></div>
-                        <div class="field"><label>טלפון</label><input id="tkPhone" readonly dir="ltr"></div>
-                        <div class="field"><label>סניף</label><input id="tkBranch" readonly></div>
-                        <div class="field"><label>מחשב</label><input id="tkComputerName" readonly dir="ltr"></div>
-                        <div class="field"><label>מדפסת</label><input id="tkPrinter" readonly></div>
-                        <div class="field"><label>AnyDesk</label><input id="tkAnyDesk" readonly dir="ltr"></div>
-                    </div>
-                    <p style="font-size:12px;color:var(--muted);margin:8px 0 0">לחצו על העיפרון אם אתם פותחים קריאה עבור מחשב/משתמש אחר - השינוי ישפיע רק על הקריאה הזו.</p>
+
+                    <input id="tkPhone" type="hidden">
+                    <input id="tkBranch" type="hidden">
+                    <input id="tkComputerName" type="hidden">
+                    <input id="tkPrinter" type="hidden">
+                    <input id="tkAnyDesk" type="hidden">
                 </section>
 
                 <section class="section">
@@ -650,6 +692,9 @@
         if (id === 'user-request') loadUserRequestFormPage();
         if (id === 'admin-user-requests') loadUserRequestsAdminPage();
         if (id === 'admin-printers') loadPrintersAdminPage();
+
+        if (id === 'hub') { loadHubDashboard(); startDashboardAutoRefresh(); }
+        else { stopDashboardAutoRefresh(); }
     }
 
     // ── BRANCHES: shared cache used by profile/ticket/admin screens ───
@@ -851,44 +896,88 @@
         }).join('');
     }
 
-    function setComputerFieldsReadonly(readonly) {
-        ['tkComputerName', 'tkPrinter', 'tkAnyDesk'].forEach(function (id) {
-            var el = document.getElementById(id);
-            if (readonly) el.setAttribute('readonly', 'readonly'); else el.removeAttribute('readonly');
-        });
+    // ── Computer names (v2.1, section 10 — "pick a different computer" pencil) ──
+    var computerNamesCache = null;
+
+    async function ensureComputerNamesLoaded() {
+        if (computerNamesCache) return computerNamesCache;
+        var res = await apiGet('computers', 'listNames', {});
+        computerNamesCache = res.ok ? res.data : [];
+        return computerNamesCache;
+    }
+
+    function populateComputerNameSelect(selectEl, selectedName) {
+        selectEl.innerHTML = (computerNamesCache || []).map(function (name) {
+            return '<option' + (name === selectedName ? ' selected' : '') + '>' + escapeHtml(name) + '</option>';
+        }).join('');
     }
 
     function fillComputerFields(data) {
         var user = Portal.getUser();
-        document.getElementById('tkName').value = [user.firstName, user.lastName].filter(Boolean).join(' ');
+        var name = [user.firstName, user.lastName].filter(Boolean).join(' ');
+        document.getElementById('tkName').value = name;
+        document.getElementById('tkNameDisplay').textContent = name;
         document.getElementById('tkPhone').value = user.phone || '';
         document.getElementById('tkBranch').value = branchName(user.branchNumber);
         document.getElementById('tkComputerName').value = data ? (data.computerName || '') : '';
+        document.getElementById('tkComputerDisplay').textContent = data ? data.computerName : 'ללא מחשב משוייך';
         document.getElementById('tkPrinter').value = data ? (data.defaultPrinterName || '') : '';
         document.getElementById('tkAnyDesk').value = data ? (data.anyDeskId || '') : '';
-        setComputerFieldsReadonly(true);
     }
 
-    document.getElementById('ticketComputerEditBtn').addEventListener('click', function () { setComputerFieldsReadonly(false); });
+    // v2.1, section 10 — both pencils only affect this one ticket, never the profile/
+    // computer record itself; hidden by default, revealed on click.
+    document.getElementById('tkNameEditBtn').addEventListener('click', function () {
+        document.getElementById('tkNameEditField').style.display = 'block';
+        document.getElementById('tkName').focus();
+    });
+    document.getElementById('tkName').addEventListener('input', function () {
+        document.getElementById('tkNameDisplay').textContent = document.getElementById('tkName').value || '';
+    });
 
-    // v2.1, section 8 — "for: my computer / a printer" toggle. Switching to "printer"
-    // shows a printer <select> filtered to the caller's own branch, defaulting to the
-    // assigned computer's default printer; the computer fields above stay visible for
-    // context but stop being what the ticket is "about".
+    document.getElementById('tkComputerEditBtn').addEventListener('click', async function () {
+        document.getElementById('tkComputerEditSection').style.display = 'block';
+        await ensureComputerNamesLoaded();
+        populateComputerNameSelect(document.getElementById('tkComputerSelect'), document.getElementById('tkComputerName').value);
+    });
+
+    function updateTicketComputerDisplay() {
+        var isPrinter = document.querySelector('input[name="tkForType"]:checked').value === 'printer';
+        if (isPrinter) {
+            var printerName = document.getElementById('tkPrinterSelect').value;
+            document.getElementById('tkComputerDisplay').textContent = printerName ? ('מדפסת ' + printerName) : 'מדפסת';
+        } else {
+            document.getElementById('tkComputerDisplay').textContent = document.getElementById('tkComputerName').value || 'ללא מחשב משוייך';
+        }
+    }
+
+    document.getElementById('tkComputerSelect').addEventListener('change', function () {
+        document.getElementById('tkComputerName').value = this.value;
+        updateTicketComputerDisplay();
+    });
+
+    // "for: my computer / a printer" toggle (section 8). Switching to "printer" shows a
+    // printer <select> filtered to the caller's own branch, defaulting to the assigned
+    // computer's default printer.
     function resetForTypeToggle() {
         document.querySelector('input[name="tkForType"][value="computer"]').checked = true;
+        document.getElementById('tkComputerSelectField').style.display = 'block';
         document.getElementById('tkPrinterSelectField').style.display = 'none';
+        document.getElementById('tkNameEditField').style.display = 'none';
+        document.getElementById('tkComputerEditSection').style.display = 'none';
     }
 
     document.querySelectorAll('input[name="tkForType"]').forEach(function (radio) {
         radio.addEventListener('change', function () {
             var isPrinter = document.querySelector('input[name="tkForType"]:checked').value === 'printer';
+            document.getElementById('tkComputerSelectField').style.display = isPrinter ? 'none' : 'block';
             document.getElementById('tkPrinterSelectField').style.display = isPrinter ? 'block' : 'none';
             if (isPrinter) {
                 var user = Portal.getUser();
                 var defaultPrinter = assignedComputer ? assignedComputer.defaultPrinterName : '';
                 populatePrinterSelect(document.getElementById('tkPrinterSelect'), defaultPrinter, user.branchNumber);
             }
+            updateTicketComputerDisplay();
         });
     });
 
@@ -982,6 +1071,7 @@
     function refreshTicketViews() {
         if (document.getElementById('view-ticket').classList.contains('active')) refreshMyTickets();
         if (Portal.isITAdmin() && document.getElementById('view-admin-tickets').classList.contains('active')) loadTicketsAdminPage();
+        if (isHubActive() && Portal.isITAdmin()) loadHubDashboard();
     }
 
     var ticketDetailTracker = makeDirtyTracker(document.getElementById('ticketDetailBackdrop'));
@@ -1016,16 +1106,32 @@
             '<div><strong>סטטוס:</strong> ' + escapeHtml(t.status) + '</div>' +
             '<div><strong>קטגוריה:</strong> ' + escapeHtml(t.category) + '</div>' +
             '<div><strong>דחיפות:</strong> ' + escapeHtml(t.urgency) + '</div>' +
-            '<div><strong>מחשב:</strong> ' + escapeHtml(t.computerName) + ' | IP: ' + escapeHtml(t.ip) + '</div>' +
+            '<div><strong>מחשב:</strong> ' + escapeHtml(t.computerName) + '</div>' +
             '<div><strong>תאריך פתיחה:</strong> ' + formatDateTime(t.timestamp) + '</div>' +
             (t.assignedToName ? '<div><strong>מטופל ע"י:</strong> ' + escapeHtml(t.assignedToName) + '</div>' : '') +
             '<div><strong>תיאור:</strong><br><span style="white-space:pre-wrap">' + escapeHtml(t.description) + '</span></div>' +
             '<div id="ticketDetailEditForm" style="display:none"></div>' +
             (actionsHtml ? '<div style="display:flex;gap:8px;flex-wrap:wrap">' + actionsHtml + '</div>' : '') +
-            '<div><strong>היסטוריה:</strong><div style="margin-top:6px">' +
+            (isIT ? '<div class="field" style="margin:0"><label for="ticketDetailNoteInput">הוסף הערה</label>' +
+                '<div style="display:flex;gap:8px"><input id="ticketDetailNoteInput" type="text" style="flex:1">' +
+                '<button type="button" class="secondary-button" id="ticketDetailAddNoteBtn">הוסף</button></div></div>' : '') +
+            '<div><strong>היסטוריה:</strong><div style="margin-top:6px" id="ticketDetailLog">' +
             (log.length ? log.map(renderLogEntry).join('') : '<span style="color:var(--muted);font-size:12px">אין רשומות</span>') +
             '</div></div>' +
             '</div>';
+
+        var addNoteBtn = document.getElementById('ticketDetailAddNoteBtn');
+        if (addNoteBtn) {
+            addNoteBtn.addEventListener('click', async function () {
+                var input = document.getElementById('ticketDetailNoteInput');
+                var note = input.value.trim();
+                if (!note) return;
+                showLoading(true);
+                var res = await apiPost('tickets', 'updateStatus', { ticketNumber: t.ticketNumber, status: t.status, message: note });
+                showLoading(false);
+                if (res.ok) { refreshTicketViews(); openTicketDetail(t); } else alert(res.error || 'שגיאה');
+            });
+        }
 
         var editBtn = document.getElementById('ticketDetailEditBtn');
         if (editBtn) editBtn.addEventListener('click', function () { openTicketEditForm(t); });
@@ -1113,6 +1219,109 @@
             }
             container.appendChild(card);
         });
+    }
+
+    // ── HUB DASHBOARD (v2.1, section 5) ─────────────────────────
+    var dashboardOpenTickets = [];
+    var dashboardClosedTickets = null; // null = not fetched yet (lazy, behind the toggle)
+    var dashboardRefreshTimer = null;
+
+    function isHubActive() { return document.getElementById('view-hub').classList.contains('active'); }
+
+    async function loadHubDashboard() {
+        var block = document.getElementById('hubTicketsDashboard');
+        if (!Portal.isITAdmin()) { block.style.display = 'none'; return; }
+        block.style.display = 'block';
+
+        var listRes = await apiGet('tickets', 'list', {});
+        dashboardOpenTickets = listRes.ok ? listRes.data : [];
+        var countRes = await apiGet('tickets', 'closedCount', {});
+        var closedCount = countRes.ok ? countRes.data.count : 0;
+
+        renderDashboardCounts(closedCount);
+        renderDashboardBranchBreakdown();
+        renderDashboardUserFilter();
+        renderDashboardTicketsList();
+    }
+
+    function renderDashboardCounts(closedCount) {
+        var openCount = dashboardOpenTickets.filter(function (t) { return t.status === 'פתוחה'; }).length;
+        var progressCount = dashboardOpenTickets.filter(function (t) { return t.status === 'בטיפול'; }).length;
+        document.getElementById('dashOpenCount').textContent = openCount;
+        document.getElementById('dashProgressCount').textContent = progressCount;
+        document.getElementById('dashClosedCount').textContent = closedCount;
+    }
+
+    function renderDashboardBranchBreakdown() {
+        var counts = {};
+        dashboardOpenTickets.forEach(function (t) {
+            var branch = t.branch || 'ללא סניף';
+            counts[branch] = (counts[branch] || 0) + 1;
+        });
+        var container = document.getElementById('dashBranchBreakdown');
+        var branches = Object.keys(counts);
+        container.innerHTML = branches.length
+            ? branches.map(function (b) { return '<span class="dashboard-branch-chip">' + escapeHtml(b) + ': ' + counts[b] + '</span>'; }).join('')
+            : '<span style="color:var(--muted);font-size:12px">אין קריאות פתוחות/בטיפול כרגע.</span>';
+    }
+
+    function renderDashboardUserFilter() {
+        var sel = document.getElementById('dashUserFilter');
+        var current = sel.value;
+        var users = Array.from(new Set(dashboardOpenTickets.map(function (t) { return t.userName || t.userEmail; }))).sort();
+        sel.innerHTML = '<option value="">כל המשתמשים</option>' +
+            users.map(function (u) { return '<option' + (u === current ? ' selected' : '') + '>' + escapeHtml(u) + '</option>'; }).join('');
+    }
+
+    function renderDashboardTicketsList() {
+        var filterUser = document.getElementById('dashUserFilter').value;
+        var list = filterUser
+            ? dashboardOpenTickets.filter(function (t) { return (t.userName || t.userEmail) === filterUser; })
+            : dashboardOpenTickets;
+
+        var container = document.getElementById('dashTicketsList');
+        container.innerHTML = '';
+        if (!list.length) {
+            container.innerHTML = '<p style="color:var(--muted);font-size:13px">אין קריאות פתוחות/בטיפול.</p>';
+            return;
+        }
+        list.forEach(function (t) {
+            var card = buildTicketCard(t);
+            var meta = document.createElement('div');
+            meta.style.cssText = 'font-size:12px;color:var(--muted);margin-top:4px';
+            meta.textContent = (t.userName || t.userEmail) + (t.branch ? ' | ' + t.branch : '');
+            card.appendChild(meta);
+            container.appendChild(card);
+        });
+    }
+
+    document.getElementById('dashUserFilter').addEventListener('change', renderDashboardTicketsList);
+    document.getElementById('dashViewAllBtn').addEventListener('click', function () { showView('admin-tickets'); });
+
+    document.getElementById('dashClosedToggleBtn').addEventListener('click', async function () {
+        var el = document.getElementById('dashClosedTicketsList');
+        var willShow = el.style.display === 'none';
+        if (willShow && dashboardClosedTickets === null) {
+            showLoading(true);
+            var res = await apiGet('tickets', 'listClosed', {});
+            showLoading(false);
+            dashboardClosedTickets = res.ok ? res.data : [];
+            el.innerHTML = '';
+            dashboardClosedTickets.forEach(function (t) { el.appendChild(buildTicketCard(t)); });
+        }
+        el.style.display = willShow ? 'flex' : 'none';
+    });
+
+    function stopDashboardAutoRefresh() {
+        if (dashboardRefreshTimer) { clearInterval(dashboardRefreshTimer); dashboardRefreshTimer = null; }
+    }
+
+    function startDashboardAutoRefresh() {
+        stopDashboardAutoRefresh();
+        dashboardRefreshTimer = setInterval(function () {
+            if (isHubActive() && Portal.isITAdmin()) loadHubDashboard();
+            else stopDashboardAutoRefresh();
+        }, 25000);
     }
 
     document.getElementById('ticketSubmitBtn').addEventListener('click', async function () {

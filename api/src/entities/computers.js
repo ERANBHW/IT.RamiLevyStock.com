@@ -40,6 +40,14 @@ async function list(_payload, caller) {
   return { ok: true, data: result.recordset.map(rowToComputer) };
 }
 
+// Every authenticated user needs this for the ticket form's "pick a different computer"
+// pencil (v2.1, section 10) — just names, none of the sensitive fields list() exposes.
+async function listNames(_payload, _caller) {
+  const pool = await getPool();
+  const result = await pool.request().query('SELECT ComputerName FROM Computers ORDER BY ComputerName');
+  return { ok: true, data: result.recordset.map((r) => r.ComputerName) };
+}
+
 const EDITABLE_COMPUTER_FIELDS = ['Type', 'RAM', 'AnyDeskId', 'AssignedUserEmail', 'DefaultPrinterName', 'Notes'];
 
 async function create(payload, caller) {
@@ -107,4 +115,4 @@ async function ticketHistory(payload, caller) {
   return { ok: true, data: result.recordset.map(rowToTicket) };
 }
 
-module.exports = { getAssigned, list, create, update, remove, ticketHistory, rowToComputer };
+module.exports = { getAssigned, list, listNames, create, update, remove, ticketHistory, rowToComputer };
