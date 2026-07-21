@@ -54,12 +54,24 @@ async function listNames(_payload, _caller) {
 
 const EDITABLE_COMPUTER_FIELDS = ['Type', 'RAM', 'AnyDeskId', 'AssignedUserEmail', 'DefaultPrinterName', 'Notes'];
 
+// AssignedUserEmail/DefaultPrinterName are nullable FKs — an empty selection has to become
+// NULL (there's no Users.Email or Printers.PrinterName row for ''). Every other field here
+// is NOT NULL DEFAULT '' in the schema, so an empty value must stay '', never NULL.
+const NULLABLE_COMPUTER_FIELDS = ['AssignedUserEmail', 'DefaultPrinterName'];
+
 // 'RAM' isn't a normal capitalized word — naive camelCase (charAt(0).toLowerCase() + rest)
 // turns it into 'rAM', which never matches payload.ram and silently inserted NULL into a
 // NOT NULL column. Every other field name here is a single leading capital, so this is
 // the only special case needed.
 function payloadKeyFor(field) {
   return field === 'RAM' ? 'ram' : field.charAt(0).toLowerCase() + field.slice(1);
+}
+
+// '' / null / undefined all mean "empty" — but "empty" means NULL only for the nullable
+// FK fields above; every plain text field must get '' instead, or it violates NOT NULL.
+function fieldValueFor(field, raw) {
+  if (raw !== undefined && raw !== null && raw !== '') return String(raw);
+  return NULLABLE_COMPUTER_FIELDS.includes(field) ? null : '';
 }
 
 async function create(payload, caller) {
@@ -76,7 +88,7 @@ async function create(payload, caller) {
     .input('BranchNumber', sql.Int, parseBranchNumber(payload.branchNumber) ?? null);
   EDITABLE_COMPUTER_FIELDS.forEach((f) => {
     const key = payloadKeyFor(f);
-    req.input(f, sql.NVarChar, payload[key] ? String(payload[key]) : null);
+    req.input(f, sql.NVarChar, fieldValueFor(f, payload[key]));
   });
   await req.query(`INSERT INTO Computers (ComputerName, Type, RAM, AnyDeskId, AssignedUserEmail, DefaultPrinterName, BranchNumber, Notes)
     VALUES (@computerName, @Type, @RAM, @AnyDeskId, @AssignedUserEmail, @DefaultPrinterName, @BranchNumber, @Notes)`);
@@ -96,7 +108,7 @@ async function update(payload, caller) {
   EDITABLE_COMPUTER_FIELDS.forEach((f) => {
     const key = payloadKeyFor(f);
     if (Object.prototype.hasOwnProperty.call(payload, key)) {
-      req.input(f, sql.NVarChar, payload[key] ? String(payload[key]) : null);
+      req.input(f, sql.NVarChar, fieldValueFor(f, payload[key]));
       sets.push(`${f} = @${f}`);
     }
   });

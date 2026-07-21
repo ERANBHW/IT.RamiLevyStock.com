@@ -84,11 +84,16 @@
         .ticket-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 10px; }
         .ticket-meta { font-size: 12px; color: var(--muted); }
 
-        .urgency-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; cursor: pointer; margin-bottom: 8px; border: 1px solid transparent; }
-        .urgency-row input { margin: 0; }
-        .urgency-normal { background: linear-gradient(90deg, #fff9c7, #ffe985); border-color: #edd76f; }
-        .urgency-high { background: linear-gradient(90deg, #ffe8ca, #ffa640); border-color: #e99b36; }
-        .urgency-down { background: linear-gradient(90deg, #ffd5d5, #ed5d5d); border-color: #d94e4e; }
+        .urgency-options-row { display: flex; gap: 8px; }
+        .urgency-pill { flex: 1; display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 10px; cursor: pointer; border: 1px solid transparent; }
+        .urgency-pill input { margin: 0; flex: 0 0 auto; }
+        .urgency-pill-text { display: flex; flex-direction: column; line-height: 1.25; }
+        .urgency-pill-text strong { font-size: 13px; }
+        .urgency-pill-text span { font-size: 10px; color: #5a5a5a; }
+        .urgency-normal { background: #fff9c7; border-color: #edd76f; }
+        .urgency-high { background: #ffe8ca; border-color: #e99b36; }
+        .urgency-down { background: #ffd5d5; border-color: #d94e4e; }
+        @media (max-width: 480px) { .urgency-options-row { flex-direction: column; } }
 
         .closed-tickets-toggle { margin-bottom: 16px; }
         #closedTicketsList { display: flex; flex-direction: column; gap: 10px; }
@@ -515,7 +520,7 @@
                 <div class="field"><label for="uaLastNameEn">שם משפחה (אנגלית)</label><input id="uaLastNameEn" type="text" dir="ltr"></div>
             </div>
             <div class="field"><label for="uaUsername">מייל</label>
-                <div class="email-suffix-row"><input id="uaUsername" type="text" dir="ltr"><span class="email-suffix" dir="ltr">@rami-levy-stock.co.il</span></div>
+                <div class="email-suffix-row" dir="ltr"><input id="uaUsername" type="text" dir="ltr"><span class="email-suffix" dir="ltr">@rami-levy-stock.co.il</span></div>
             </div>
             <div class="grid-2">
                 <div class="field"><label for="uaFirstName">שם פרטי (עברית)</label><input id="uaFirstName" type="text"></div>
@@ -544,10 +549,11 @@
                 <button type="button" class="secondary-button" id="uaGenerateScriptBtn">הכן סקריפט הקמה</button>
                 <div id="uaScriptResult" style="display:none;margin-top:10px">
                     <div class="field"><label>מייל מחושב</label><input id="uaScriptEmail" readonly dir="ltr"></div>
-                    <div class="field"><label>סיסמה זמנית</label>
-                        <div class="email-suffix-row"><input id="uaScriptPassword" readonly dir="ltr">
+                    <div class="field"><label>סיסמה זמנית (ניתן לשנות)</label>
+                        <div class="email-suffix-row" dir="ltr"><input id="uaScriptPassword" dir="ltr">
                         <button type="button" class="secondary-button" id="uaCopyPasswordBtn">העתק</button></div>
                     </div>
+                    <button type="button" class="secondary-button" id="uaCopyCredentialsBtn" style="margin-bottom:10px">העתק מייל+סיסמה לשליחה לעובד</button>
                     <div class="field"><label>סקריפט</label>
                         <textarea id="uaScriptBox" class="script-box" rows="8" readonly></textarea>
                         <button type="button" class="secondary-button" id="uaCopyScriptBtn" style="margin-top:6px">העתק סקריפט</button>
@@ -931,9 +937,10 @@
 
     function renderUrgencyOptions() {
         var container = document.getElementById('tkUrgencyOptions');
+        container.className = 'urgency-options-row';
         container.innerHTML = TICKET_URGENCIES.map(function (u, i) {
-            return '<label class="urgency-row ' + u.cls + '"><input type="radio" name="tkUrgency" value="' + u.value + '"' + (i === 0 ? ' checked' : '') + '>' +
-                '<span><strong>' + u.value + '</strong> - ' + u.desc + '</span></label>';
+            return '<label class="urgency-pill ' + u.cls + '"><input type="radio" name="tkUrgency" value="' + u.value + '"' + (i === 0 ? ' checked' : '') + '>' +
+                '<span class="urgency-pill-text"><strong>' + u.value + '</strong><span>' + u.desc + '</span></span></label>';
         }).join('');
     }
 
@@ -1140,7 +1147,7 @@
         var actionsHtml = '';
         if (canEdit) actionsHtml += '<button type="button" class="secondary-button" id="ticketDetailEditBtn">ערוך קריאה</button>';
         if (isIT && t.status === 'פתוחה') actionsHtml += '<button type="button" class="primary-button" id="ticketDetailTakeBtn">קח קריאה</button>';
-        if (isIT && t.status !== 'סגורה') actionsHtml += '<button type="button" class="secondary-button" id="ticketDetailCloseTicketBtn">סגור קריאה</button>';
+        if (isIT && t.status === 'בטיפול') actionsHtml += '<button type="button" class="secondary-button" id="ticketDetailCloseTicketBtn">סגור קריאה</button>';
 
         document.getElementById('ticketDetailBody').innerHTML =
             '<div style="display:grid;gap:10px;font-size:14px">' +
@@ -1851,6 +1858,7 @@
     async function openUserAdminModal(user) {
         editingUserEmail = user ? user.email : null;
         uaUsernameManuallyEdited = false;
+        uaScriptPasswordManuallyEdited = false;
         document.getElementById('userAdminModalTitle').textContent = user ? 'עריכת משתמש' : 'משתמש חדש';
         document.getElementById('uaUsername').value = user ? user.email.split('@')[0] : '';
         document.getElementById('uaUsername').disabled = !!user;
@@ -1912,7 +1920,10 @@
         else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
     });
 
-    document.getElementById('uaGenerateScriptBtn').addEventListener('click', async function () {
+    var uaScriptPasswordManuallyEdited = false;
+    document.getElementById('uaScriptPassword').addEventListener('input', function () { uaScriptPasswordManuallyEdited = true; });
+
+    async function generateUaScript() {
         var errEl = document.getElementById('userAdminModalError');
         var scriptPayload = {
             firstNameHe: document.getElementById('uaFirstName').value.trim(),
@@ -1923,6 +1934,7 @@
             branchNumber: document.getElementById('uaBranch').value,
             folderIds: getSelectedFolderIds(document.getElementById('uaFolders')),
         };
+        if (uaScriptPasswordManuallyEdited) scriptPayload.tempPassword = document.getElementById('uaScriptPassword').value;
         if (!scriptPayload.firstNameHe || !scriptPayload.lastNameHe || !scriptPayload.firstNameEn || !scriptPayload.lastNameEn) {
             errEl.textContent = 'יש למלא שם פרטי ומשפחה בעברית ובאנגלית כדי להכין סקריפט';
             errEl.style.display = 'block';
@@ -1940,13 +1952,24 @@
             errEl.textContent = res.error || 'שגיאה בהכנת הסקריפט';
             errEl.style.display = 'block';
         }
+    }
+
+    document.getElementById('uaGenerateScriptBtn').addEventListener('click', function () {
+        uaScriptPasswordManuallyEdited = false;
+        generateUaScript();
     });
+    document.getElementById('uaScriptPassword').addEventListener('change', generateUaScript);
 
     document.getElementById('uaCopyScriptBtn').addEventListener('click', function () {
         copyToClipboard(document.getElementById('uaScriptBox').value, this);
     });
     document.getElementById('uaCopyPasswordBtn').addEventListener('click', function () {
         copyToClipboard(document.getElementById('uaScriptPassword').value, this);
+    });
+    document.getElementById('uaCopyCredentialsBtn').addEventListener('click', function () {
+        var text = 'כתובת מייל: ' + document.getElementById('uaScriptEmail').value +
+            '\nסיסמת התחברות: ' + document.getElementById('uaScriptPassword').value;
+        copyToClipboard(text, this);
     });
 
     async function deleteAdminUser(user) {

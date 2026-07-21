@@ -250,6 +250,11 @@ async function previewScript(payload, caller) {
   } else {
     tempPassword = generateTempPassword();
   }
+  // IT can hand-edit the shown password (never persisted — only the queued request's own
+  // TempPassword, generated once at create() time, is ever stored in the DB).
+  if (typeof payload.tempPassword === 'string' && payload.tempPassword.trim()) {
+    tempPassword = payload.tempPassword.trim();
+  }
 
   const firstNameHe = payload.firstNameHe ?? base.firstNameHe ?? '';
   const lastNameHe = payload.lastNameHe ?? base.lastNameHe ?? '';
