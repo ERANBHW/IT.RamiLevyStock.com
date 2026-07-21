@@ -153,6 +153,18 @@
         .filter-popover label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 400; padding: 4px 2px; cursor: pointer; }
         .filter-popover input { width: auto; margin: 0; }
 
+        .wizard-steps { display: flex; align-items: flex-start; margin-bottom: 20px; }
+        .wizard-step { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 0 0 auto; }
+        .wizard-step span {
+            width: 28px; height: 28px; border-radius: 50%; background: var(--border); color: var(--white);
+            display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;
+        }
+        .wizard-step label { font-size: 11px; color: var(--muted); white-space: nowrap; }
+        .wizard-step.active span, .wizard-step.done span { background: var(--success); }
+        .wizard-step.active label, .wizard-step.done label { color: var(--success); font-weight: 700; }
+        .wizard-step-line { flex: 1 1 auto; height: 3px; background: var(--border); margin: 13px 4px 0; }
+        .wizard-step-line.done { background: var(--success); }
+
         .ticket-summary-line { font-size: 17px; margin: 0; line-height: 2; }
         .ticket-summary-line .icon-button { padding: 2px 6px; font-size: 13px; margin: 0 2px; vertical-align: middle; }
     </style>
@@ -693,31 +705,52 @@
     <div class="profile-modal" style="max-width:560px">
         <div class="profile-modal-header"><h2 id="userRequestDetailTitle"></h2></div>
         <div class="profile-modal-body">
-            <div class="grid-2">
-                <div class="field"><label for="urdFirstNameHe">שם פרטי (עברית)</label><input id="urdFirstNameHe" type="text"></div>
-                <div class="field"><label for="urdLastNameHe">שם משפחה (עברית)</label><input id="urdLastNameHe" type="text"></div>
-                <div class="field"><label for="urdFirstNameEn">שם פרטי (אנגלית)</label><input id="urdFirstNameEn" type="text" dir="ltr"></div>
-                <div class="field"><label for="urdLastNameEn">שם משפחה (אנגלית)</label><input id="urdLastNameEn" type="text" dir="ltr"></div>
+            <div class="wizard-steps">
+                <div class="wizard-step" id="urdStepDot1"><span>1</span><label>פרטי עובד</label></div>
+                <div class="wizard-step-line" id="urdStepLine1"></div>
+                <div class="wizard-step" id="urdStepDot2"><span>2</span><label>סקריפט</label></div>
+                <div class="wizard-step-line" id="urdStepLine2"></div>
+                <div class="wizard-step" id="urdStepDot3"><span>3</span><label>שליחה</label></div>
             </div>
-            <div class="field"><label for="urdBranch">סניף</label><select id="urdBranch"></select></div>
-            <div class="field"><label for="urdRole">תפקיד</label><input id="urdRole" type="text"></div>
-            <div class="field"><label>תיקיות משותפות</label><div id="urdFolders" class="folder-checkbox-list"></div></div>
-            <div class="field"><label>מייל מחושב</label><input id="urdSuggestedEmail" readonly dir="ltr"></div>
-            <div class="field"><label>סקריפט הקמה (Cloud Shell / PowerShell)</label>
-                <textarea id="urdScript" class="script-box" rows="10" readonly></textarea>
-                <button type="button" class="secondary-button" id="urdCopyScriptBtn" style="margin-top:6px">העתק סקריפט</button>
-            </div>
-            <div id="userRequestDetailError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
 
-            <div id="urdWelcomeSection" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+            <div id="urdStep1">
+                <div class="grid-2">
+                    <div class="field"><label for="urdFirstNameHe">שם פרטי (עברית)</label><input id="urdFirstNameHe" type="text"></div>
+                    <div class="field"><label for="urdLastNameHe">שם משפחה (עברית)</label><input id="urdLastNameHe" type="text"></div>
+                    <div class="field"><label for="urdFirstNameEn">שם פרטי (אנגלית)</label><input id="urdFirstNameEn" type="text" dir="ltr"></div>
+                    <div class="field"><label for="urdLastNameEn">שם משפחה (אנגלית)</label><input id="urdLastNameEn" type="text" dir="ltr"></div>
+                </div>
+                <div class="field"><label for="urdBranch">סניף</label><select id="urdBranch"></select></div>
+                <div class="field"><label for="urdRole">תפקיד</label><input id="urdRole" type="text"></div>
+                <div class="field"><label>תיקיות משותפות</label><div id="urdFolders" class="folder-checkbox-list"></div></div>
+            </div>
+
+            <div id="urdStep2" style="display:none">
+                <div class="field"><label>מייל מחושב</label><input id="urdSuggestedEmail" readonly dir="ltr"></div>
+                <div class="field"><label>סיסמה זמנית (ניתן לשנות)</label>
+                    <div class="email-suffix-row" dir="ltr"><input id="urdScriptPassword" dir="ltr">
+                    <button type="button" class="secondary-button" id="urdCopyPasswordBtn">העתק</button></div>
+                </div>
+                <div class="field"><label>סקריפט הקמה (Cloud Shell / PowerShell)</label>
+                    <textarea id="urdScript" class="script-box" rows="10" readonly></textarea>
+                    <button type="button" class="secondary-button" id="urdCopyScriptBtn" style="margin-top:6px">העתק סקריפט</button>
+                </div>
+                <p style="font-size:12px;color:var(--muted);margin:8px 0 0">העתק והרץ ב-Cloud Shell/PowerShell, ואז המשך לשלב הבא.</p>
+            </div>
+
+            <div id="urdStep3" style="display:none">
                 <div class="field"><label>הודעת ברוכים-הבאים למשתמש</label>
                     <textarea id="urdWelcomeMessage" class="script-box" rows="5" readonly></textarea>
                     <button type="button" class="secondary-button" id="urdCopyWelcomeBtn" style="margin-top:6px">העתק הודעה</button>
                 </div>
+                <p style="font-size:12px;color:var(--muted);margin:8px 0 0">בלחיצה על "סימון כהוקם" יישלח גם מייל אוטומטי אל <strong id="urdRequesterEmailNote"></strong> עם פרטי ההתחברות.</p>
             </div>
+
+            <div id="userRequestDetailError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
         </div>
         <div class="profile-modal-actions" style="flex-wrap:wrap">
-            <button type="button" class="primary-button" id="urdSaveBtn">שמור שינויים</button>
+            <button type="button" class="secondary-button" id="urdBackBtn" style="display:none">חזרה</button>
+            <button type="button" class="primary-button" id="urdNextBtn">הבא</button>
             <button type="button" class="primary-button" id="urdMarkCompletedBtn" style="display:none">סימון כהוקם</button>
             <button type="button" class="secondary-button" id="urdCancelBtn">ביטול</button>
         </div>
@@ -1303,6 +1336,7 @@
 
     // ── HUB DASHBOARD (v2.1, section 5) ─────────────────────────
     var dashboardOpenTickets = [];
+    var dashboardOpenRequests = []; // user-creation requests, shown in the same list (follow-up, section 4/17)
     var dashboardClosedTickets = null; // null = not fetched yet (lazy, behind the toggle)
     var dashboardRefreshTimer = null;
 
@@ -1317,6 +1351,8 @@
         dashboardOpenTickets = listRes.ok ? listRes.data : [];
         var countRes = await apiGet('tickets', 'closedCount', {});
         var closedCount = countRes.ok ? countRes.data.count : 0;
+        var reqRes = await apiGet('userRequests', 'list', {});
+        dashboardOpenRequests = reqRes.ok ? reqRes.data.filter(function (r) { return r.status !== 'הוקם'; }) : [];
 
         renderDashboardCounts(closedCount);
         renderDashboardBranchBreakdown();
@@ -1391,12 +1427,24 @@
             return diff !== 0 ? diff : new Date(a.timestamp) - new Date(b.timestamp);
         });
 
+        // User-creation requests (section 4/17) live in the same list, styled differently,
+        // surfaced above the tickets since they tend to be time-sensitive too.
+        var requests = dashboardOpenRequests.filter(function (r) {
+            var name = [r.firstNameHe, r.lastNameHe].filter(Boolean).join(' ');
+            var userOk = !dashUserFilterSelection.length ||
+                dashUserFilterSelection.indexOf(r.requesterName) !== -1 || dashUserFilterSelection.indexOf(name) !== -1;
+            var branchOk = !dashBranchFilterSelection.length ||
+                dashBranchFilterSelection.indexOf(branchName(r.branchNumber) || 'ללא סניף') !== -1;
+            return userOk && branchOk;
+        });
+
         var container = document.getElementById('dashTicketsList');
         container.innerHTML = '';
-        if (!list.length) {
+        if (!list.length && !requests.length) {
             container.innerHTML = '<p style="color:var(--muted);font-size:13px">אין קריאות פתוחות/בטיפול.</p>';
             return;
         }
+        requests.forEach(function (r) { container.appendChild(buildUserRequestCard(r)); });
         list.forEach(function (t) {
             var card = buildTicketCard(t);
             var meta = document.createElement('div');
@@ -1715,15 +1763,36 @@
 
     function buildUserRequestCard(r) {
         var card = document.createElement('div');
-        card.className = 'ticket-card';
-        var statusClass = r.status === 'הוקם' ? 'status-closed' : 'status-open';
+        card.className = 'ticket-card request-card';
+        var statusClass = r.status === 'הוקם' ? 'status-closed' : (r.status === 'בטיפול' ? 'status-progress' : 'status-open');
         card.innerHTML =
-            '<div class="ticket-card-header"><strong>' + escapeHtml(r.requestNumber) + '</strong>' +
+            '<div class="ticket-card-header"><strong>' + escapeHtml(r.requestNumber) + ' · הקמת משתמש</strong>' +
             '<span class="status-badge ' + statusClass + '">' + escapeHtml(r.status) + '</span></div>' +
             '<div class="ticket-meta">' + formatDateTime(r.timestamp) + ' | ' + escapeHtml(r.firstNameHe + ' ' + r.lastNameHe) +
             ' | ' + escapeHtml(r.suggestedEmail) + '</div>';
         card.addEventListener('click', function () { openUserRequestDetail(r); });
+        if (r.status === 'ממתינה') {
+            var takeBtn = document.createElement('button');
+            takeBtn.type = 'button';
+            takeBtn.className = 'primary-button';
+            takeBtn.textContent = 'קח משימה';
+            takeBtn.style.marginTop = '8px';
+            takeBtn.addEventListener('click', function (e) { e.stopPropagation(); takeUserRequestQuick(r); });
+            card.appendChild(takeBtn);
+        }
         return card;
+    }
+
+    async function takeUserRequestQuick(r) {
+        showLoading(true);
+        var res = await apiPost('userRequests', 'take', { requestId: r.requestId });
+        showLoading(false);
+        if (res.ok) {
+            loadUserRequestsAdminPage();
+            if (isHubActive() && Portal.isITAdmin()) loadHubDashboard();
+        } else {
+            alert(res.error || 'שגיאה');
+        }
     }
 
     function renderUserRequestsQueue() {
@@ -1744,11 +1813,33 @@
         el.style.display = el.style.display === 'none' ? 'flex' : 'none';
     });
 
+    // v2.1, follow-up: the review modal is a 3-step wizard (פרטי עובד → סקריפט → שליחה)
+    // instead of one long flat form.
     var userRequestDetailTracker = makeDirtyTracker(document.getElementById('userRequestDetailBackdrop'));
     var currentUserRequestFull = null;
+    var urdCurrentStep = 1;
+    var urdScriptPasswordManuallyEdited = false;
+
+    function setUrdStep(step) {
+        urdCurrentStep = step;
+        document.getElementById('urdStep1').style.display = step === 1 ? 'block' : 'none';
+        document.getElementById('urdStep2').style.display = step === 2 ? 'block' : 'none';
+        document.getElementById('urdStep3').style.display = step === 3 ? 'block' : 'none';
+        [1, 2, 3].forEach(function (i) {
+            var dot = document.getElementById('urdStepDot' + i);
+            dot.classList.toggle('done', i < step);
+            dot.classList.toggle('active', i === step);
+        });
+        document.getElementById('urdStepLine1').classList.toggle('done', step > 1);
+        document.getElementById('urdStepLine2').classList.toggle('done', step > 2);
+        document.getElementById('urdBackBtn').style.display = step > 1 ? 'inline-block' : 'none';
+        var isCompleted = currentUserRequestFull && currentUserRequestFull.status === 'הוקם';
+        document.getElementById('urdNextBtn').style.display = (step < 3 && !isCompleted) ? 'inline-block' : 'none';
+        document.getElementById('urdMarkCompletedBtn').style.display = (step === 3 && !isCompleted) ? 'inline-block' : 'none';
+    }
 
     function currentUserRequestFieldPayload() {
-        return {
+        var payload = {
             requestId: openUserRequestId,
             firstNameHe: document.getElementById('urdFirstNameHe').value.trim(),
             lastNameHe: document.getElementById('urdLastNameHe').value.trim(),
@@ -1758,24 +1849,39 @@
             role: document.getElementById('urdRole').value.trim(),
             folderIds: getSelectedFolderIds(document.getElementById('urdFolders')),
         };
+        if (urdScriptPasswordManuallyEdited) payload.tempPassword = document.getElementById('urdScriptPassword').value;
+        return payload;
     }
 
     async function refreshUserRequestScriptPreview() {
         var res = await apiPost('userRequests', 'previewScript', currentUserRequestFieldPayload());
         if (res.ok) {
             document.getElementById('urdSuggestedEmail').value = res.data.suggestedEmail;
+            document.getElementById('urdScriptPassword').value = res.data.tempPassword;
             document.getElementById('urdScript').value = res.data.script;
         }
     }
 
+    function buildWelcomeMessage(req) {
+        return 'שלום ' + req.firstNameHe + ',\n\n' +
+            'המשתמש שלך במערכות החברה הוקם.\n' +
+            'שם משתמש: ' + req.suggestedEmail + '\n' +
+            'סיסמה זמנית: ' + req.tempPassword + '\n\n' +
+            'בכניסה הראשונה תתבקש/י לבחור סיסמה חדשה.';
+    }
+
     async function openUserRequestDetail(r) {
         openUserRequestId = r.requestId;
+        urdScriptPasswordManuallyEdited = false;
         document.getElementById('userRequestDetailTitle').textContent = r.requestNumber;
         document.getElementById('userRequestDetailError').style.display = 'none';
-        document.getElementById('urdWelcomeSection').style.display = 'none';
         document.getElementById('userRequestDetailBackdrop').classList.add('visible');
+        setUrdStep(1);
 
         showLoading(true);
+        // Opening a still-pending request IS how IT "takes" it (section 4/17) — a claim
+        // by someone else in the meantime just surfaces as a normal load error below.
+        if (r.status === 'ממתינה') await apiPost('userRequests', 'take', { requestId: r.requestId }).catch(function () {});
         var res = await apiGet('userRequests', 'get', { requestId: r.requestId });
         showLoading(false);
         if (!res.ok) {
@@ -1792,34 +1898,18 @@
         await ensureBranchesLoaded();
         populateBranchSelect(document.getElementById('urdBranch'), req.branchNumber);
         document.getElementById('urdRole').value = req.role;
+        await ensureSharedFoldersLoaded();
         renderFolderCheckboxes(document.getElementById('urdFolders'), res.data.folders.map(function (f) { return f.id; }));
-        document.getElementById('urdSuggestedEmail').value = req.suggestedEmail;
+        document.getElementById('urdRequesterEmailNote').textContent = req.requesterEmail || '';
 
-        var isCompleted = req.status === 'הוקם';
-        document.getElementById('urdMarkCompletedBtn').style.display = isCompleted ? 'none' : 'inline-block';
-        if (isCompleted) {
-            document.getElementById('urdWelcomeSection').style.display = 'block';
+        if (req.status === 'הוקם') {
+            document.getElementById('urdSuggestedEmail').value = req.suggestedEmail;
+            document.getElementById('urdScriptPassword').value = req.tempPassword;
             document.getElementById('urdWelcomeMessage').value = buildWelcomeMessage(req);
+            setUrdStep(3);
         }
-
-        await refreshUserRequestScriptPreview();
         userRequestDetailTracker.reset();
     }
-
-    function buildWelcomeMessage(req) {
-        return 'שלום ' + req.firstNameHe + ',\n\n' +
-            'המשתמש שלך במערכות החברה הוקם.\n' +
-            'שם משתמש: ' + req.suggestedEmail + '\n' +
-            'סיסמה זמנית: ' + req.tempPassword + '\n\n' +
-            'בכניסה הראשונה תתבקש/י לבחור סיסמה חדשה.';
-    }
-
-    document.getElementById('userRequestDetailBackdrop').addEventListener('input', function (e) {
-        if (e.target.closest('#urdFirstNameHe,#urdLastNameHe,#urdFirstNameEn,#urdLastNameEn,#urdRole,#urdFolders')) refreshUserRequestScriptPreview();
-    });
-    document.getElementById('userRequestDetailBackdrop').addEventListener('change', function (e) {
-        if (e.target.closest('#urdFolders,#urdBranch')) refreshUserRequestScriptPreview();
-    });
 
     function closeUserRequestDetail() { document.getElementById('userRequestDetailBackdrop').classList.remove('visible'); }
 
@@ -1829,46 +1919,57 @@
     document.getElementById('urdCopyScriptBtn').addEventListener('click', function () {
         copyToClipboard(document.getElementById('urdScript').value, this);
     });
+    document.getElementById('urdCopyPasswordBtn').addEventListener('click', function () {
+        copyToClipboard(document.getElementById('urdScriptPassword').value, this);
+    });
     document.getElementById('urdCopyWelcomeBtn').addEventListener('click', function () {
         copyToClipboard(document.getElementById('urdWelcomeMessage').value, this);
     });
+    document.getElementById('urdScriptPassword').addEventListener('input', function () { urdScriptPasswordManuallyEdited = true; });
+    document.getElementById('urdScriptPassword').addEventListener('change', refreshUserRequestScriptPreview);
 
-    document.getElementById('urdSaveBtn').addEventListener('click', async function () {
+    document.getElementById('urdBackBtn').addEventListener('click', function () {
+        if (urdCurrentStep > 1) setUrdStep(urdCurrentStep - 1);
+    });
+
+    document.getElementById('urdNextBtn').addEventListener('click', async function () {
         var errEl = document.getElementById('userRequestDetailError');
-        var payload = currentUserRequestFieldPayload();
-        if (!payload.firstNameHe || !payload.lastNameHe || !payload.firstNameEn || !payload.lastNameEn) {
-            errEl.textContent = 'יש למלא שם פרטי ומשפחה בעברית ובאנגלית';
-            errEl.style.display = 'block';
-            return;
-        }
-        showLoading(true);
-        var res = await apiPost('userRequests', 'update', payload);
-        showLoading(false);
-        if (res.ok) {
+        errEl.style.display = 'none';
+
+        if (urdCurrentStep === 1) {
+            var payload = currentUserRequestFieldPayload();
+            if (!payload.firstNameHe || !payload.lastNameHe || !payload.firstNameEn || !payload.lastNameEn) {
+                errEl.textContent = 'יש למלא שם פרטי ומשפחה בעברית ובאנגלית';
+                errEl.style.display = 'block';
+                return;
+            }
+            showLoading(true);
+            var res = await apiPost('userRequests', 'update', payload);
+            if (res.ok) await refreshUserRequestScriptPreview();
+            showLoading(false);
+            if (!res.ok) { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; return; }
             userRequestDetailTracker.reset();
-            await refreshUserRequestScriptPreview();
-            loadUserRequestsAdminPage();
-        } else {
-            errEl.textContent = res.error || 'שגיאה בשמירה';
-            errEl.style.display = 'block';
+            setUrdStep(2);
+        } else if (urdCurrentStep === 2) {
+            document.getElementById('urdWelcomeMessage').value = buildWelcomeMessage({
+                firstNameHe: document.getElementById('urdFirstNameHe').value.trim(),
+                suggestedEmail: document.getElementById('urdSuggestedEmail').value,
+                tempPassword: document.getElementById('urdScriptPassword').value,
+            });
+            setUrdStep(3);
         }
     });
 
     document.getElementById('urdMarkCompletedBtn').addEventListener('click', async function () {
-        if (!confirm('לסמן את הבקשה כהוקמה? ודא/י שהרצת את הסקריפט בפועל קודם.')) return;
+        if (!confirm('לסמן את הבקשה כהוקמה? ודא/י שהרצת את הסקריפט בפועל קודם. יישלח מייל אוטומטי למגיש הבקשה עם פרטי ההתחברות.')) return;
         showLoading(true);
         var res = await apiPost('userRequests', 'markCompleted', { requestId: openUserRequestId });
         showLoading(false);
         if (res.ok) {
-            document.getElementById('urdMarkCompletedBtn').style.display = 'none';
-            document.getElementById('urdWelcomeSection').style.display = 'block';
-            document.getElementById('urdWelcomeMessage').value = buildWelcomeMessage({
-                firstNameHe: document.getElementById('urdFirstNameHe').value.trim(),
-                suggestedEmail: document.getElementById('urdSuggestedEmail').value,
-                tempPassword: currentUserRequestFull ? currentUserRequestFull.tempPassword : '',
-            });
             userRequestDetailTracker.reset();
+            closeUserRequestDetail();
             loadUserRequestsAdminPage();
+            if (isHubActive() && Portal.isITAdmin()) loadHubDashboard();
         } else {
             document.getElementById('userRequestDetailError').textContent = res.error || 'שגיאה';
             document.getElementById('userRequestDetailError').style.display = 'block';

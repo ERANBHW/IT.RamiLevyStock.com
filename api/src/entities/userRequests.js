@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { sql, getPool } = require('../db');
-const { sendUserRequestEmail } = require('../mail');
+const { sendUserRequestEmail, sendUserRequestCompletedEmail } = require('../mail');
 
 function rowToUserRequest(r) {
   if (!r) return null;
@@ -19,6 +19,8 @@ function rowToUserRequest(r) {
     suggestedEmail: r.SuggestedEmail,
     tempPassword: r.TempPassword,
     status: r.Status,
+    assignedToEmail: r.AssignedToEmail,
+    assignedToName: r.AssignedToName,
     reviewedByEmail: r.ReviewedByEmail,
     reviewedAt: r.ReviewedAt,
   };
@@ -278,17 +280,43 @@ async function previewScript(payload, caller) {
   return { ok: true, data: { script, suggestedEmail, tempPassword } };
 }
 
+// Mirrors tickets.take() — a pending request moves to "בטיפול" and is pinned to whoever
+// took it, same as a ticket. Appears alongside tickets in the dashboard/queue.
+async function take(payload, caller) {
+  if (!canReview(caller)) return { ok: false, error: 'אין הרשאה' };
+  const requestId = Number(payload.requestId);
+  const pool = await getPool();
+  const existing = await pool.request().input('id', sql.Int, requestId).query('SELECT * FROM UserRequests WHERE RequestId = @id');
+  const row = existing.recordset[0];
+  if (!row) return { ok: false, error: 'הבקשה לא נמצאה' };
+  if (row.Status !== 'ממתינה') return { ok: false, error: 'הבקשה כבר נלקחה' };
+
+  await pool.request()
+    .input('id', sql.Int, requestId)
+    .input('email', sql.NVarChar, caller.email)
+    .input('name', sql.NVarChar, caller.name || '')
+    .query(`UPDATE UserRequests SET Status = N'בטיפול', AssignedToEmail = @email, AssignedToName = @name
+      WHERE RequestId = @id`);
+  return { ok: true };
+}
+
 async function markCompleted(payload, caller) {
   if (!canReview(caller)) return { ok: false, error: 'אין הרשאה' };
   const requestId = Number(payload.requestId);
   const pool = await getPool();
-  const result = await pool.request()
+  const existing = await pool.request().input('id', sql.Int, requestId).query('SELECT * FROM UserRequests WHERE RequestId = @id');
+  const row = existing.recordset[0];
+  if (!row) return { ok: false, error: 'הבקשה לא נמצאה' };
+  if (row.Status !== 'בטיפול') return { ok: false, error: 'יש לקחת את הבקשה לטיפול לפני סימון כהוקמה' };
+
+  await pool.request()
     .input('id', sql.Int, requestId)
     .input('reviewer', sql.NVarChar, caller.email)
     .query(`UPDATE UserRequests SET Status = N'הוקם', ReviewedByEmail = @reviewer, ReviewedAt = SYSUTCDATETIME()
       WHERE RequestId = @id`);
-  if (!result.rowsAffected[0]) return { ok: false, error: 'הבקשה לא נמצאה' };
+
+  sendUserRequestCompletedEmail(row).catch((err) => console.error('sendUserRequestCompletedEmail failed', err));
   return { ok: true };
 }
 
-module.exports = { create, list, get, update, previewScript, markCompleted, rowToUserRequest };
+module.exports = { create, list, get, update, previewScript, take, markCompleted, rowToUserRequest };

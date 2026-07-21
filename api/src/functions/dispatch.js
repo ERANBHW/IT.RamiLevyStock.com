@@ -76,6 +76,7 @@ const ROUTES = {
     get: userRequests.get,
     update: userRequests.update,
     previewScript: userRequests.previewScript,
+    take: userRequests.take,
     markCompleted: userRequests.markCompleted,
   },
   printers: {

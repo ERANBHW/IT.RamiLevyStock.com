@@ -103,4 +103,27 @@ async function sendUserRequestEmail(request) {
   await graphSendMail({ to: staffRecipients, subject, body });
 }
 
-module.exports = { sendTicketEmails, sendUserRequestEmail };
+// Sent when IT marks a request "הוקם" — goes to whoever originally submitted the request,
+// with the new login so they can hand it to the employee. Requested explicitly by the
+// product owner; note this does put a temporary password in an email body (mitigated by
+// ForceChangePasswordNextSignIn=true in the setup script, but still worth knowing).
+async function sendUserRequestCompletedEmail(request) {
+  if (!request.RequesterEmail) return;
+  const subject = `המשתמש שביקשת מוכן - ${request.RequestNumber}`;
+  const body = [
+    `שלום ${request.RequesterName || ''},`,
+    '',
+    `המשתמש שביקשת (${request.FirstNameHe} ${request.LastNameHe}) הוקם במערכות החברה.`,
+    '',
+    `כתובת מייל: ${request.SuggestedEmail}`,
+    `סיסמה זמנית: ${request.TempPassword}`,
+    '',
+    'יש להעביר את הפרטים לעובד/ת. בכניסה הראשונה תתבקש/י לבחור סיסמה חדשה.',
+    '',
+    `נשלח מטעם ${MAIL_SENDER_NAME}`,
+  ].join('\n');
+
+  await graphSendMail({ to: [request.RequesterEmail], subject, body });
+}
+
+module.exports = { sendTicketEmails, sendUserRequestEmail, sendUserRequestCompletedEmail };

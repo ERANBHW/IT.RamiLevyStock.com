@@ -246,16 +246,33 @@ CREATE TABLE UserRequests (
     SuggestedEmail  NVARCHAR(320)   NOT NULL DEFAULT '',
     TempPassword    NVARCHAR(100)   NOT NULL DEFAULT '',
     Status          NVARCHAR(20)    NOT NULL DEFAULT N'ממתינה',
+    AssignedToEmail NVARCHAR(320)   NULL,
+    AssignedToName  NVARCHAR(200)   NULL,
     ReviewedByEmail NVARCHAR(320)   NULL,
     ReviewedAt      DATETIME2       NULL,
     CONSTRAINT UQ_UserRequests_RequestNumber UNIQUE (RequestNumber),
     CONSTRAINT FK_UserRequests_Branch FOREIGN KEY (BranchNumber) REFERENCES Branches(Number),
-    CONSTRAINT CK_UserRequests_Status CHECK (Status IN (N'ממתינה', N'הוקם'))
+    CONSTRAINT CK_UserRequests_Status CHECK (Status IN (N'ממתינה', N'בטיפול', N'הוקם'))
 );
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_UserRequests_Status')
 CREATE INDEX IX_UserRequests_Status ON UserRequests(Status);
+GO
+
+-- "קח משימה" (mirrors Tickets' take/AssignedTo flow) — added after the table already
+-- existed in production, so both the new columns and the wider status CHECK are ALTERed
+-- in guarded separately from the CREATE TABLE above.
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('UserRequests') AND name = 'AssignedToEmail')
+ALTER TABLE UserRequests ADD AssignedToEmail NVARCHAR(320) NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('UserRequests') AND name = 'AssignedToName')
+ALTER TABLE UserRequests ADD AssignedToName NVARCHAR(200) NULL;
+GO
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_UserRequests_Status')
+ALTER TABLE UserRequests DROP CONSTRAINT CK_UserRequests_Status;
+GO
+ALTER TABLE UserRequests ADD CONSTRAINT CK_UserRequests_Status CHECK (Status IN (N'ממתינה', N'בטיפול', N'הוקם'));
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'UserRequestFolders')
