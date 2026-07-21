@@ -167,18 +167,27 @@
         .sort-buttons { display: flex; gap: 6px; }
         .sort-btn { border: 1px solid var(--border); background: var(--white); border-radius: 20px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: inherit; }
         .sort-btn.active { background: var(--brand-pink); border-color: var(--brand-pink); color: #fff; }
+        .dash-toolbar-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .dash-toolbar-icon { font-size: 13px; }
 
         .dash-ticket-card { cursor: pointer; }
         .dash-ticket-card.expanded { border-radius: 12px 12px 0 0; border-bottom: none; }
         .dash-ticket-meta-top { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
         .dash-ticket-detail { border: 1px solid var(--border); border-top: none; border-radius: 0 0 12px 12px; padding: 14px; background: var(--white); }
-        .dash-timeline { position: relative; padding-right: 16px; margin: 10px 0; }
+        .dash-elapsed-row { font-size: 11px; color: var(--muted); margin-top: 3px; }
+        .status-action-btn { border: none; cursor: pointer; font-family: inherit; }
+        .dash-timeline { position: relative; padding-right: 18px; margin: 10px 0; }
         .dash-timeline::before { content: ''; position: absolute; right: 4px; top: 4px; bottom: 4px; width: 2px; background: var(--border); }
         .dash-timeline-item { position: relative; padding-bottom: 12px; }
         .dash-timeline-item:last-child { padding-bottom: 0; }
-        .dash-timeline-item::before { content: ''; position: absolute; right: -12px; top: 3px; width: 8px; height: 8px; border-radius: 50%; background: var(--brand-pink); }
+        .dash-timeline-dot { position: absolute; right: -14px; top: 3px; width: 8px; height: 8px; border-radius: 50%; background: var(--brand-pink); display: block; }
+        .dash-timeline-dot.editable { cursor: pointer; width: 12px; height: 12px; right: -16px; top: 1px; box-shadow: 0 0 0 2px var(--white); }
         .dash-timeline-time { font-size: 11px; color: var(--muted); }
         .dash-timeline-text { font-size: 12px; margin-top: 2px; }
+        .dash-note-edit-row { display: flex; gap: 6px; align-items: center; }
+        .dash-note-edit-row input { flex: 1; font-size: 12px; padding: 4px 8px; }
+        .dash-stat-tile { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; }
+        .dash-stat-value { font-size: 20px; font-weight: 700; }
 
         .filter-popover {
             position: absolute; top: calc(100% + 6px); right: 0; z-index: 60; min-width: 200px; max-height: 240px;
@@ -269,17 +278,19 @@
                     </div>
                     <div class="dashboard-charts" id="dashboardCharts"></div>
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin:14px 0 8px;flex-wrap:wrap">
-                        <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <div class="dash-toolbar-group">
+                            <span class="dash-toolbar-icon" title="סינון">🔽</span>
                             <div style="position:relative">
-                                <button type="button" class="secondary-button" id="dashUserFilterBtn">לפי משתמש</button>
+                                <button type="button" class="sort-btn" id="dashUserFilterBtn">משתמש</button>
                                 <div id="dashUserFilterPopover" class="filter-popover" style="display:none"></div>
                             </div>
                             <div style="position:relative">
-                                <button type="button" class="secondary-button" id="dashBranchFilterBtn">לפי סניף</button>
+                                <button type="button" class="sort-btn" id="dashBranchFilterBtn">סניף</button>
                                 <div id="dashBranchFilterPopover" class="filter-popover" style="display:none"></div>
                             </div>
                         </div>
-                        <div class="sort-buttons">
+                        <div class="dash-toolbar-group sort-buttons">
+                            <span class="dash-toolbar-icon" title="מיון">↕️</span>
                             <button type="button" class="sort-btn active" id="dashSortUrgency" data-sort="urgency">דרגה</button>
                             <button type="button" class="sort-btn" id="dashSortDate" data-sort="date">תאריך</button>
                             <button type="button" class="sort-btn" id="dashSortBranch" data-sort="branch">סניף</button>
@@ -1370,9 +1381,15 @@
     // Timeline-style rendering used by the dashboard's inline ticket expansion (section 7 follow-up).
     function renderTimelineEntry(entry) {
         var text = describeLogEntry(entry);
-        return '<div class="dash-timeline-item">' +
+        var user = Portal.getUser();
+        var isMine = entry.action === 'note' && entry.actorEmail && user && user.email &&
+            String(entry.actorEmail).toLowerCase() === String(user.email).toLowerCase();
+        var idAttr = isMine ? ' data-log-id="' + entry.id + '"' : '';
+        var dotClass = 'dash-timeline-dot' + (isMine ? ' editable' : '');
+        return '<div class="dash-timeline-item"' + idAttr + '>' +
+            '<span class="' + dotClass + '"' + (isMine ? ' title="לחץ לעריכת ההערה"' : '') + '></span>' +
             '<div class="dash-timeline-time">' + formatDateTime(entry.timestamp) + ' · ' + escapeHtml(entry.actorName || entry.actorEmail) + '</div>' +
-            '<div class="dash-timeline-text">' + escapeHtml(text) + '</div></div>';
+            '<div class="dash-timeline-text" data-log-text>' + escapeHtml(text) + '</div></div>';
     }
 
     // Every mutation is refetched from the server, never trusted from local state.
@@ -1503,7 +1520,10 @@
     var dashStatusFilter = null; // null = open+in-progress (default) | 'פתוחה' | 'בטיפול' | 'סגורה' — set by clicking a cube
     var dashSortBy = 'urgency'; // 'urgency' | 'date' | 'branch'
     var dashDisplayLimit = 30; // pagination — "הצג עוד" adds 30 more, client-side only
-    var openDashboardTicketNumber = null; // survives re-renders so an expanded row reopens itself after a refresh
+    var openDashboardTicketNumber = null; // survives re-renders; the reused DOM node keeps its content untouched
+    var openDashboardRow = null; // { cardEl, detailEl } of the currently-expanded row
+    var dashRowElements = {}; // ticketNumber -> { wrap, card, detail } — reused across refreshes so an open row never gets torn down
+    var dashTicketsByNumber = {}; // ticketNumber -> latest ticket object, so click handlers never act on stale data
 
     function isHubActive() { return document.getElementById('view-hub').classList.contains('active'); }
 
@@ -1520,9 +1540,9 @@
         dashboardOpenRequests = reqRes.ok ? reqRes.data.filter(function (r) { return r.status !== 'הוקם'; }) : [];
 
         renderDashboardCounts(closedCount);
-        renderDashboardCharts();
         renderDashboardUserFilter();
         renderDashboardBranchFilter();
+        renderDashboardCharts();
         updateDashCubeActiveClasses();
         renderDashboardTicketsList();
     }
@@ -1533,6 +1553,71 @@
         document.getElementById('dashOpenCount').textContent = openCount;
         document.getElementById('dashProgressCount').textContent = progressCount;
         document.getElementById('dashClosedCount').textContent = closedCount;
+    }
+
+    // Whichever status-cube is active (or none = open+in-progress) — the base array
+    // everything else (charts, popover counts, the table) is derived from.
+    function getStatusFilteredSource() {
+        return dashStatusFilter === 'סגורה'
+            ? (dashboardClosedTickets || [])
+            : dashboardOpenTickets.filter(function (t) { return dashStatusFilter === null || t.status === dashStatusFilter; });
+    }
+
+    function msBetween(a, b) { return new Date(b) - new Date(a); }
+
+    function formatDuration(ms) {
+        if (ms == null || isNaN(ms) || ms < 0) return '';
+        var mins = Math.floor(ms / 60000);
+        if (mins < 1) return 'פחות מדקה';
+        if (mins < 60) return mins + ' ד׳';
+        var hours = Math.floor(mins / 60);
+        var remMins = mins % 60;
+        if (hours < 24) return hours + ' ש׳' + (remMins ? ' ' + remMins + ' ד׳' : '');
+        var days = Math.floor(hours / 24);
+        var remHours = hours % 24;
+        return days + ' י׳' + (remHours ? ' ' + remHours + ' ש׳' : '');
+    }
+
+    // Per-row elapsed-time breakdown (section 7 follow-up, item 10): what's shown depends
+    // on the ticket's own status, not the current cube filter, so it stays correct even
+    // when tickets from more than one status share the table.
+    function dashboardElapsedHtml(t) {
+        var now = new Date();
+        var opened = new Date(t.timestamp);
+        if (t.status === 'פתוחה') return 'פתוחה ' + formatDuration(now - opened);
+        if (t.status === 'בטיפול') {
+            var taken = t.takenAt ? new Date(t.takenAt) : null;
+            var parts = [];
+            if (taken) parts.push('המתנה לטיפול: ' + formatDuration(taken - opened));
+            parts.push('בטיפול: ' + formatDuration(now - (taken || opened)));
+            return parts.join(' · ');
+        }
+        var taken2 = t.takenAt ? new Date(t.takenAt) : null;
+        var closed = t.closedAt ? new Date(t.closedAt) : null;
+        var parts2 = [];
+        if (taken2) parts2.push('המתנה: ' + formatDuration(taken2 - opened));
+        if (taken2 && closed) parts2.push('טיפול: ' + formatDuration(closed - taken2));
+        if (closed) parts2.push('סה"כ: ' + formatDuration(closed - opened));
+        return parts2.join(' · ');
+    }
+
+    // Average handling time (item 7) — always measured on closed tickets specifically
+    // (that's what "handling time" means), filtered by the user/branch selections like
+    // the charts, but independent of which status-cube happens to be active.
+    function computeAvgHandlingTime() {
+        if (!dashboardClosedTickets) return null;
+        var filtered = dashboardClosedTickets.filter(function (t) {
+            var userOk = !dashUserFilterSelection.length || dashUserFilterSelection.indexOf(t.userName || t.userEmail) !== -1;
+            var branchOk = !dashBranchFilterSelection.length || dashBranchFilterSelection.indexOf(t.branch || 'ללא סניף') !== -1;
+            return userOk && branchOk;
+        });
+        var durations = filtered.map(function (t) {
+            if (!t.closedAt) return null;
+            var start = t.takenAt || t.timestamp;
+            return msBetween(start, t.closedAt);
+        }).filter(function (d) { return d != null; });
+        if (!durations.length) return null;
+        return durations.reduce(function (a, b) { return a + b; }, 0) / durations.length;
     }
 
     // Small horizontal bar chart, one brand hue (this is a single-series magnitude-by-
@@ -1556,11 +1641,10 @@
         return '<div class="dash-chart"><div class="dash-chart-title">' + escapeHtml(title) + '</div>' + rowsHtml + '</div>';
     }
 
-    // Charts reflect the current open+in-progress workload, filtered by the
-    // user/branch selections (so they stay relevant alongside the list below) but not
-    // by the status-cube filter — "closed" isn't part of an at-a-glance workload view.
+    // Charts reflect the SAME set the table below shows (status-cube + user/branch
+    // filters) — switching cubes updates the charts too (section 7 follow-up, item 6).
     function renderDashboardCharts() {
-        var workingSet = dashboardOpenTickets.filter(function (t) {
+        var workingSet = getStatusFilteredSource().filter(function (t) {
             var userOk = !dashUserFilterSelection.length || dashUserFilterSelection.indexOf(t.userName || t.userEmail) !== -1;
             var branchOk = !dashBranchFilterSelection.length || dashBranchFilterSelection.indexOf(t.branch || 'ללא סניף') !== -1;
             return userOk && branchOk;
@@ -1573,13 +1657,18 @@
             var br = t.branch || 'ללא סניף';
             byBranch[br] = (byBranch[br] || 0) + 1;
         });
-        document.getElementById('dashboardCharts').innerHTML =
-            buildBarChart('קריאות פתוחות לפי קטגוריה', byCategory) +
-            buildBarChart('קריאות פתוחות לפי סניף', byBranch);
+        var html = buildBarChart('קריאות לפי קטגוריה', byCategory) + buildBarChart('קריאות לפי סניף', byBranch);
+        var avg = computeAvgHandlingTime();
+        if (avg != null) {
+            html += '<div class="dash-chart dash-stat-tile"><div class="dash-chart-title">זמן טיפול ממוצע (קריאות סגורות)</div>' +
+                '<div class="dash-stat-value">' + escapeHtml(formatDuration(avg)) + '</div></div>';
+        }
+        document.getElementById('dashboardCharts').innerHTML = html;
     }
 
-    // v2.1, follow-up: "לפי משתמש"/"לפי סניף" are pill buttons that open a multi-select
-    // checkbox popover (like the folder pickers elsewhere), replacing the old single-select.
+    // v2.1, follow-up: "משתמש"/"סניף" are pill buttons that open a multi-select checkbox
+    // popover (like the folder pickers elsewhere). Counts shown next to each option are
+    // scoped to whichever status-cube is currently active (item 5).
     var dashUserFilterSelection = [];
     var dashBranchFilterSelection = [];
 
@@ -1588,24 +1677,26 @@
     }
 
     function renderDashboardUserFilter() {
-        var users = Array.from(new Set(dashboardOpenTickets.map(function (t) { return t.userName || t.userEmail; }))).sort();
+        var counts = {};
+        getStatusFilteredSource().forEach(function (t) {
+            var u = t.userName || t.userEmail;
+            counts[u] = (counts[u] || 0) + 1;
+        });
+        var users = Object.keys(counts).sort();
         dashUserFilterSelection = dashUserFilterSelection.filter(function (u) { return users.indexOf(u) !== -1; });
         var popover = document.getElementById('dashUserFilterPopover');
         popover.innerHTML = users.length
             ? users.map(function (v) {
                 var checked = dashUserFilterSelection.indexOf(v) !== -1 ? ' checked' : '';
-                return '<label><input type="checkbox" value="' + escapeHtml(v) + '"' + checked + '>' + escapeHtml(v) + '</label>';
+                return '<label><input type="checkbox" value="' + escapeHtml(v) + '"' + checked + '>' + escapeHtml(v) + ' (' + counts[v] + ')</label>';
             }).join('')
             : '<span style="color:var(--muted);font-size:12px">אין נתונים</span>';
-        updateDashFilterButtonLabel('dashUserFilterBtn', 'לפי משתמש', dashUserFilterSelection.length);
+        updateDashFilterButtonLabel('dashUserFilterBtn', 'משתמש', dashUserFilterSelection.length);
     }
 
-    // Per-branch open-ticket count is now shown right on the branch filter button's
-    // popover rows (e.g. "פרדס חנה (8)") — this replaces the old standalone branch-
-    // breakdown chip row (section 6 follow-up).
     function renderDashboardBranchFilter() {
         var counts = {};
-        dashboardOpenTickets.forEach(function (t) {
+        getStatusFilteredSource().forEach(function (t) {
             var b = t.branch || 'ללא סניף';
             counts[b] = (counts[b] || 0) + 1;
         });
@@ -1618,18 +1709,13 @@
                 return '<label><input type="checkbox" value="' + escapeHtml(b) + '"' + checked + '>' + escapeHtml(b) + ' (' + counts[b] + ')</label>';
             }).join('')
             : '<span style="color:var(--muted);font-size:12px">אין נתונים</span>';
-        updateDashFilterButtonLabel('dashBranchFilterBtn', 'לפי סניף', dashBranchFilterSelection.length);
+        updateDashFilterButtonLabel('dashBranchFilterBtn', 'סניף', dashBranchFilterSelection.length);
     }
 
-    // Single source of truth for what the table below shows: which status-cube is
-    // active picks the source array (open+in-progress, or lazily-loaded closed), then
-    // user/branch selections filter it, then the active sort button orders it.
+    // Single source of truth for what the table below shows: the status-cube source,
+    // then user/branch selections filter it, then the active sort button orders it.
     function getFilteredSortedTickets() {
-        var source = dashStatusFilter === 'סגורה'
-            ? (dashboardClosedTickets || [])
-            : dashboardOpenTickets.filter(function (t) { return dashStatusFilter === null || t.status === dashStatusFilter; });
-
-        var list = source.filter(function (t) {
+        var list = getStatusFilteredSource().filter(function (t) {
             var userOk = !dashUserFilterSelection.length || dashUserFilterSelection.indexOf(t.userName || t.userEmail) !== -1;
             var branchOk = !dashBranchFilterSelection.length || dashBranchFilterSelection.indexOf(t.branch || 'ללא סניף') !== -1;
             return userOk && branchOk;
@@ -1643,12 +1729,14 @@
         });
     }
 
+    // Reuses each row's existing DOM node across refreshes (keyed by ticket number) —
+    // an expanded row's detail panel (description/timeline/note box) is never touched
+    // by this function, so auto-refresh never closes it or interrupts what you're doing
+    // (section 7 follow-up, item 1). Only the header (status/urgency/elapsed time) is
+    // refreshed in place.
     function renderDashboardTicketsList() {
         var container = document.getElementById('dashTicketsList');
-        container.innerHTML = '';
 
-        // User-creation requests (section 4/17) only make sense in the default "all
-        // active work" view — they don't have a "פתוחה/בטיפול/סגורה" ticket status.
         var requests = (dashStatusFilter === null) ? dashboardOpenRequests.filter(function (r) {
             var name = [r.firstNameHe, r.lastNameHe].filter(Boolean).join(' ');
             var userOk = !dashUserFilterSelection.length ||
@@ -1659,68 +1747,144 @@
         }) : [];
 
         var tickets = getFilteredSortedTickets();
+        tickets.forEach(function (t) { dashTicketsByNumber[t.ticketNumber] = t; });
         var visibleTickets = tickets.slice(0, dashDisplayLimit);
 
         if (!requests.length && !visibleTickets.length) {
             container.innerHTML = '<p style="color:var(--muted);font-size:13px">אין קריאות להצגה.</p>';
             document.getElementById('dashLoadMoreBtn').style.display = 'none';
+            if (openDashboardTicketNumber) closeDashboardDetail();
+            dashRowElements = {};
             return;
         }
 
-        requests.forEach(function (r) { container.appendChild(buildUserRequestCard(r)); });
-        visibleTickets.forEach(function (t) {
-            var row = buildDashboardTicketRow(t);
-            container.appendChild(row);
-            if (t.ticketNumber === openDashboardTicketNumber) {
-                loadDashboardTicketDetail(t, row.querySelector('.dash-ticket-card'), row.querySelector('.dash-ticket-detail'));
+        var visibleNumbers = {};
+        var ticketNodes = visibleTickets.map(function (t) {
+            visibleNumbers[t.ticketNumber] = true;
+            var existing = dashRowElements[t.ticketNumber];
+            if (existing) {
+                updateDashboardTicketRow(existing, t);
+                return existing.wrap;
+            }
+            var built = buildDashboardTicketRow(t);
+            dashRowElements[t.ticketNumber] = built;
+            return built.wrap;
+        });
+
+        Object.keys(dashRowElements).forEach(function (num) {
+            if (!visibleNumbers[num]) {
+                if (num === openDashboardTicketNumber) closeDashboardDetail();
+                delete dashRowElements[num];
             }
         });
+
+        container.innerHTML = '';
+        requests.forEach(function (r) { container.appendChild(buildUserRequestCard(r)); });
+        ticketNodes.forEach(function (n) { container.appendChild(n); });
         document.getElementById('dashLoadMoreBtn').style.display = tickets.length > dashDisplayLimit ? 'block' : 'none';
     }
 
-    // Header shows category | subcategory (if any) | ticket number — replacing the bare
-    // ticket number — with the employee/branch above and date/urgency below (section 4
-    // follow-up: "מה שיש לך" context first, the ID second).
+    // Header shows category | subcategory (if any) | ticket number, employee/branch
+    // above, and date/urgency/elapsed-time below. The status badge doubles as a quick-
+    // action button (item 3) — "קח קריאה"/"סגור קריאה" sit exactly where the plain
+    // status tag used to, so a click there acts immediately without expanding the row.
+    function dashboardCardInnerHtml(t) {
+        var titleParts = [escapeHtml(t.category)];
+        if (t.subcategory) titleParts.push(escapeHtml(t.subcategory));
+        titleParts.push(escapeHtml(t.ticketNumber));
+        var badgeHtml;
+        if (t.status === 'פתוחה') {
+            badgeHtml = '<button type="button" class="status-badge status-open status-action-btn" data-quick-action="take">קח קריאה</button>';
+        } else if (t.status === 'בטיפול') {
+            badgeHtml = '<button type="button" class="status-badge status-progress status-action-btn" data-quick-action="close">סגור קריאה</button>';
+        } else {
+            badgeHtml = '<span class="status-badge status-closed">סגורה</span>';
+        }
+        return '<div class="dash-ticket-meta-top">' + escapeHtml(t.userName || t.userEmail) + (t.branch ? ' | ' + escapeHtml(t.branch) : '') + '</div>' +
+            '<div class="ticket-card-header"><strong>' + titleParts.join(' | ') + '</strong>' + badgeHtml + '</div>' +
+            '<div class="ticket-meta">' + formatDateTime(t.timestamp) + ' | ' + escapeHtml(t.urgency) + '</div>' +
+            '<div class="dash-elapsed-row">' + escapeHtml(dashboardElapsedHtml(t)) + '</div>';
+    }
+
+    function applyDashboardCardStyle(card, t) {
+        card.style.borderRightWidth = '';
+        card.style.borderRightStyle = '';
+        card.style.borderRightColor = '';
+        card.classList.remove('urgency-blink');
+        var color = URGENCY_COLOR[t.urgency];
+        if (t.status !== 'סגורה' && color) applyOpenRowBlink(card, color);
+    }
+
+    function wireDashboardCardActions(card, t) {
+        var quickBtn = card.querySelector('[data-quick-action]');
+        if (!quickBtn) return;
+        quickBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var latest = dashTicketsByNumber[t.ticketNumber] || t;
+            if (quickBtn.getAttribute('data-quick-action') === 'take') dashboardTakeTicket(latest);
+            else dashboardCloseTicket(latest);
+        });
+    }
+
+    // Refreshes an already-built row's header in place — never touches `.detail`, so an
+    // open row's expanded content survives every dashboard refresh untouched.
+    function updateDashboardTicketRow(row, t) {
+        row.card.innerHTML = dashboardCardInnerHtml(t);
+        applyDashboardCardStyle(row.card, t);
+        wireDashboardCardActions(row.card, t);
+    }
+
     function buildDashboardTicketRow(t) {
         var wrap = document.createElement('div');
         var card = document.createElement('div');
         card.className = 'ticket-card dash-ticket-card';
-        var color = URGENCY_COLOR[t.urgency];
-        if (t.status !== 'סגורה' && color) applyOpenRowBlink(card, color);
-        var titleParts = [escapeHtml(t.category)];
-        if (t.subcategory) titleParts.push(escapeHtml(t.subcategory));
-        titleParts.push(escapeHtml(t.ticketNumber));
-        var statusClass = t.status === 'סגורה' ? 'status-closed' : (t.status === 'בטיפול' ? 'status-progress' : 'status-open');
-        card.innerHTML =
-            '<div class="dash-ticket-meta-top">' + escapeHtml(t.userName || t.userEmail) + (t.branch ? ' | ' + escapeHtml(t.branch) : '') + '</div>' +
-            '<div class="ticket-card-header"><strong>' + titleParts.join(' | ') + '</strong>' +
-            '<span class="status-badge ' + statusClass + '">' + escapeHtml(t.status) + '</span></div>' +
-            '<div class="ticket-meta">' + formatDateTime(t.timestamp) + ' | ' + escapeHtml(t.urgency) + '</div>';
+        card.innerHTML = dashboardCardInnerHtml(t);
+        applyDashboardCardStyle(card, t);
 
         var detail = document.createElement('div');
         detail.className = 'dash-ticket-detail';
         detail.style.display = 'none';
         detail.addEventListener('click', function (e) { e.stopPropagation(); });
 
-        card.addEventListener('click', function () { toggleDashboardTicketDetail(t, card, detail); });
+        card.addEventListener('click', function () {
+            toggleDashboardTicketDetail(dashTicketsByNumber[t.ticketNumber] || t, card, detail);
+        });
 
         wrap.appendChild(card);
         wrap.appendChild(detail);
-        return wrap;
+        var row = { wrap: wrap, card: card, detail: detail };
+        wireDashboardCardActions(card, t);
+        return row;
     }
 
     // Clicking a ticket expands its description + a timeline history + an add-note row
-    // right inside its own row — no more popup modal (section 7 follow-up).
+    // right inside its own row — no more popup modal (section 7 follow-up). Only one row
+    // is ever open at a time — opening a new one always properly closes the previous
+    // one first (this used to be the root cause of a bug where a stray, never-closed
+    // detail panel from a PREVIOUS row still held a live event listener, so one click
+    // could fire actions against two different tickets at once).
     function toggleDashboardTicketDetail(t, cardEl, detailEl) {
-        if (openDashboardTicketNumber === t.ticketNumber) {
-            openDashboardTicketNumber = null;
-            detailEl.style.display = 'none';
-            detailEl.innerHTML = '';
-            cardEl.classList.remove('expanded');
-            return;
-        }
+        if (openDashboardTicketNumber === t.ticketNumber) { closeDashboardDetail(); return; }
+        if (openDashboardRow) closeDashboardDetail();
         openDashboardTicketNumber = t.ticketNumber;
+        openDashboardRow = { cardEl: cardEl, detailEl: detailEl };
         loadDashboardTicketDetail(t, cardEl, detailEl);
+    }
+
+    function closeDashboardDetail() {
+        if (openDashboardRow) {
+            openDashboardRow.detailEl.style.display = 'none';
+            openDashboardRow.detailEl.innerHTML = '';
+            openDashboardRow.cardEl.classList.remove('expanded');
+        }
+        openDashboardTicketNumber = null;
+        openDashboardRow = null;
+    }
+
+    function refreshOpenDashboardDetail() {
+        if (!openDashboardTicketNumber || !openDashboardRow) return;
+        var latest = dashTicketsByNumber[openDashboardTicketNumber];
+        if (latest) loadDashboardTicketDetail(latest, openDashboardRow.cardEl, openDashboardRow.detailEl);
     }
 
     async function loadDashboardTicketDetail(t, cardEl, detailEl) {
@@ -1738,8 +1902,8 @@
     function renderDashboardTicketDetail(el, t, log) {
         var isIT = Portal.isITAdmin();
         var actionsHtml = '';
-        if (isIT && t.status === 'פתוחה') actionsHtml += '<button type="button" class="primary-button" id="ddTakeBtn">קח קריאה</button>';
-        if (isIT && t.status === 'בטיפול') actionsHtml += '<button type="button" class="secondary-button" id="ddCloseBtn">סגור קריאה</button>';
+        if (isIT && t.status === 'פתוחה') actionsHtml += '<button type="button" class="primary-button" data-dd-take>קח קריאה</button>';
+        if (isIT && t.status === 'בטיפול') actionsHtml += '<button type="button" class="secondary-button" data-dd-close>סגור קריאה</button>';
 
         el.innerHTML =
             '<div style="font-size:14px;white-space:pre-wrap;margin-bottom:10px">' + escapeHtml(t.description) + '</div>' +
@@ -1749,28 +1913,73 @@
             (log.length ? log.map(renderTimelineEntry).join('') : '<span style="color:var(--muted);font-size:12px">אין רשומות</span>') +
             '</div>' +
             (isIT ? '<div class="field" style="margin:10px 0 0"><div style="display:flex;gap:8px">' +
-                '<input id="ddNoteInput" type="text" style="flex:1" placeholder="הוסף הערה">' +
-                '<button type="button" class="secondary-button" id="ddAddNoteBtn">הוסף</button></div></div>' : '');
+                '<input data-dd-note-input type="text" style="flex:1" placeholder="הוסף הערה (Enter לשליחה)">' +
+                '<button type="button" class="secondary-button" data-dd-add-note>הוסף</button></div></div>' : '');
 
-        var takeBtn = document.getElementById('ddTakeBtn');
+        var takeBtn = el.querySelector('[data-dd-take]');
         if (takeBtn) takeBtn.addEventListener('click', function () { dashboardTakeTicket(t); });
-        var closeBtn = document.getElementById('ddCloseBtn');
+        var closeBtn = el.querySelector('[data-dd-close]');
         if (closeBtn) closeBtn.addEventListener('click', function () { dashboardCloseTicket(t); });
-        var addNoteBtn = document.getElementById('ddAddNoteBtn');
-        if (addNoteBtn) {
-            addNoteBtn.addEventListener('click', function () {
-                var input = document.getElementById('ddNoteInput');
-                var note = input.value.trim();
-                if (note) dashboardAddNote(t, note);
+
+        var noteInput = el.querySelector('[data-dd-note-input]');
+        var addNoteBtn = el.querySelector('[data-dd-add-note]');
+        function submitNote() {
+            var note = noteInput.value.trim();
+            if (note) dashboardAddNote(t, note);
+        }
+        if (addNoteBtn) addNoteBtn.addEventListener('click', submitNote);
+        if (noteInput) {
+            noteInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') { e.preventDefault(); submitNote(); }
             });
         }
+
+        // Editable notes (item 9): clicking the dot of a note YOU authored lets you edit
+        // it inline. System entries (status changes, assignment, "created") never get a
+        // clickable dot — describeLogEntry/renderTimelineEntry only mark real 'note' rows.
+        el.querySelectorAll('.dash-timeline-item[data-log-id]').forEach(function (item) {
+            var dot = item.querySelector('.dash-timeline-dot');
+            if (dot) dot.addEventListener('click', function () { openInlineNoteEdit(item, t); });
+        });
+    }
+
+    function openInlineNoteEdit(item, t) {
+        var textEl = item.querySelector('[data-log-text]');
+        var logId = item.getAttribute('data-log-id');
+        var currentText = textEl.textContent;
+        item.innerHTML = '<div class="dash-note-edit-row">' +
+            '<input type="text" value="' + escapeHtml(currentText) + '">' +
+            '<button type="button" class="icon-button" data-save title="שמור">✔️</button>' +
+            '<button type="button" class="icon-button" data-cancel title="ביטול">✖️</button></div>';
+        var input = item.querySelector('input');
+        input.focus();
+        function cancel() { refreshOpenDashboardDetail(); }
+        function save() {
+            var newText = input.value.trim();
+            if (newText) dashboardUpdateNote(logId, newText);
+        }
+        item.querySelector('[data-save]').addEventListener('click', save);
+        item.querySelector('[data-cancel]').addEventListener('click', cancel);
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); save(); }
+            if (e.key === 'Escape') cancel();
+        });
+    }
+
+    async function dashboardUpdateNote(logId, message) {
+        showLoading(true);
+        var res = await apiPost('tickets', 'updateNote', { logId: logId, message: message });
+        showLoading(false);
+        if (res.ok) refreshOpenDashboardDetail(); else alert(res.error || 'שגיאה');
     }
 
     async function dashboardTakeTicket(t) {
         showLoading(true);
         var res = await apiPost('tickets', 'take', { ticketNumber: t.ticketNumber });
         showLoading(false);
-        if (res.ok) loadHubDashboard(); else alert(res.error || 'שגיאה');
+        if (!res.ok) { alert(res.error || 'שגיאה'); return; }
+        await loadHubDashboard();
+        refreshOpenDashboardDetail();
     }
 
     async function dashboardCloseTicket(t) {
@@ -1778,14 +1987,16 @@
         showLoading(true);
         var res = await apiPost('tickets', 'updateStatus', { ticketNumber: t.ticketNumber, status: 'סגורה', message: note });
         showLoading(false);
-        if (res.ok) loadHubDashboard(); else alert(res.error || 'שגיאה');
+        if (!res.ok) { alert(res.error || 'שגיאה'); return; }
+        await loadHubDashboard();
+        refreshOpenDashboardDetail();
     }
 
     async function dashboardAddNote(t, note) {
         showLoading(true);
         var res = await apiPost('tickets', 'updateStatus', { ticketNumber: t.ticketNumber, status: t.status, message: note });
         showLoading(false);
-        if (res.ok) loadHubDashboard(); else alert(res.error || 'שגיאה');
+        if (res.ok) refreshOpenDashboardDetail(); else alert(res.error || 'שגיאה');
     }
 
     function toggleFilterPopover(popoverId, otherPopoverId) {
@@ -1814,7 +2025,7 @@
         dashUserFilterSelection = e.target.checked
             ? dashUserFilterSelection.concat([v])
             : dashUserFilterSelection.filter(function (x) { return x !== v; });
-        updateDashFilterButtonLabel('dashUserFilterBtn', 'לפי משתמש', dashUserFilterSelection.length);
+        updateDashFilterButtonLabel('dashUserFilterBtn', 'משתמש', dashUserFilterSelection.length);
         dashDisplayLimit = 30;
         renderDashboardCharts();
         renderDashboardTicketsList();
@@ -1825,7 +2036,7 @@
         dashBranchFilterSelection = e.target.checked
             ? dashBranchFilterSelection.concat([v])
             : dashBranchFilterSelection.filter(function (x) { return x !== v; });
-        updateDashFilterButtonLabel('dashBranchFilterBtn', 'לפי סניף', dashBranchFilterSelection.length);
+        updateDashFilterButtonLabel('dashBranchFilterBtn', 'סניף', dashBranchFilterSelection.length);
         dashDisplayLimit = 30;
         renderDashboardCharts();
         renderDashboardTicketsList();
@@ -1833,7 +2044,8 @@
 
     // Clicking a stat cube filters the table by that status (click again to clear back
     // to the default open+in-progress view) — replaces the old separate "closed
-    // tickets"/"all tickets" buttons (section 3/4 follow-up).
+    // tickets"/"all tickets" buttons (section 3/4 follow-up). Switching it also
+    // recomputes the popover counts and charts (items 5+6).
     function updateDashCubeActiveClasses() {
         document.getElementById('dashCubeOpen').classList.toggle('dc-active', dashStatusFilter === 'פתוחה');
         document.getElementById('dashCubeProgress').classList.toggle('dc-active', dashStatusFilter === 'בטיפול');
@@ -1844,6 +2056,9 @@
         dashStatusFilter = (dashStatusFilter === status) ? null : status;
         dashDisplayLimit = 30;
         updateDashCubeActiveClasses();
+        renderDashboardUserFilter();
+        renderDashboardBranchFilter();
+        renderDashboardCharts();
         renderDashboardTicketsList();
     }
 

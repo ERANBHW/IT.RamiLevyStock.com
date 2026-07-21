@@ -52,6 +52,7 @@ const ROUTES = {
     take: tickets.take,
     reassign: tickets.reassign,
     updateStatus: tickets.updateStatus,
+    updateNote: tickets.updateNote,
   },
   procedures: {
     list: procedures.list,

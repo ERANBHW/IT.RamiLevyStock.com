@@ -26,6 +26,7 @@ function rowToTicket(r) {
     status: r.Status,
     assignedToEmail: r.AssignedToEmail,
     assignedToName: r.AssignedToName,
+    takenAt: r.TakenAt,
     closedAt: r.ClosedAt,
     updatedAt: r.UpdatedAt,
   };
@@ -33,6 +34,7 @@ function rowToTicket(r) {
 
 function rowToLog(r) {
   return {
+    id: r.Id,
     timestamp: r.Timestamp,
     actorEmail: r.ActorEmail,
     actorName: r.ActorName,
@@ -199,7 +201,8 @@ async function take(payload, caller) {
     .input('email', sql.NVarChar, caller.email)
     .input('name', sql.NVarChar, caller.name || '')
     .input('status', sql.NVarChar, STATUS_PROGRESS)
-    .query(`UPDATE Tickets SET AssignedToEmail = @email, AssignedToName = @name, Status = @status, UpdatedAt = SYSUTCDATETIME()
+    .query(`UPDATE Tickets SET AssignedToEmail = @email, AssignedToName = @name, Status = @status,
+        TakenAt = SYSUTCDATETIME(), UpdatedAt = SYSUTCDATETIME()
       WHERE TicketNumber = @num`);
 
   await writeLog(pool, ticketNumber, caller, 'assigned', {
@@ -265,4 +268,29 @@ async function updateStatus(payload, caller) {
   return { ok: true };
 }
 
-module.exports = { create, listMine, list, closedCount, listClosed, get, update, take, reassign, updateStatus, rowToTicket };
+// Dashboard timeline follow-up: only the person who wrote a free-text note may edit it
+// later (clicking its dot in the timeline) — never a system-generated entry (status
+// changes, field updates, assignment), and never someone else's note.
+async function updateNote(payload, caller) {
+  if (!caller.isITAdmin) return { ok: false, error: 'אין הרשאה' };
+  const pool = await getPool();
+  const logId = Number(payload.logId);
+  const message = String(payload.message || '').trim();
+  if (!message) return { ok: false, error: 'ההערה לא יכולה להיות ריקה' };
+
+  const result = await pool.request().input('id', sql.Int, logId).query('SELECT * FROM TicketLog WHERE Id = @id');
+  const entry = result.recordset[0];
+  if (!entry) return { ok: false, error: 'הרשומה לא נמצאה' };
+  if (entry.Action !== 'note') return { ok: false, error: 'ניתן לערוך רק הערות' };
+  if (String(entry.ActorEmail).toLowerCase() !== caller.email.toLowerCase()) {
+    return { ok: false, error: 'ניתן לערוך רק הערות שהוספת בעצמך' };
+  }
+
+  await pool.request().input('id', sql.Int, logId).input('message', sql.NVarChar, message)
+    .query('UPDATE TicketLog SET Message = @message WHERE Id = @id');
+  return { ok: true };
+}
+
+module.exports = {
+  create, listMine, list, closedCount, listClosed, get, update, take, reassign, updateStatus, updateNote, rowToTicket,
+};

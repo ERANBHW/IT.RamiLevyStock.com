@@ -59,6 +59,7 @@ CREATE TABLE Tickets (
     Status          NVARCHAR(20)    NOT NULL DEFAULT N'פתוחה',
     AssignedToEmail NVARCHAR(320)   NULL,
     AssignedToName  NVARCHAR(200)   NULL,
+    TakenAt         DATETIME2       NULL,
     ClosedAt        DATETIME2       NULL,
     UpdatedAt       DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
     CONSTRAINT UQ_Tickets_TicketNumber UNIQUE (TicketNumber),
@@ -325,4 +326,10 @@ GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Tickets') AND name = 'Subcategory')
 ALTER TABLE Tickets ADD Subcategory NVARCHAR(200) NULL;
+GO
+
+-- Dashboard elapsed-time breakdown (section 7 follow-up) needs to know when a ticket
+-- was picked up, not just when it was closed.
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Tickets') AND name = 'TakenAt')
+ALTER TABLE Tickets ADD TakenAt DATETIME2 NULL;
 GO
