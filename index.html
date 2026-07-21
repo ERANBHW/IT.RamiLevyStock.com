@@ -141,13 +141,15 @@
         .email-suffix-row input { flex: 1; }
         .email-suffix { color: var(--muted); font-size: 13px; white-space: nowrap; }
 
-        .dashboard-counters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .dashboard-counters { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        @media (max-width: 480px) { .dashboard-counters { grid-template-columns: repeat(2, 1fr); } }
         .dashboard-counter { border-radius: 12px; padding: 14px 10px; text-align: center; border: 1px solid var(--border); cursor: pointer; font-family: inherit; }
         .dashboard-counter span { display: block; font-size: 26px; font-weight: 700; }
         .dashboard-counter label { font-size: 12px; color: var(--muted); }
         .dashboard-counter.dc-open { background: #fff8e6; }
         .dashboard-counter.dc-progress { background: #e8f1ff; }
         .dashboard-counter.dc-closed { background: #f0fdf6; }
+        .dashboard-counter.dc-followups { background: #f4f0ff; cursor: default; }
         .dashboard-counter.dc-active { box-shadow: 0 0 0 2px var(--brand-pink) inset; }
         .dashboard-branch-breakdown { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
         .dashboard-branch-chip { padding: 4px 10px; border-radius: 20px; background: var(--background); font-size: 12px; border: 1px solid var(--border); }
@@ -172,26 +174,32 @@
 
         .dash-ticket-card { cursor: pointer; }
         .dash-ticket-card.expanded { border-radius: 12px 12px 0 0; border-bottom: none; }
-        .dash-ticket-meta-top { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+        .dash-ticket-meta-top { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
         .dash-ticket-detail { border: 1px solid var(--border); border-top: none; border-radius: 0 0 12px 12px; padding: 14px; background: var(--white); }
         .dash-elapsed-row { font-size: 11px; color: var(--muted); margin-top: 3px; }
         .dash-urgency-chip { padding: 1px 8px; border-radius: 10px; }
         .dash-header-right-group { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
         .status-select { border: none; cursor: pointer; font-family: inherit; -webkit-appearance: auto; appearance: auto; }
-        .dash-anydesk-btn { text-decoration: none; font-size: 15px; padding: 2px 6px; border-radius: 8px; background: var(--background); }
+        .dash-anydesk-btn, .dash-quick-tag { text-decoration: none; font-size: 12px; padding: 2px 8px; border-radius: 10px; background: var(--background); color: var(--text); cursor: pointer; border: none; font-family: inherit; }
         .dash-link-field { color: var(--brand-pink); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
-        .dash-detail-fields { font-size: 12px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 3px; }
+        .dash-whatsapp-link { text-decoration: none; margin-right: 4px; }
+        .dash-section-divider { display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px; }
+        .dash-section-divider::before, .dash-section-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
         .dash-timeline { position: relative; padding-right: 18px; margin: 10px 0; }
         .dash-timeline::before { content: ''; position: absolute; right: 4px; top: 4px; bottom: 4px; width: 2px; background: var(--border); }
         .dash-timeline-item { position: relative; padding-bottom: 12px; }
         .dash-timeline-item:last-child { padding-bottom: 0; }
-        .dash-timeline-dot { position: absolute; right: -14px; top: 3px; width: 8px; height: 8px; border-radius: 50%; background: var(--brand-pink); display: block; }
-        .dash-timeline-dot.editable { cursor: pointer; width: 12px; height: 12px; right: -16px; top: 1px; box-shadow: 0 0 0 2px var(--white); background: #3b82f6; }
+        .dash-timeline-dot { position: absolute; right: -14px; top: 3px; width: 8px; height: 8px; border-radius: 50%; background: var(--brand-pink); display: block; box-shadow: 0 0 0 2px var(--white); }
+        .dash-timeline-dot.editable { cursor: pointer; width: 12px; height: 12px; right: -16px; top: 1px; background: #3b82f6; }
         .dash-timeline-time { font-size: 11px; color: var(--muted); }
+        .dash-timeline-internal-tag { font-size: 10px; color: #3b82f6; font-weight: 700; margin-right: 4px; }
         .dash-timeline-text { font-size: 12px; margin-top: 2px; }
         .dash-note-edit-row { display: flex; gap: 6px; align-items: center; }
         .dash-note-edit-row input { flex: 1; font-size: 12px; padding: 4px 8px; }
         .dash-stat-tile { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; }
+        .dash-linechart-tile { grid-column: 1 / -1; }
+        .dash-linechart-subtitle { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+        .dash-linechart-svg { width: 100%; height: 120px; display: block; }
         .dash-stat-value { font-size: 20px; font-weight: 700; }
 
         .filter-popover {
@@ -280,6 +288,7 @@
                         <button type="button" class="dashboard-counter dc-open" id="dashCubeOpen"><span id="dashOpenCount">0</span><label>פתוחות</label></button>
                         <button type="button" class="dashboard-counter dc-progress" id="dashCubeProgress"><span id="dashProgressCount">0</span><label>בטיפול</label></button>
                         <button type="button" class="dashboard-counter dc-closed" id="dashCubeClosed"><span id="dashClosedCount">0</span><label>סגורות</label></button>
+                        <div class="dashboard-counter dc-followups" id="dashCubeFollowups" title="יורחב בהמשך"><span id="dashFollowupsCount">0</span><label>משימות המשך</label></div>
                     </div>
                     <div class="dashboard-charts" id="dashboardCharts"></div>
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin:14px 0 8px;flex-wrap:wrap">
@@ -406,6 +415,41 @@
             <div class="profile-modal-body" id="ticketDetailBody"></div>
             <div class="profile-modal-actions">
                 <button type="button" class="secondary-button" style="flex:1" id="ticketDetailCloseBtn">סגור</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generic read-only quick-view modal (dashboard: employee/computer/printer tags) -->
+    <div class="profile-modal-backdrop" id="quickViewModalBackdrop">
+        <div class="profile-modal" style="max-width:380px">
+            <div class="profile-modal-header"><h2 id="quickViewTitle"></h2></div>
+            <div class="profile-modal-body" id="quickViewBody"></div>
+            <div class="profile-modal-actions">
+                <button type="button" class="primary-button" id="quickViewEditBtn">ערוך</button>
+                <button type="button" class="secondary-button" id="quickViewCloseBtn">סגור</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ticket close modal (dashboard) -->
+    <div class="profile-modal-backdrop" id="ticketCloseModalBackdrop">
+        <div class="profile-modal" style="max-width:480px">
+            <div class="profile-modal-header"><h2>סגירת קריאה</h2></div>
+            <div class="profile-modal-body">
+                <p class="page-subtitle" id="ticketCloseTimingInfo" style="margin:0 0 12px"></p>
+                <div class="field"><label for="tcmResolution">תיאור הפתרון (יוצג לעובד)</label>
+                    <textarea id="tcmResolution" rows="3"></textarea></div>
+                <div class="field"><label for="tcmInternalNote">תיעוד פנימי (לא יוצג לעובד)</label>
+                    <textarea id="tcmInternalNote" rows="2"></textarea></div>
+                <div class="field"><label style="display:flex;align-items:center;gap:8px;font-weight:400">
+                    <input type="checkbox" id="tcmFlagged" style="width:auto">סמן דגל לשמירה להמשך</label></div>
+                <div class="field"><label for="tcmFollowUp">משימת המשך (אופציונלי)</label>
+                    <textarea id="tcmFollowUp" rows="2" placeholder="מה נדרש לעשות בהמשך?"></textarea></div>
+                <div id="ticketCloseModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+            </div>
+            <div class="profile-modal-actions">
+                <button type="button" class="primary-button" style="flex:1" id="ticketCloseSaveBtn">סגור קריאה</button>
+                <button type="button" class="secondary-button" id="ticketCloseCancelBtn">ביטול</button>
             </div>
         </div>
     </div>
@@ -1387,14 +1431,16 @@
     function renderTimelineEntry(entry) {
         var text = describeLogEntry(entry);
         var user = Portal.getUser();
-        var isMine = entry.action === 'note' && entry.actorEmail && user && user.email &&
+        var isNoteLike = entry.action === 'note' || entry.action === 'internal_note';
+        var isMine = isNoteLike && entry.actorEmail && user && user.email &&
             String(entry.actorEmail).toLowerCase() === String(user.email).toLowerCase();
         var idAttr = isMine ? ' data-log-id="' + entry.id + '"' : '';
         var dotClass = 'dash-timeline-dot' + (isMine ? ' editable' : '');
+        var internalTag = entry.action === 'internal_note' ? '<span class="dash-timeline-internal-tag">פנימי</span>' : '';
         return '<div class="dash-timeline-item"' + idAttr + '>' +
             '<span class="' + dotClass + '"' + (isMine ? ' title="לחץ לעריכת ההערה"' : '') + '></span>' +
             '<div class="dash-timeline-time">' + formatDateTime(entry.timestamp) + ' · ' + escapeHtml(entry.actorName || entry.actorEmail) + '</div>' +
-            '<div class="dash-timeline-text" data-log-text>' + escapeHtml(text) + '</div></div>';
+            '<div class="dash-timeline-text">' + internalTag + '<span data-log-text>' + escapeHtml(text) + '</span></div></div>';
     }
 
     // Every mutation is refetched from the server, never trusted from local state.
@@ -1543,6 +1589,8 @@
         var closedCount = countRes.ok ? countRes.data.count : 0;
         var reqRes = await apiGet('userRequests', 'list', {});
         dashboardOpenRequests = reqRes.ok ? reqRes.data.filter(function (r) { return r.status !== 'הוקם'; }) : [];
+        var followUpRes = await apiGet('tickets', 'followUpCount', {});
+        document.getElementById('dashFollowupsCount').textContent = followUpRes.ok ? followUpRes.data.count : 0;
 
         renderDashboardCounts(closedCount);
         renderDashboardUserFilter();
@@ -1606,25 +1654,6 @@
         return parts2.join(' · ');
     }
 
-    // Average handling time (item 7) — always measured on closed tickets specifically
-    // (that's what "handling time" means), filtered by the user/branch selections like
-    // the charts, but independent of which status-cube happens to be active.
-    function computeAvgHandlingTime() {
-        if (!dashboardClosedTickets) return null;
-        var filtered = dashboardClosedTickets.filter(function (t) {
-            var userOk = !dashUserFilterSelection.length || dashUserFilterSelection.indexOf(t.userName || t.userEmail) !== -1;
-            var branchOk = !dashBranchFilterSelection.length || dashBranchFilterSelection.indexOf(t.branch || 'ללא סניף') !== -1;
-            return userOk && branchOk;
-        });
-        var durations = filtered.map(function (t) {
-            if (!t.closedAt) return null;
-            var start = t.takenAt || t.timestamp;
-            return msBetween(start, t.closedAt);
-        }).filter(function (d) { return d != null; });
-        if (!durations.length) return null;
-        return durations.reduce(function (a, b) { return a + b; }, 0) / durations.length;
-    }
-
     // Small horizontal bar chart, one brand hue (this is a single-series magnitude-by-
     // category chart, so per-category color would be noise — the axis label already
     // carries identity). Built from plain divs, no chart library.
@@ -1664,15 +1693,48 @@
         });
         var html = buildBarChart('קריאות לפי קטגוריה', byCategory) + buildBarChart('קריאות לפי סניף', byBranch);
         // Only relevant when actually looking at closed tickets (item 4) — not a
-        // general workload metric.
-        if (dashStatusFilter === 'סגורה') {
-            var avg = computeAvgHandlingTime();
-            if (avg != null) {
-                html += '<div class="dash-chart dash-stat-tile"><div class="dash-chart-title">זמן טיפול ממוצע (קריאות סגורות)</div>' +
-                    '<div class="dash-stat-value">' + escapeHtml(formatDuration(avg)) + '</div></div>';
-            }
-        }
+        // general workload metric. A trend line of recent handling times (item 9)
+        // instead of a single average number.
+        if (dashStatusFilter === 'סגורה') html += buildHandlingTimeLineChart();
         document.getElementById('dashboardCharts').innerHTML = html;
+    }
+
+    // Full-width line chart of the last 20 closed tickets' handling time (takenAt→
+    // closedAt, falling back to timestamp→closedAt if never explicitly taken) — replaces
+    // the single "average" number with an actual trend (item 9). Thin 2px line, rounded
+    // caps, one hue, direct hover tooltips via native <title> (no chart library).
+    function buildHandlingTimeLineChart() {
+        var closed = (dashboardClosedTickets || []).filter(function (t) {
+            var userOk = !dashUserFilterSelection.length || dashUserFilterSelection.indexOf(t.userName || t.userEmail) !== -1;
+            var branchOk = !dashBranchFilterSelection.length || dashBranchFilterSelection.indexOf(t.branch || 'ללא סניף') !== -1;
+            return userOk && branchOk && t.closedAt;
+        });
+        closed.sort(function (a, b) { return new Date(a.closedAt) - new Date(b.closedAt); });
+        var points = closed.slice(-20).map(function (t) {
+            return { label: t.ticketNumber, ms: msBetween(t.takenAt || t.timestamp, t.closedAt) };
+        });
+        if (!points.length) {
+            return '<div class="dash-chart dash-linechart-tile"><div class="dash-chart-title">זמני טיפול אחרונים (קריאות סגורות)</div>' +
+                '<div class="dash-chart-empty">אין נתונים</div></div>';
+        }
+        var avg = points.reduce(function (sum, p) { return sum + p.ms; }, 0) / points.length;
+        var maxMs = Math.max.apply(null, points.map(function (p) { return p.ms; }));
+        var w = 600, h = 110, pad = 10;
+        var stepX = points.length > 1 ? (w - pad * 2) / (points.length - 1) : 0;
+        var coords = points.map(function (p, i) {
+            return { x: pad + i * stepX, y: h - pad - (maxMs ? (p.ms / maxMs) * (h - pad * 2) : 0), p: p };
+        });
+        var pathD = coords.map(function (c, i) { return (i === 0 ? 'M' : 'L') + c.x.toFixed(1) + ',' + c.y.toFixed(1); }).join(' ');
+        var circles = coords.map(function (c) {
+            return '<circle cx="' + c.x.toFixed(1) + '" cy="' + c.y.toFixed(1) + '" r="3" fill="var(--brand-pink)">' +
+                '<title>' + escapeHtml(c.p.label) + ': ' + escapeHtml(formatDuration(c.p.ms)) + '</title></circle>';
+        }).join('');
+        return '<div class="dash-chart dash-linechart-tile">' +
+            '<div class="dash-chart-title">זמני טיפול אחרונים (קריאות סגורות)</div>' +
+            '<div class="dash-linechart-subtitle">ממוצע: ' + escapeHtml(formatDuration(avg)) + '</div>' +
+            '<svg viewBox="0 0 ' + w + ' ' + h + '" class="dash-linechart-svg" preserveAspectRatio="none">' +
+            '<path d="' + pathD + '" fill="none" stroke="var(--brand-pink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+            circles + '</svg></div>';
     }
 
     // v2.1, follow-up: "משתמש"/"סניף" are pill buttons that open a multi-select checkbox
@@ -1802,6 +1864,12 @@
     var DASHBOARD_STATUS_OPTIONS = ['פתוחה', 'בטיפול', 'סגורה'];
     var DASHBOARD_STATUS_CLASS = { 'פתוחה': 'status-open', 'בטיפול': 'status-progress', 'סגורה': 'status-closed' };
 
+    function normalizePhoneForWhatsapp(phone) {
+        var digits = String(phone || '').replace(/\D/g, '');
+        if (digits.charAt(0) === '0') digits = '972' + digits.slice(1);
+        return digits;
+    }
+
     function dashboardCardInnerHtml(t) {
         var titleParts = [escapeHtml(t.category)];
         if (t.subcategory) titleParts.push(escapeHtml(t.subcategory));
@@ -1812,16 +1880,30 @@
                 return '<option value="' + s + '"' + (s === t.status ? ' selected' : '') + '>' + s + '</option>';
             }).join('') + '</select>';
         var anydeskHtml = (t.status === 'בטיפול' && t.anyDeskId)
-            ? '<a class="dash-anydesk-btn" href="anydesk:' + encodeURIComponent(t.anyDeskId) + '" title="התחברות למחשב דרך AnyDesk" data-anydesk-btn>🖥️</a>'
+            ? '<a class="dash-anydesk-btn" href="anydesk:' + encodeURIComponent(t.anyDeskId) + '" title="התחברות למחשב דרך AnyDesk" data-stop>🖥️</a>'
+            : '';
+        // Printer only shows up as its own tag when the ticket actually WAS a printer
+        // ticket (item 4) — Tickets.Printer alone is ambiguous (a regular computer
+        // ticket also records the computer's default printer there for context).
+        var computerTagHtml = t.computerName
+            ? '<button type="button" class="dash-quick-tag" data-open-computer title="פרטי המחשב">💻 ' + escapeHtml(t.computerName) + '</button>'
+            : '';
+        var printerTagHtml = (t.isPrinterTicket && t.printer)
+            ? '<button type="button" class="dash-quick-tag" data-open-printer title="פרטי המדפסת">🖨️ ' + escapeHtml(t.printer) + '</button>'
             : '';
 
         var rgb = hexToRgb(URGENCY_COLOR[t.urgency] || '#cccccc');
         var urgencyBg = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.2)';
 
+        var phoneHtml = t.phone
+            ? ' | <a href="tel:' + escapeHtml(t.phone) + '" class="dash-link-field" data-stop>' + escapeHtml(t.phone) + '</a>' +
+              '<a href="https://wa.me/' + normalizePhoneForWhatsapp(t.phone) + '" target="_blank" rel="noopener" class="dash-whatsapp-link" data-stop title="הודעת וואטסאפ">💬</a>'
+            : '';
+
         return '<div class="dash-ticket-meta-top"><span class="dash-link-field" data-open-user>' + escapeHtml(t.userName || t.userEmail) + '</span>' +
-            (t.branch ? ' | ' + escapeHtml(t.branch) : '') + '</div>' +
+            (t.branch ? ' | ' + escapeHtml(t.branch) : '') + phoneHtml + '</div>' +
             '<div class="ticket-card-header"><strong>' + titleParts.join(' | ') + '</strong>' +
-            '<span class="dash-header-right-group">' + anydeskHtml + statusSelectHtml + '</span></div>' +
+            '<span class="dash-header-right-group">' + computerTagHtml + printerTagHtml + anydeskHtml + statusSelectHtml + '</span></div>' +
             '<div class="ticket-meta">' + formatDateTime(t.timestamp) + ' | <span class="dash-urgency-chip" style="background:' + urgencyBg + '">' + escapeHtml(t.urgency) + '</span></div>' +
             '<div class="dash-elapsed-row">' + escapeHtml(dashboardElapsedHtml(t)) + '</div>';
     }
@@ -1843,13 +1925,28 @@
                 dashboardChangeStatus(dashTicketsByNumber[t.ticketNumber] || t, select.value);
             });
         }
-        var anydeskBtn = card.querySelector('[data-anydesk-btn]');
-        if (anydeskBtn) anydeskBtn.addEventListener('click', function (e) { e.stopPropagation(); });
+        card.querySelectorAll('[data-stop]').forEach(function (el) {
+            el.addEventListener('click', function (e) { e.stopPropagation(); });
+        });
         var userLink = card.querySelector('[data-open-user]');
         if (userLink) {
             userLink.addEventListener('click', function (e) {
                 e.stopPropagation();
                 openTicketUserDetail((dashTicketsByNumber[t.ticketNumber] || t).userEmail);
+            });
+        }
+        var computerTag = card.querySelector('[data-open-computer]');
+        if (computerTag) {
+            computerTag.addEventListener('click', function (e) {
+                e.stopPropagation();
+                openTicketComputerDetail((dashTicketsByNumber[t.ticketNumber] || t).computerName);
+            });
+        }
+        var printerTag = card.querySelector('[data-open-printer]');
+        if (printerTag) {
+            printerTag.addEventListener('click', function (e) {
+                e.stopPropagation();
+                openTicketPrinterDetail((dashTicketsByNumber[t.ticketNumber] || t).printer);
             });
         }
     }
@@ -1929,31 +2026,20 @@
 
     // Extra ticket fields (computer/phone/printer — item 6) shown above the description;
     // the computer name is a link that opens the Computers admin modal (item 8).
-    function dashboardDetailFieldsHtml(t) {
-        var rows = [];
-        if (t.computerName) rows.push('<div><strong>מחשב:</strong> <span class="dash-link-field" data-open-computer>' + escapeHtml(t.computerName) + '</span></div>');
-        if (t.phone) rows.push('<div><strong>טלפון:</strong> ' + escapeHtml(t.phone) + '</div>');
-        if (t.printer) rows.push('<div><strong>מדפסת:</strong> ' + escapeHtml(t.printer) + '</div>');
-        if (t.anyDeskId) rows.push('<div><strong>AnyDesk:</strong> ' + escapeHtml(t.anyDeskId) + '</div>');
-        return rows.length ? '<div class="dash-detail-fields">' + rows.join('') + '</div>' : '';
-    }
-
     function renderDashboardTicketDetail(el, t, log) {
         var isIT = Portal.isITAdmin();
 
         el.innerHTML =
-            dashboardDetailFieldsHtml(t) +
+            '<div class="dash-section-divider">תיאור הקריאה</div>' +
             '<div style="font-size:14px;white-space:pre-wrap;margin-bottom:10px">' + escapeHtml(t.description) + '</div>' +
             (t.assignedToName ? '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">מטופל ע"י ' + escapeHtml(t.assignedToName) + '</div>' : '') +
+            '<div class="dash-section-divider">היסטוריית הקריאה</div>' +
             '<div class="dash-timeline">' +
             (log.length ? log.map(renderTimelineEntry).join('') : '<span style="color:var(--muted);font-size:12px">אין רשומות</span>') +
             '</div>' +
             (isIT ? '<div class="field" style="margin:10px 0 0"><div style="display:flex;gap:8px">' +
                 '<input data-dd-note-input type="text" style="flex:1" placeholder="הוסף הערה (Enter לשליחה)">' +
                 '<button type="button" class="secondary-button" data-dd-add-note>הוסף</button></div></div>' : '');
-
-        var computerLink = el.querySelector('[data-open-computer]');
-        if (computerLink) computerLink.addEventListener('click', function () { openTicketComputerDetail(t.computerName); });
 
         var noteInput = el.querySelector('[data-dd-note-input]');
         var addNoteBtn = el.querySelector('[data-dd-add-note]');
@@ -2016,15 +2102,56 @@
         refreshOpenDashboardDetail();
     }
 
-    async function dashboardCloseTicket(t) {
-        var note = prompt('הערת סגירה (אופציונלי):', '') || '';
+    var closingTicket = null;
+    var ticketCloseTracker = makeDirtyTracker(document.getElementById('ticketCloseModalBackdrop'));
+
+    // Replaces the plain prompt() (item 8) with a real closing form: resolution summary
+    // (shown to the requester), internal-only documentation, a "flag for later" toggle,
+    // and an optional follow-up task.
+    function dashboardCloseTicket(t) {
+        closingTicket = t;
+        var openedText = 'נפתחה: ' + formatDateTime(t.timestamp);
+        var takenText = t.takenAt ? ' | התחילה: ' + formatDateTime(t.takenAt) : '';
+        document.getElementById('ticketCloseTimingInfo').textContent = openedText + takenText;
+        document.getElementById('tcmResolution').value = '';
+        document.getElementById('tcmInternalNote').value = '';
+        document.getElementById('tcmFlagged').checked = false;
+        document.getElementById('tcmFollowUp').value = '';
+        document.getElementById('ticketCloseModalError').style.display = 'none';
+        document.getElementById('ticketCloseModalBackdrop').classList.add('visible');
+        ticketCloseTracker.reset();
+    }
+    function closeTicketCloseModal() { document.getElementById('ticketCloseModalBackdrop').classList.remove('visible'); }
+
+    document.getElementById('ticketCloseCancelBtn').addEventListener('click', function () {
+        if (!ticketCloseTracker.confirmDiscard()) return;
+        closeTicketCloseModal();
+        // The header <select> already flipped to "סגורה" visually when the user picked
+        // it — revert that back since nothing was actually saved.
+        var row = dashRowElements[closingTicket.ticketNumber];
+        var latest = dashTicketsByNumber[closingTicket.ticketNumber];
+        if (row && latest) updateDashboardTicketRow(row, latest);
+    });
+    document.getElementById('ticketCloseSaveBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('ticketCloseModalError');
+        var resolution = document.getElementById('tcmResolution').value.trim();
+        if (!resolution) { errEl.textContent = 'יש למלא תיאור פתרון'; errEl.style.display = 'block'; return; }
+        var payload = {
+            ticketNumber: closingTicket.ticketNumber,
+            resolutionDescription: resolution,
+            internalNote: document.getElementById('tcmInternalNote').value.trim(),
+            flagged: document.getElementById('tcmFlagged').checked,
+            followUpDescription: document.getElementById('tcmFollowUp').value.trim(),
+        };
         showLoading(true);
-        var res = await apiPost('tickets', 'updateStatus', { ticketNumber: t.ticketNumber, status: 'סגורה', message: note });
+        var res = await apiPost('tickets', 'closeWithDetails', payload);
         showLoading(false);
-        if (!res.ok) { alert(res.error || 'שגיאה'); return; }
+        if (!res.ok) { errEl.textContent = res.error || 'שגיאה'; errEl.style.display = 'block'; return; }
+        ticketCloseTracker.reset();
+        closeTicketCloseModal();
         await loadHubDashboard();
         refreshOpenDashboardDetail();
-    }
+    });
 
     async function dashboardAddNote(t, note) {
         showLoading(true);
@@ -2048,8 +2175,26 @@
         refreshOpenDashboardDetail();
     }
 
-    // Reuses the existing Users/Computers admin modals (item 7+8) — same edit UI IT
-    // already knows, just triggered from inside a ticket instead of the admin tables.
+    // Read-only quick-view first (items 1+2) — an "ערוך" button drops into the same
+    // edit modal IT already knows from the Users/Computers/Printers admin screens.
+    function openQuickView(title, fieldsHtml, onEdit) {
+        document.getElementById('quickViewTitle').textContent = title;
+        document.getElementById('quickViewBody').innerHTML = fieldsHtml;
+        document.getElementById('quickViewModalBackdrop').classList.add('visible');
+        document.getElementById('quickViewEditBtn').onclick = function () {
+            closeQuickView();
+            onEdit();
+        };
+    }
+    function closeQuickView() { document.getElementById('quickViewModalBackdrop').classList.remove('visible'); }
+    document.getElementById('quickViewCloseBtn').addEventListener('click', closeQuickView);
+
+    function quickViewFieldsHtml(rows) {
+        return '<div style="display:flex;flex-direction:column;gap:7px;font-size:13px">' +
+            rows.map(function (r) { return '<div><strong>' + escapeHtml(r[0]) + ':</strong> ' + escapeHtml(r[1] || '-') + '</div>'; }).join('') +
+            '</div>';
+    }
+
     async function openTicketUserDetail(email) {
         showLoading(true);
         var usersRes = await apiGet('users', 'list', {});
@@ -2059,7 +2204,14 @@
         var user = usersRes.ok ? usersRes.data.filter(function (u) { return String(u.email).toLowerCase() === String(email).toLowerCase(); })[0] : null;
         if (!user) { alert('המשתמש לא נמצא'); return; }
         await ensureBranchesLoaded();
-        openUserAdminModal(user);
+        var fieldsHtml = quickViewFieldsHtml([
+            ['שם', [user.firstName, user.lastName].filter(Boolean).join(' ')],
+            ['מייל', user.email],
+            ['טלפון', user.phone],
+            ['סניף', branchName(user.branchNumber)],
+            ['תפקיד', user.role],
+        ]);
+        openQuickView('פרטי עובד', fieldsHtml, function () { openUserAdminModal(user); });
     }
 
     async function openTicketComputerDetail(computerName) {
@@ -2069,7 +2221,29 @@
         var comp = res.ok ? res.data.filter(function (c) { return c.computerName === computerName; })[0] : null;
         if (!comp) { alert('המחשב לא נמצא'); return; }
         await ensureBranchesLoaded();
-        openComputerAdminModal(comp);
+        var fieldsHtml = quickViewFieldsHtml([
+            ['שם מחשב', comp.computerName],
+            ['סוג', comp.type],
+            ['זיכרון', comp.ram],
+            ['מדפסת ברירת מחדל', comp.defaultPrinterName],
+            ['סניף', branchName(comp.branchNumber)],
+            ['הערות', comp.notes],
+        ]);
+        openQuickView('פרטי מחשב', fieldsHtml, function () { openComputerAdminModal(comp); });
+    }
+
+    async function openTicketPrinterDetail(printerName) {
+        await ensurePrintersLoaded();
+        var p = (printersCache || []).filter(function (x) { return x.printerName === printerName; })[0];
+        if (!p) { alert('המדפסת לא נמצאה'); return; }
+        await ensureBranchesLoaded();
+        var fieldsHtml = quickViewFieldsHtml([
+            ['שם מדפסת', p.printerName],
+            ['IP', p.ip],
+            ['סניף', branchName(p.branchNumber)],
+            ['הערות', p.notes],
+        ]);
+        openQuickView('פרטי מדפסת', fieldsHtml, function () { openPrinterAdminModal(p); });
     }
 
     function toggleFilterPopover(popoverId, otherPopoverId) {

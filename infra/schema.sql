@@ -333,3 +333,45 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Tickets') AND name = 'TakenAt')
 ALTER TABLE Tickets ADD TakenAt DATETIME2 NULL;
 GO
+
+-- Dashboard follow-up round 3:
+-- IsPrinterTicket disambiguates "this ticket IS about a printer" from a regular
+-- computer ticket that merely recorded the assigned computer's default printer for
+-- context — both used to land in the same Printer column with no way to tell them
+-- apart after the fact.
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Tickets') AND name = 'IsPrinterTicket')
+ALTER TABLE Tickets ADD IsPrinterTicket BIT NOT NULL DEFAULT 0;
+GO
+
+-- Flag a closed ticket for later review (section 7 follow-up, closing dialog redesign).
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Tickets') AND name = 'Flagged')
+ALTER TABLE Tickets ADD Flagged BIT NOT NULL DEFAULT 0;
+GO
+
+-- 'internal_note' — closing-dialog "internal documentation" text, returned to IT
+-- Admins only (get() filters it out for the ticket's own requester).
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_TicketLog_Action')
+ALTER TABLE TicketLog DROP CONSTRAINT CK_TicketLog_Action;
+GO
+ALTER TABLE TicketLog ADD CONSTRAINT CK_TicketLog_Action CHECK (Action IN
+    ('created', 'field_updated', 'assigned', 'status_changed', 'note', 'internal_note'));
+GO
+
+-- Minimal follow-up-task hook (section 7 follow-up, item 8) — deliberately bare-bones;
+-- the product owner asked for just "create + a count on the dashboard" for now and
+-- said this will be expanded later.
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'TicketFollowUps')
+CREATE TABLE TicketFollowUps (
+    Id              INT IDENTITY(1,1)  NOT NULL PRIMARY KEY,
+    TicketNumber    NVARCHAR(20)       NOT NULL,
+    Description     NVARCHAR(MAX)      NOT NULL DEFAULT '',
+    CreatedAt       DATETIME2          NOT NULL DEFAULT SYSUTCDATETIME(),
+    CreatedByEmail  NVARCHAR(320)      NOT NULL DEFAULT '',
+    CreatedByName   NVARCHAR(200)      NOT NULL DEFAULT '',
+    Status          NVARCHAR(20)       NOT NULL DEFAULT N'פתוחה',
+    CONSTRAINT FK_TicketFollowUps_Ticket FOREIGN KEY (TicketNumber) REFERENCES Tickets(TicketNumber) ON DELETE CASCADE
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_TicketFollowUps_TicketNumber')
+CREATE INDEX IX_TicketFollowUps_TicketNumber ON TicketFollowUps(TicketNumber);
+GO

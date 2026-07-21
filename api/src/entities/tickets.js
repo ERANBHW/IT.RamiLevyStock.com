@@ -28,6 +28,8 @@ function rowToTicket(r) {
     assignedToName: r.AssignedToName,
     takenAt: r.TakenAt,
     closedAt: r.ClosedAt,
+    isPrinterTicket: !!r.IsPrinterTicket,
+    flagged: !!r.Flagged,
     updatedAt: r.UpdatedAt,
   };
 }
@@ -88,10 +90,11 @@ async function create(payload, caller) {
     .input('urgency', sql.NVarChar, String(payload.urgency || ''))
     .input('description', sql.NVarChar, String(payload.description || ''))
     .input('status', sql.NVarChar, STATUS_OPEN)
+    .input('isPrinterTicket', sql.Bit, isPrinterTicket)
     .query(`INSERT INTO Tickets
-        (UserEmail, UserName, Phone, Branch, ComputerName, IP, Printer, AnyDeskId, Category, Subcategory, Urgency, Description, Status)
+        (UserEmail, UserName, Phone, Branch, ComputerName, IP, Printer, AnyDeskId, Category, Subcategory, Urgency, Description, Status, IsPrinterTicket)
       OUTPUT INSERTED.*
-      VALUES (@userEmail, @userName, @phone, @branch, @computerName, @ip, @printer, @anyDeskId, @category, @subcategory, @urgency, @description, @status)`);
+      VALUES (@userEmail, @userName, @phone, @branch, @computerName, @ip, @printer, @anyDeskId, @category, @subcategory, @urgency, @description, @status, @isPrinterTicket)`);
 
   const ticket = result.recordset[0];
   await writeLog(pool, ticket.TicketNumber, caller, 'created', { message: 'הקריאה נפתחה' });
@@ -150,7 +153,10 @@ async function get(payload, caller) {
   }
   const logResult = await pool.request().input('num', sql.NVarChar, ticketNumber)
     .query('SELECT * FROM TicketLog WHERE TicketNumber = @num ORDER BY Timestamp ASC');
-  return { ok: true, data: { ticket: rowToTicket(ticket), log: logResult.recordset.map(rowToLog) } };
+  // 'internal_note' entries (closing-dialog internal documentation) are for IT eyes
+  // only — never returned to the ticket's own requester.
+  const logRows = caller.isITAdmin ? logResult.recordset : logResult.recordset.filter((r) => r.Action !== 'internal_note');
+  return { ok: true, data: { ticket: rowToTicket(ticket), log: logRows.map(rowToLog) } };
 }
 
 // The requester may only touch their own ticket, and only before it's picked up.
@@ -268,6 +274,60 @@ async function updateStatus(payload, caller) {
   return { ok: true };
 }
 
+// Dashboard follow-up round 3 — replaces the plain prompt()-based close flow. Only
+// resolutionDescription is required; it's logged as a normal 'note' (visible to the
+// requester, same as before). internalNote (if any) is logged as 'internal_note'
+// (IT-only, filtered out of get() for the requester). flagged marks the ticket for
+// later review. followUpDescription (if any) creates a bare-bones follow-up row —
+// deliberately minimal, the product owner asked for just "create + a count" for now.
+async function closeWithDetails(payload, caller) {
+  if (!caller.isITAdmin) return { ok: false, error: 'אין הרשאה' };
+  const pool = await getPool();
+  const ticketNumber = String(payload.ticketNumber || '');
+  const ticket = await getTicketOr404(pool, ticketNumber);
+  if (!ticket) return { ok: false, error: 'הקריאה לא נמצאה' };
+  if (ticket.Status !== STATUS_PROGRESS) return { ok: false, error: 'ניתן לסגור רק קריאה שנמצאת בטיפול' };
+
+  const resolutionDescription = String(payload.resolutionDescription || '').trim();
+  if (!resolutionDescription) return { ok: false, error: 'יש למלא תיאור פתרון' };
+  const internalNote = String(payload.internalNote || '').trim();
+  const followUpDescription = String(payload.followUpDescription || '').trim();
+  const flagged = !!(payload.flagged === true || payload.flagged === 'true' || payload.flagged === '1' || payload.flagged === 1);
+
+  await pool.request()
+    .input('num', sql.NVarChar, ticketNumber)
+    .input('status', sql.NVarChar, STATUS_CLOSED)
+    .input('flagged', sql.Bit, flagged)
+    .query(`UPDATE Tickets SET Status = @status, Flagged = @flagged, ClosedAt = SYSUTCDATETIME(), UpdatedAt = SYSUTCDATETIME()
+      WHERE TicketNumber = @num`);
+
+  await writeLog(pool, ticketNumber, caller, 'status_changed', {
+    fieldName: 'Status', oldValue: ticket.Status, newValue: STATUS_CLOSED,
+  });
+  await writeLog(pool, ticketNumber, caller, 'note', { message: resolutionDescription });
+  if (internalNote) await writeLog(pool, ticketNumber, caller, 'internal_note', { message: internalNote });
+
+  if (followUpDescription) {
+    await pool.request()
+      .input('num', sql.NVarChar, ticketNumber)
+      .input('description', sql.NVarChar, followUpDescription)
+      .input('email', sql.NVarChar, caller.email)
+      .input('name', sql.NVarChar, caller.name || '')
+      .query(`INSERT INTO TicketFollowUps (TicketNumber, Description, CreatedByEmail, CreatedByName)
+        VALUES (@num, @description, @email, @name)`);
+  }
+
+  return { ok: true };
+}
+
+async function followUpCount(_payload, caller) {
+  if (!caller.isITAdmin) return { ok: false, error: 'אין הרשאה' };
+  const pool = await getPool();
+  const result = await pool.request().input('open', sql.NVarChar, 'פתוחה')
+    .query('SELECT COUNT(*) AS cnt FROM TicketFollowUps WHERE Status = @open');
+  return { ok: true, data: { count: result.recordset[0].cnt } };
+}
+
 // Dashboard timeline follow-up: only the person who wrote a free-text note may edit it
 // later (clicking its dot in the timeline) — never a system-generated entry (status
 // changes, field updates, assignment), and never someone else's note.
@@ -281,7 +341,7 @@ async function updateNote(payload, caller) {
   const result = await pool.request().input('id', sql.Int, logId).query('SELECT * FROM TicketLog WHERE Id = @id');
   const entry = result.recordset[0];
   if (!entry) return { ok: false, error: 'הרשומה לא נמצאה' };
-  if (entry.Action !== 'note') return { ok: false, error: 'ניתן לערוך רק הערות' };
+  if (entry.Action !== 'note' && entry.Action !== 'internal_note') return { ok: false, error: 'ניתן לערוך רק הערות' };
   if (String(entry.ActorEmail).toLowerCase() !== caller.email.toLowerCase()) {
     return { ok: false, error: 'ניתן לערוך רק הערות שהוספת בעצמך' };
   }
@@ -292,5 +352,6 @@ async function updateNote(payload, caller) {
 }
 
 module.exports = {
-  create, listMine, list, closedCount, listClosed, get, update, take, reassign, updateStatus, updateNote, rowToTicket,
+  create, listMine, list, closedCount, listClosed, get, update, take, reassign, updateStatus, updateNote,
+  closeWithDetails, followUpCount, rowToTicket,
 };
