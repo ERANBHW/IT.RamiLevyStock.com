@@ -54,6 +54,14 @@ async function listNames(_payload, _caller) {
 
 const EDITABLE_COMPUTER_FIELDS = ['Type', 'RAM', 'AnyDeskId', 'AssignedUserEmail', 'DefaultPrinterName', 'Notes'];
 
+// 'RAM' isn't a normal capitalized word — naive camelCase (charAt(0).toLowerCase() + rest)
+// turns it into 'rAM', which never matches payload.ram and silently inserted NULL into a
+// NOT NULL column. Every other field name here is a single leading capital, so this is
+// the only special case needed.
+function payloadKeyFor(field) {
+  return field === 'RAM' ? 'ram' : field.charAt(0).toLowerCase() + field.slice(1);
+}
+
 async function create(payload, caller) {
   if (!caller.isITAdmin) return { ok: false, error: 'אין הרשאה' };
   const computerName = String(payload.computerName || '').trim();
@@ -67,7 +75,7 @@ async function create(payload, caller) {
   const req = pool.request().input('computerName', sql.NVarChar, computerName)
     .input('BranchNumber', sql.Int, parseBranchNumber(payload.branchNumber) ?? null);
   EDITABLE_COMPUTER_FIELDS.forEach((f) => {
-    const key = f.charAt(0).toLowerCase() + f.slice(1);
+    const key = payloadKeyFor(f);
     req.input(f, sql.NVarChar, payload[key] ? String(payload[key]) : null);
   });
   await req.query(`INSERT INTO Computers (ComputerName, Type, RAM, AnyDeskId, AssignedUserEmail, DefaultPrinterName, BranchNumber, Notes)
@@ -86,7 +94,7 @@ async function update(payload, caller) {
   const req = pool.request().input('computerName', sql.NVarChar, computerName);
   const sets = ['UpdatedAt = SYSUTCDATETIME()'];
   EDITABLE_COMPUTER_FIELDS.forEach((f) => {
-    const key = f.charAt(0).toLowerCase() + f.slice(1);
+    const key = payloadKeyFor(f);
     if (Object.prototype.hasOwnProperty.call(payload, key)) {
       req.input(f, sql.NVarChar, payload[key] ? String(payload[key]) : null);
       sets.push(`${f} = @${f}`);

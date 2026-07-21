@@ -569,10 +569,17 @@
         <div class="profile-modal-body">
             <div class="field"><label for="caComputerName">שם מחשב</label><input id="caComputerName" type="text" dir="ltr"></div>
             <div class="grid-2">
-                <div class="field"><label for="caType">סוג</label><input id="caType" type="text" placeholder="נייח / נייד"></div>
-                <div class="field"><label for="caRam">זיכרון (RAM)</label><input id="caRam" type="text" placeholder="16GB"></div>
+                <div class="field"><label for="caType">סוג</label>
+                    <select id="caType"><option value="נייח">נייח</option><option value="נייד">נייד</option></select>
+                </div>
+                <div class="field"><label for="caRam">זיכרון (RAM)</label>
+                    <div class="email-suffix-row"><input id="caRam" type="number" min="0" step="1" dir="ltr"><span class="email-suffix">GB</span></div>
+                </div>
                 <div class="field"><label for="caPrinter">מדפסת ברירת מחדל</label><select id="caPrinter"></select></div>
-                <div class="field"><label for="caAnyDesk">AnyDesk</label><input id="caAnyDesk" type="text" dir="ltr"></div>
+                <div class="field"><label for="caAnyDesk">AnyDesk</label>
+                    <div class="email-suffix-row"><input id="caAnyDesk" type="text" dir="ltr">
+                        <a id="caAnyDeskConnect" class="icon-button" href="anydesk:" title="התחברות מרחוק דרך AnyDesk" style="text-decoration:none">🖥️</a></div>
+                </div>
                 <div class="field"><label for="caBranch">סניף</label><select id="caBranch"></select></div>
             </div>
             <div class="field"><label for="caNotes">הערות</label><textarea id="caNotes" rows="3"></textarea></div>
@@ -1990,16 +1997,32 @@
 
     var computerAdminTracker = makeDirtyTracker(document.getElementById('computerAdminModalBackdrop'));
 
+    function updateAnyDeskConnectLink() {
+        var id = document.getElementById('caAnyDesk').value.trim();
+        document.getElementById('caAnyDeskConnect').setAttribute('href', 'anydesk:' + encodeURIComponent(id));
+    }
+    document.getElementById('caAnyDesk').addEventListener('input', updateAnyDeskConnectLink);
+
     async function openComputerAdminModal(comp) {
         editingComputerName = comp ? comp.computerName : null;
         document.getElementById('computerAdminModalTitle').textContent = comp ? 'עריכת מחשב' : 'מחשב חדש';
         document.getElementById('caComputerName').value = comp ? comp.computerName : '';
         document.getElementById('caComputerName').disabled = !!comp;
-        document.getElementById('caType').value = comp ? comp.type : '';
-        document.getElementById('caRam').value = comp ? comp.ram : '';
+        var typeSelect = document.getElementById('caType');
+        typeSelect.querySelectorAll('option[data-legacy]').forEach(function (opt) { opt.remove(); });
+        if (comp && comp.type && comp.type !== 'נייח' && comp.type !== 'נייד') {
+            var legacyOpt = document.createElement('option');
+            legacyOpt.setAttribute('data-legacy', '1');
+            legacyOpt.value = comp.type;
+            legacyOpt.textContent = comp.type + ' (ערך קודם)';
+            typeSelect.appendChild(legacyOpt);
+        }
+        typeSelect.value = comp ? comp.type : 'נייח';
+        document.getElementById('caRam').value = comp ? String(comp.ram || '').replace(/\D/g, '') : '';
         await ensurePrintersLoaded();
         populatePrinterSelect(document.getElementById('caPrinter'), comp ? comp.defaultPrinterName : '');
         document.getElementById('caAnyDesk').value = comp ? comp.anyDeskId : '';
+        updateAnyDeskConnectLink();
         populateBranchSelect(document.getElementById('caBranch'), comp ? comp.branchNumber : '');
         document.getElementById('caNotes').value = comp ? comp.notes : '';
         document.getElementById('computerAdminModalError').style.display = 'none';
@@ -2019,7 +2042,7 @@
         var payload = {
             computerName: document.getElementById('caComputerName').value.trim(),
             type: document.getElementById('caType').value.trim(),
-            ram: document.getElementById('caRam').value.trim(),
+            ram: document.getElementById('caRam').value.trim() ? document.getElementById('caRam').value.trim() + 'GB' : '',
             defaultPrinterName: document.getElementById('caPrinter').value,
             anyDeskId: document.getElementById('caAnyDesk').value.trim(),
             branchNumber: document.getElementById('caBranch').value,
