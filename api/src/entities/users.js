@@ -1,4 +1,5 @@
 const { sql, getPool } = require('../db');
+const { listAllEntraUsers } = require('../graphSync');
 
 function rowToUser(r) {
   if (!r) return null;
@@ -168,4 +169,36 @@ async function remove(payload, caller) {
   return { ok: true };
 }
 
-module.exports = { identify, updateProfile, list, create, adminUpdate, remove, rowToUser };
+// Read-only inbound sync from Entra ID (v2.1, section 4א). Adds new users with a blank
+// profile (never overwrites an existing row, never deletes a leaver) — IT always
+// completes/edits the profile and always creates the account in Entra ID manually via
+// the generated script (section 4ב/4ג), never through this endpoint.
+async function syncFromEntra(_payload, caller) {
+  if (!caller.isSuperAdmin) return { ok: false, error: 'אין הרשאה' };
+  const pool = await getPool();
+  const entraUsers = await listAllEntraUsers();
+
+  const entraEmails = new Set();
+  let added = 0;
+  for (const eu of entraUsers) {
+    const email = String(eu.userPrincipalName || eu.mail || '').trim().toLowerCase();
+    if (!email) continue;
+    entraEmails.add(email);
+
+    const existing = await pool.request().input('email', sql.NVarChar, email)
+      .query('SELECT Email FROM Users WHERE Email = @email');
+    if (existing.recordset.length) continue;
+
+    await pool.request().input('email', sql.NVarChar, email)
+      .query('INSERT INTO Users (Email, FirstName, LastName) VALUES (@email, \'\', \'\')');
+    added++;
+  }
+
+  const allRes = await pool.request().query('SELECT Email FROM Users');
+  const leaversNotInEntra = allRes.recordset
+    .filter((r) => !entraEmails.has(String(r.Email).toLowerCase())).length;
+
+  return { ok: true, data: { added, totalInEntra: entraEmails.size, leaversNotInEntra } };
+}
+
+module.exports = { identify, updateProfile, list, create, adminUpdate, remove, syncFromEntra, rowToUser };

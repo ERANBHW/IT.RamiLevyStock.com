@@ -169,9 +169,8 @@ CREATE INDEX IX_Users_BranchNumber ON Users(BranchNumber);
 GO
 
 -- Computers: Branch (free text) → BranchNumber FK now (step 2 lands the code for this).
--- Printer/IP columns are dropped later (steps 5 and 3 respectively), once the entity
--- code that still reads/writes them is updated — dropping them here would break the
--- currently-deployed computers.js before its replacement ships.
+-- Printer is still dropped later (step 5), once the printer-catalog code lands — but IP
+-- drops now, together with the step-3 computers.js/index.html change that stops reading it.
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Computers') AND name = 'BranchNumber')
 ALTER TABLE Computers ADD BranchNumber INT NULL;
 GO
@@ -187,8 +186,11 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Computers_DefaultPrinter')
 ALTER TABLE Computers ADD CONSTRAINT FK_Computers_DefaultPrinter FOREIGN KEY (DefaultPrinterName) REFERENCES Printers(PrinterName) ON DELETE SET NULL;
 GO
--- Printer and IP: dropped in the step-5 (printers) and step-3 (computers fix) migrations,
--- not here — see infra/schema.sql history / PROJECT_STATUS.md for when each lands.
+-- IP dropped entirely (v2.1, section 7 — no longer relevant, superseded by AnyDesk).
+-- Printer is dropped later (step 5), once the printer-catalog code replaces it.
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Computers') AND name = 'IP')
+ALTER TABLE Computers DROP COLUMN IP;
+GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Computers_BranchNumber')
 CREATE INDEX IX_Computers_BranchNumber ON Computers(BranchNumber);
 GO

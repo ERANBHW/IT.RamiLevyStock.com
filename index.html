@@ -192,7 +192,6 @@
                         <div class="field"><label>טלפון</label><input id="tkPhone" readonly dir="ltr"></div>
                         <div class="field"><label>סניף</label><input id="tkBranch" readonly></div>
                         <div class="field"><label>מחשב</label><input id="tkComputerName" readonly dir="ltr"></div>
-                        <div class="field"><label>IP</label><input id="tkIp" readonly dir="ltr"></div>
                         <div class="field"><label>מדפסת</label><input id="tkPrinter" readonly></div>
                         <div class="field"><label>AnyDesk</label><input id="tkAnyDesk" readonly dir="ltr"></div>
                     </div>
@@ -274,9 +273,12 @@
     <!-- VIEW: admin users -->
     <main class="app" id="view-admin-users">
         <div class="content">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:10px;flex-wrap:wrap">
                 <h1 class="page-title" style="margin:0">ניהול משתמשים</h1>
-                <button type="button" class="primary-button" id="userAdminAddBtn">+ הוסף משתמש</button>
+                <div style="display:flex;gap:8px">
+                    <button type="button" class="secondary-button" id="usersSyncBtn" style="display:none">🔄 סנכרון מ-365</button>
+                    <button type="button" class="primary-button" id="userAdminAddBtn">+ הוסף משתמש</button>
+                </div>
             </div>
             <div style="overflow-x:auto">
                 <table class="admin-table" id="usersTable">
@@ -299,7 +301,7 @@
             <div style="overflow-x:auto">
                 <table class="admin-table" id="computersTable">
                     <thead>
-                        <tr><th>שם מחשב</th><th>סוג</th><th>IP</th><th>מדפסת</th><th>AnyDesk</th><th>משתמש</th><th></th></tr>
+                        <tr><th>שם מחשב</th><th>סוג</th><th>מדפסת</th><th>AnyDesk</th><th>משתמש</th><th></th></tr>
                     </thead>
                     <tbody id="computersTableBody"></tbody>
                 </table>
@@ -390,7 +392,6 @@
             <div class="grid-2">
                 <div class="field"><label for="caType">סוג</label><input id="caType" type="text" placeholder="נייח / נייד"></div>
                 <div class="field"><label for="caRam">זיכרון (RAM)</label><input id="caRam" type="text" placeholder="16GB"></div>
-                <div class="field"><label for="caIp">IP</label><input id="caIp" type="text" dir="ltr"></div>
                 <div class="field"><label for="caPrinter">מדפסת</label><input id="caPrinter" type="text"></div>
                 <div class="field"><label for="caAnyDesk">AnyDesk</label><input id="caAnyDesk" type="text" dir="ltr"></div>
                 <div class="field"><label for="caBranch">סניף</label><select id="caBranch"></select></div>
@@ -563,6 +564,8 @@
     // ── PROFILE EDIT MODAL ────────────────────────────────────
     var profileModal = document.getElementById('profileModalBackdrop');
     var profileError = document.getElementById('profileModalError');
+    var profileTracker = makeDirtyTracker(profileModal);
+    maskPhoneInput(document.getElementById('pfPhone'));
 
     async function openProfileModal() {
         var user = Portal.getUser();
@@ -574,13 +577,15 @@
         document.getElementById('pfRole').value = user.role || '';
         profileError.style.display = 'none';
         profileModal.classList.add('visible');
+        profileTracker.reset();
     }
 
     function closeProfileModal() { profileModal.classList.remove('visible'); }
 
     document.getElementById('hubUserIcon').addEventListener('click', openProfileModal);
-    document.getElementById('profileCancelBtn').addEventListener('click', closeProfileModal);
-    profileModal.addEventListener('click', function (e) { if (e.target === profileModal) closeProfileModal(); });
+    document.getElementById('profileCancelBtn').addEventListener('click', function () {
+        if (profileTracker.confirmDiscard()) closeProfileModal();
+    });
 
     document.getElementById('profileSaveBtn').addEventListener('click', async function () {
         var payload = {
@@ -597,6 +602,7 @@
             if (res.ok) {
                 Portal.setUser(res.data);
                 renderHubGreeting();
+                profileTracker.reset();
                 closeProfileModal();
             } else {
                 profileError.textContent = res.error || 'שגיאה בשמירה';
@@ -637,7 +643,7 @@
     }
 
     function setComputerFieldsReadonly(readonly) {
-        ['tkComputerName', 'tkIp', 'tkPrinter', 'tkAnyDesk'].forEach(function (id) {
+        ['tkComputerName', 'tkPrinter', 'tkAnyDesk'].forEach(function (id) {
             var el = document.getElementById(id);
             if (readonly) el.setAttribute('readonly', 'readonly'); else el.removeAttribute('readonly');
         });
@@ -649,7 +655,6 @@
         document.getElementById('tkPhone').value = user.phone || '';
         document.getElementById('tkBranch').value = branchName(user.branchNumber);
         document.getElementById('tkComputerName').value = data ? (data.computerName || '') : '';
-        document.getElementById('tkIp').value = data ? (data.ip || '') : '';
         document.getElementById('tkPrinter').value = data ? (data.printer || '') : '';
         document.getElementById('tkAnyDesk').value = data ? (data.anyDeskId || '') : '';
         setComputerFieldsReadonly(true);
@@ -747,10 +752,13 @@
         if (Portal.isITAdmin() && document.getElementById('view-admin-tickets').classList.contains('active')) loadTicketsAdminPage();
     }
 
+    var ticketDetailTracker = makeDirtyTracker(document.getElementById('ticketDetailBackdrop'));
+
     async function openTicketDetail(ticketSummary) {
         document.getElementById('ticketDetailTitle').textContent = ticketSummary.ticketNumber;
         document.getElementById('ticketDetailBody').innerHTML = '<p style="color:var(--muted);font-size:13px">טוען...</p>';
         document.getElementById('ticketDetailBackdrop').classList.add('visible');
+        ticketDetailTracker.reset();
 
         var res = await apiGet('tickets', 'get', { ticketNumber: ticketSummary.ticketNumber });
         if (!res.ok) {
@@ -838,10 +846,7 @@
     }
 
     document.getElementById('ticketDetailCloseBtn').addEventListener('click', function () {
-        document.getElementById('ticketDetailBackdrop').classList.remove('visible');
-    });
-    document.getElementById('ticketDetailBackdrop').addEventListener('click', function (e) {
-        if (e.target === this) this.classList.remove('visible');
+        if (ticketDetailTracker.confirmDiscard()) document.getElementById('ticketDetailBackdrop').classList.remove('visible');
     });
 
     // ── ADMIN: TICKETS QUEUE ──────────────────────────────────
@@ -896,7 +901,6 @@
             phone: document.getElementById('tkPhone').value,
             branch: document.getElementById('tkBranch').value,
             computerName: document.getElementById('tkComputerName').value,
-            ip: document.getElementById('tkIp').value,
             printer: document.getElementById('tkPrinter').value,
             anyDeskId: document.getElementById('tkAnyDesk').value,
             category: category,
@@ -997,6 +1001,8 @@
         });
     }
 
+    var procedureTracker = makeDirtyTracker(document.getElementById('procedureModalBackdrop'));
+
     function openProcedureModal(proc) {
         editingProcedureId = proc ? proc.id : null;
         document.getElementById('procedureModalTitle').textContent = proc ? 'עריכת נוהל' : 'נוהל חדש';
@@ -1006,13 +1012,15 @@
         document.getElementById('prContent').value = proc ? proc.content : '';
         document.getElementById('procedureModalError').style.display = 'none';
         document.getElementById('procedureModalBackdrop').classList.add('visible');
+        procedureTracker.reset();
     }
 
     function closeProcedureModal() { document.getElementById('procedureModalBackdrop').classList.remove('visible'); }
 
     document.getElementById('procedureAddBtn').addEventListener('click', function () { openProcedureModal(null); });
-    document.getElementById('procedureCancelBtn').addEventListener('click', closeProcedureModal);
-    document.getElementById('procedureModalBackdrop').addEventListener('click', function (e) { if (e.target === this) closeProcedureModal(); });
+    document.getElementById('procedureCancelBtn').addEventListener('click', function () {
+        if (procedureTracker.confirmDiscard()) closeProcedureModal();
+    });
 
     document.getElementById('procedureSaveBtn').addEventListener('click', async function () {
         var errEl = document.getElementById('procedureModalError');
@@ -1033,6 +1041,7 @@
         var res = await apiPost('procedures', editingProcedureId ? 'update' : 'create', payload);
         showLoading(false);
         if (res.ok) {
+            procedureTracker.reset();
             closeProcedureModal();
             loadProceduresPage();
         } else {
@@ -1055,6 +1064,7 @@
     var computersCache = [];
 
     async function loadUsersAdminPage() {
+        document.getElementById('usersSyncBtn').style.display = Portal.isSuperAdmin() ? 'inline-block' : 'none';
         showLoading(true);
         await ensureBranchesLoaded();
         var usersRes = await apiGet('users', 'list', {});
@@ -1063,6 +1073,19 @@
         computersCache = compRes.ok ? compRes.data : [];
         renderUsersTable(usersRes.ok ? usersRes.data : []);
     }
+
+    document.getElementById('usersSyncBtn').addEventListener('click', async function () {
+        showLoading(true);
+        var res = await apiPost('users', 'syncFromEntra', {});
+        showLoading(false);
+        if (res.ok) {
+            alert('סנכרון הושלם: ' + res.data.added + ' משתמשים חדשים נוספו מתוך ' + res.data.totalInEntra +
+                ' ב-365. ' + res.data.leaversNotInEntra + ' משתמשים בפורטל לא נמצאים יותר ב-365 (לא נמחקו אוטומטית).');
+            loadUsersAdminPage();
+        } else {
+            alert(res.error || 'שגיאה בסנכרון');
+        }
+    });
 
     function computerAssignedTo(email) {
         return computersCache.find(function (c) { return String(c.assignedUserEmail).toLowerCase() === String(email).toLowerCase(); });
@@ -1109,6 +1132,9 @@
             }).join('');
     }
 
+    var userAdminTracker = makeDirtyTracker(document.getElementById('userAdminModalBackdrop'));
+    maskPhoneInput(document.getElementById('uaPhone'));
+
     async function openUserAdminModal(user) {
         editingUserEmail = user ? user.email : null;
         document.getElementById('userAdminModalTitle').textContent = user ? 'עריכת משתמש' : 'משתמש חדש';
@@ -1129,13 +1155,15 @@
         populateComputerSelect(assignedComp ? assignedComp.computerName : '');
         document.getElementById('userAdminModalError').style.display = 'none';
         document.getElementById('userAdminModalBackdrop').classList.add('visible');
+        userAdminTracker.reset();
     }
 
     function closeUserAdminModal() { document.getElementById('userAdminModalBackdrop').classList.remove('visible'); }
 
     document.getElementById('userAdminAddBtn').addEventListener('click', function () { openUserAdminModal(null); });
-    document.getElementById('userAdminCancelBtn').addEventListener('click', closeUserAdminModal);
-    document.getElementById('userAdminModalBackdrop').addEventListener('click', function (e) { if (e.target === this) closeUserAdminModal(); });
+    document.getElementById('userAdminCancelBtn').addEventListener('click', function () {
+        if (userAdminTracker.confirmDiscard()) closeUserAdminModal();
+    });
 
     document.getElementById('userAdminSaveBtn').addEventListener('click', async function () {
         var errEl = document.getElementById('userAdminModalError');
@@ -1155,7 +1183,7 @@
         showLoading(true);
         var res = await apiPost('users', editingUserEmail ? 'adminUpdate' : 'create', payload);
         showLoading(false);
-        if (res.ok) { closeUserAdminModal(); loadUsersAdminPage(); }
+        if (res.ok) { userAdminTracker.reset(); closeUserAdminModal(); loadUsersAdminPage(); }
         else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
     });
 
@@ -1190,7 +1218,6 @@
             tr.innerHTML =
                 '<td dir="ltr">' + escapeHtml(c.computerName) + '</td>' +
                 '<td>' + escapeHtml(c.type) + '</td>' +
-                '<td dir="ltr">' + escapeHtml(c.ip) + '</td>' +
                 '<td>' + escapeHtml(c.printer) + '</td>' +
                 '<td>' + anyDeskCell + '</td>' +
                 '<td dir="ltr">' + escapeHtml(c.assignedUserEmail || '-') + '</td>' +
@@ -1206,6 +1233,8 @@
         });
     }
 
+    var computerAdminTracker = makeDirtyTracker(document.getElementById('computerAdminModalBackdrop'));
+
     function openComputerAdminModal(comp) {
         editingComputerName = comp ? comp.computerName : null;
         document.getElementById('computerAdminModalTitle').textContent = comp ? 'עריכת מחשב' : 'מחשב חדש';
@@ -1213,20 +1242,21 @@
         document.getElementById('caComputerName').disabled = !!comp;
         document.getElementById('caType').value = comp ? comp.type : '';
         document.getElementById('caRam').value = comp ? comp.ram : '';
-        document.getElementById('caIp').value = comp ? comp.ip : '';
         document.getElementById('caPrinter').value = comp ? comp.printer : '';
         document.getElementById('caAnyDesk').value = comp ? comp.anyDeskId : '';
         populateBranchSelect(document.getElementById('caBranch'), comp ? comp.branchNumber : '');
         document.getElementById('caNotes').value = comp ? comp.notes : '';
         document.getElementById('computerAdminModalError').style.display = 'none';
         document.getElementById('computerAdminModalBackdrop').classList.add('visible');
+        computerAdminTracker.reset();
     }
 
     function closeComputerAdminModal() { document.getElementById('computerAdminModalBackdrop').classList.remove('visible'); }
 
     document.getElementById('computerAdminAddBtn').addEventListener('click', function () { openComputerAdminModal(null); });
-    document.getElementById('computerAdminCancelBtn').addEventListener('click', closeComputerAdminModal);
-    document.getElementById('computerAdminModalBackdrop').addEventListener('click', function (e) { if (e.target === this) closeComputerAdminModal(); });
+    document.getElementById('computerAdminCancelBtn').addEventListener('click', function () {
+        if (computerAdminTracker.confirmDiscard()) closeComputerAdminModal();
+    });
 
     document.getElementById('computerAdminSaveBtn').addEventListener('click', async function () {
         var errEl = document.getElementById('computerAdminModalError');
@@ -1234,18 +1264,21 @@
             computerName: document.getElementById('caComputerName').value.trim(),
             type: document.getElementById('caType').value.trim(),
             ram: document.getElementById('caRam').value.trim(),
-            ip: document.getElementById('caIp').value.trim(),
             printer: document.getElementById('caPrinter').value.trim(),
             anyDeskId: document.getElementById('caAnyDesk').value.trim(),
             branchNumber: document.getElementById('caBranch').value,
             notes: document.getElementById('caNotes').value.trim(),
         };
         if (!payload.computerName) { errEl.textContent = 'יש למלא שם מחשב'; errEl.style.display = 'block'; return; }
+        var isDuplicate = !editingComputerName && computersCache.some(function (c) {
+            return c.computerName.toLowerCase() === payload.computerName.toLowerCase();
+        });
+        if (isDuplicate) { errEl.textContent = 'מחשב עם שם זה כבר קיים'; errEl.style.display = 'block'; return; }
 
         showLoading(true);
         var res = await apiPost('computers', editingComputerName ? 'update' : 'create', payload);
         showLoading(false);
-        if (res.ok) { closeComputerAdminModal(); loadComputersAdminPage(); }
+        if (res.ok) { computerAdminTracker.reset(); closeComputerAdminModal(); loadComputersAdminPage(); }
         else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
     });
 
@@ -1306,6 +1339,8 @@
         });
     }
 
+    var branchAdminTracker = makeDirtyTracker(document.getElementById('branchAdminModalBackdrop'));
+
     function openBranchAdminModal(b) {
         editingBranchNumber = b ? b.number : null;
         document.getElementById('branchAdminModalTitle').textContent = b ? 'עריכת סניף' : 'סניף חדש';
@@ -1314,13 +1349,15 @@
         document.getElementById('baName').value = b ? b.name : '';
         document.getElementById('branchAdminModalError').style.display = 'none';
         document.getElementById('branchAdminModalBackdrop').classList.add('visible');
+        branchAdminTracker.reset();
     }
 
     function closeBranchAdminModal() { document.getElementById('branchAdminModalBackdrop').classList.remove('visible'); }
 
     document.getElementById('branchAdminAddBtn').addEventListener('click', function () { openBranchAdminModal(null); });
-    document.getElementById('branchAdminCancelBtn').addEventListener('click', closeBranchAdminModal);
-    document.getElementById('branchAdminModalBackdrop').addEventListener('click', function (e) { if (e.target === this) closeBranchAdminModal(); });
+    document.getElementById('branchAdminCancelBtn').addEventListener('click', function () {
+        if (branchAdminTracker.confirmDiscard()) closeBranchAdminModal();
+    });
 
     document.getElementById('branchAdminSaveBtn').addEventListener('click', async function () {
         var errEl = document.getElementById('branchAdminModalError');
@@ -1333,7 +1370,7 @@
         showLoading(true);
         var res = await apiPost('branches', editingBranchNumber !== null ? 'update' : 'create', payload);
         showLoading(false);
-        if (res.ok) { closeBranchAdminModal(); loadBranchesAdminPage(); }
+        if (res.ok) { branchAdminTracker.reset(); closeBranchAdminModal(); loadBranchesAdminPage(); }
         else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
     });
 
@@ -1374,6 +1411,8 @@
         });
     }
 
+    var sharedFolderAdminTracker = makeDirtyTracker(document.getElementById('sharedFolderAdminModalBackdrop'));
+
     function openSharedFolderAdminModal(f) {
         editingSharedFolderId = f ? f.id : null;
         document.getElementById('sharedFolderAdminModalTitle').textContent = f ? 'עריכת תיקייה' : 'תיקייה חדשה';
@@ -1381,13 +1420,15 @@
         document.getElementById('sfObjectId').value = f ? f.entraGroupObjectId : '';
         document.getElementById('sharedFolderAdminModalError').style.display = 'none';
         document.getElementById('sharedFolderAdminModalBackdrop').classList.add('visible');
+        sharedFolderAdminTracker.reset();
     }
 
     function closeSharedFolderAdminModal() { document.getElementById('sharedFolderAdminModalBackdrop').classList.remove('visible'); }
 
     document.getElementById('sharedFolderAdminAddBtn').addEventListener('click', function () { openSharedFolderAdminModal(null); });
-    document.getElementById('sharedFolderAdminCancelBtn').addEventListener('click', closeSharedFolderAdminModal);
-    document.getElementById('sharedFolderAdminModalBackdrop').addEventListener('click', function (e) { if (e.target === this) closeSharedFolderAdminModal(); });
+    document.getElementById('sharedFolderAdminCancelBtn').addEventListener('click', function () {
+        if (sharedFolderAdminTracker.confirmDiscard()) closeSharedFolderAdminModal();
+    });
 
     document.getElementById('sharedFolderAdminSaveBtn').addEventListener('click', async function () {
         var errEl = document.getElementById('sharedFolderAdminModalError');
@@ -1401,7 +1442,7 @@
         showLoading(true);
         var res = await apiPost('sharedFolders', editingSharedFolderId ? 'update' : 'create', payload);
         showLoading(false);
-        if (res.ok) { closeSharedFolderAdminModal(); loadSharedFoldersAdminPage(); }
+        if (res.ok) { sharedFolderAdminTracker.reset(); closeSharedFolderAdminModal(); loadSharedFoldersAdminPage(); }
         else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
     });
 

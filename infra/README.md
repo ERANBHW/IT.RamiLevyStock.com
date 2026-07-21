@@ -38,7 +38,7 @@ chmod +x provision.sh
 
 ```bash
 ./provision.sh resources     # Function App, Storage, SQL Server+DB, firewall
-./provision.sh appregs       # 3 App Registrations (api/spa/mail) + הרשאות
+./provision.sh appregs       # 4 App Registrations (api/spa/mail/graph) + הרשאות
 ./provision.sh easyauth      # Easy Auth v2 על ה-Function App
 ./provision.sh cors          # CORS מוגבל לדומיין של GitHub Pages
 ./provision.sh identity      # Managed Identity + פקודת ה-SQL להרצה ידנית
@@ -142,8 +142,12 @@ Intune admin center → Devices → Configuration → **Settings Catalog** →
 
 ## אבטחה
 
-- ה-SQL secret היחיד שנוצר (Graph mail client secret) נכתב ישירות ל-App Settings
-  של ה-Function App ומעולם לא מודפס למסך — הקובץ הזמני שמכיל אותו נמחק בסוף
-  `appsettings`.
+- שני ה-secrets שנוצרים (Graph mail client secret, Graph sync client secret) נכתבים
+  ישירות ל-App Settings של ה-Function App ומעולם לא מודפסים למסך — הקבצים הזמניים
+  שמכילים אותם נמחקים בסוף `appsettings`.
+- `it-portal-graph` (v2.1, סעיף 4א) מקבל **רק** `User.Read.All` (read-only) — אין לו
+  ואסור שיהיה לו שום הרשאת כתיבה. הקוד (`api/src/entities/users.js` → `syncFromEntra`)
+  קורא משתמשים מ-Entra ID ומוסיף חדשים בלבד; אף פעם לא כותב חזרה ל-Entra ולא דורס/מוחק
+  שורה קיימת ב-`Users`.
 - ה-Function App מתחבר ל-SQL עם ה-Managed Identity שלו, בלי סיסמה בכלל.
 - `IsSuperAdmin` לא ניתן לשינוי משום endpoint — רק `seed.sql`/גישה ישירה ל-DB.

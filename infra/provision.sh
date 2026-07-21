@@ -103,7 +103,7 @@ step_resources() {
   echo "SQL Server:   ${SQL_SERVER}.database.windows.net"
 }
 
-# ── STEP: App Registrations (api / spa / mail) ──────────────────────────
+# ── STEP: App Registrations (api / spa / mail / graph) ──────────────────
 step_appregs() {
   say "App Registration #1 — it-portal-api (backs Easy Auth)"
   API_APP_ID="$(az ad app list --display-name it-portal-api --query '[0].appId' -o tsv)"
@@ -153,6 +153,21 @@ step_appregs() {
 
   say "Recommended hardening (optional, do it once Mail.Send works): scope the mail app to ONLY the shared mailbox with an Exchange Online ApplicationAccessPolicy — see infra/README.md."
 
+  say "App Registration #4 — it-portal-graph (confidential client, User.Read.All — read-only, v2.1 section 4א)"
+  GRAPH_SYNC_APP_ID="$(az ad app list --display-name it-portal-graph --query '[0].appId' -o tsv)"
+  if [ -z "$GRAPH_SYNC_APP_ID" ]; then
+    GRAPH_SYNC_APP_ID="$(az ad app create --display-name it-portal-graph --sign-in-audience AzureADMyOrg --query appId -o tsv)"
+    az ad sp create --id "$GRAPH_SYNC_APP_ID" &>/dev/null || true
+  fi
+  GRAPH_SYNC_SECRET="$(az ad app credential reset --id "$GRAPH_SYNC_APP_ID" --append --query password -o tsv)"
+  # Microsoft Graph app role "User.Read.All" (well-known GUID, application permission).
+  # This app registration must NEVER be granted a write scope — the portal only reads
+  # from Entra ID; every user is created manually by IT via the generated PowerShell script.
+  az ad app permission add --id "$GRAPH_SYNC_APP_ID" --api 00000003-0000-0000-c000-000000000000 \
+    --api-permissions df021288-bdef-4463-88db-98f22de89214=Role || true
+  az ad app permission admin-consent --id "$GRAPH_SYNC_APP_ID" || \
+    echo "  ⚠ admin-consent needs Global Admin — if this failed grant it in the Portal: Entra ID → App registrations → it-portal-graph → API permissions → Grant admin consent"
+
   # Persist non-secret IDs for later steps / for you to hand back to Claude.
   cat > "${SCRIPT_DIR}/.provision-state" <<EOF
 TENANT_ID=${TENANT_ID}
@@ -160,14 +175,17 @@ API_APP_ID=${API_APP_ID}
 API_SCOPE_ID=${SCOPE_ID}
 SPA_APP_ID=${SPA_APP_ID}
 MAIL_APP_ID=${MAIL_APP_ID}
+GRAPH_SYNC_APP_ID=${GRAPH_SYNC_APP_ID}
 FUNCTION_APP=${FUNCTION_APP}
 SQL_SERVER=${SQL_SERVER}
 SQL_DATABASE=${SQL_DATABASE}
 EOF
-  # The one secret goes straight to the Function App below, and only there — never echoed.
-  export MAIL_SECRET
+  # The two secrets go straight to the Function App below, and only there — never echoed.
+  export MAIL_SECRET GRAPH_SYNC_SECRET
   echo "$MAIL_SECRET" > "${SCRIPT_DIR}/.mail-secret.tmp"
   chmod 600 "${SCRIPT_DIR}/.mail-secret.tmp"
+  echo "$GRAPH_SYNC_SECRET" > "${SCRIPT_DIR}/.graph-sync-secret.tmp"
+  chmod 600 "${SCRIPT_DIR}/.graph-sync-secret.tmp"
 
   echo -e "\nSaved non-secret IDs to infra/.provision-state — cat that file and paste its contents back."
 }
@@ -223,11 +241,12 @@ step_schema() {
 # ── STEP: App Settings ────────────────────────────────────────────────────
 step_appsettings() {
   source "${SCRIPT_DIR}/.provision-state"
-  if [ ! -f "${SCRIPT_DIR}/.mail-secret.tmp" ]; then
-    echo "Missing infra/.mail-secret.tmp — run 'appregs' first."; exit 1
+  if [ ! -f "${SCRIPT_DIR}/.mail-secret.tmp" ] || [ ! -f "${SCRIPT_DIR}/.graph-sync-secret.tmp" ]; then
+    echo "Missing infra/.mail-secret.tmp or infra/.graph-sync-secret.tmp — run 'appregs' first."; exit 1
   fi
   MAIL_SECRET="$(cat "${SCRIPT_DIR}/.mail-secret.tmp")"
-  say "Writing App Settings to the Function App (SQL connection info, Graph mail credentials, recipients)"
+  GRAPH_SYNC_SECRET="$(cat "${SCRIPT_DIR}/.graph-sync-secret.tmp")"
+  say "Writing App Settings to the Function App (SQL connection info, Graph mail + read-only sync credentials, recipients)"
   az functionapp config appsettings set --resource-group "$RESOURCE_GROUP" --name "$FUNCTION_APP" --settings \
     "SQL_SERVER=${SQL_SERVER}.database.windows.net" \
     "SQL_DATABASE=${SQL_DATABASE}" \
@@ -235,12 +254,14 @@ step_appsettings() {
     "GRAPH_CLIENT_ID=${MAIL_APP_ID}" \
     "GRAPH_CLIENT_SECRET=${MAIL_SECRET}" \
     "GRAPH_SENDER_MAILBOX=${SHARED_MAILBOX_UPN}" \
+    "GRAPH_SYNC_CLIENT_ID=${GRAPH_SYNC_APP_ID}" \
+    "GRAPH_SYNC_CLIENT_SECRET=${GRAPH_SYNC_SECRET}" \
     "IT_COMPANY_EMAIL=${IT_COMPANY_EMAIL}" \
     "ADMIN_EMAIL=${ADMIN_EMAIL}" \
     "MAIL_SENDER_NAME=IT-Rami-Levy-Stock" \
     >/dev/null
-  rm -f "${SCRIPT_DIR}/.mail-secret.tmp"
-  echo "Done. The mail secret was written directly to the Function App and the temp file was deleted."
+  rm -f "${SCRIPT_DIR}/.mail-secret.tmp" "${SCRIPT_DIR}/.graph-sync-secret.tmp"
+  echo "Done. Both secrets were written directly to the Function App and the temp files were deleted."
 }
 
 case "${1:-}" in
