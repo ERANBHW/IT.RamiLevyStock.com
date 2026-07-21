@@ -7,14 +7,24 @@ function rowToUser(r) {
     firstName: r.FirstName,
     lastName: r.LastName,
     phone: r.Phone,
-    branch: r.Branch,
+    branchNumber: r.BranchNumber,
     role: r.Role,
     isSuperAdmin: !!r.IsSuperAdmin,
     isITAdmin: !!r.IsITAdmin,
     isProceduresAdmin: !!r.IsProceduresAdmin,
+    isUserRequestSubmitter: !!r.IsUserRequestSubmitter,
     createdAt: r.CreatedAt,
     updatedAt: r.UpdatedAt,
   };
+}
+
+// '' / null / undefined all mean "no branch selected" — stored as NULL, never as 0
+// unless 0 (the seeded "מרוחק") was actually chosen.
+function parseBranchNumber(v) {
+  if (v === undefined) return undefined;
+  if (v === null || v === '') return null;
+  const n = Number(v);
+  return Number.isInteger(n) ? n : null;
 }
 
 function isAnyAdmin(caller) {
@@ -25,7 +35,7 @@ async function identify(_payload, caller) {
   return { ok: true, data: rowToUser(caller.row) };
 }
 
-const EDITABLE_PROFILE_FIELDS = ['FirstName', 'LastName', 'Phone', 'Branch', 'Role'];
+const EDITABLE_PROFILE_FIELDS = ['FirstName', 'LastName', 'Phone', 'Role'];
 
 async function updateProfile(payload, caller) {
   const pool = await getPool();
@@ -38,6 +48,11 @@ async function updateProfile(payload, caller) {
       sets.push(`${f} = @${f}`);
     }
   });
+  const branchNumber = parseBranchNumber(payload.branchNumber);
+  if (branchNumber !== undefined) {
+    req.input('BranchNumber', sql.Int, branchNumber);
+    sets.push('BranchNumber = @BranchNumber');
+  }
   await req.query(`UPDATE Users SET ${sets.join(', ')} WHERE Email = @email`);
   const result = await pool.request().input('email', sql.NVarChar, caller.email)
     .query('SELECT * FROM Users WHERE Email = @email');
@@ -58,10 +73,15 @@ async function setAssignment(pool, computerName, email) {
     .query('UPDATE Computers SET AssignedUserEmail = @email, UpdatedAt = SYSUTCDATETIME() WHERE ComputerName = @name');
 }
 
+// The "add user" form only takes a username (section 11) — the server owns composing the
+// real address, same rule as SuggestedEmail in userRequests.js.
+const USER_EMAIL_DOMAIN = 'rami-levy-stock.co.il';
+
 async function create(payload, caller) {
   if (!isAnyAdmin(caller)) return { ok: false, error: 'אין הרשאה' };
-  const email = String(payload.email || '').trim().toLowerCase();
-  if (!email) return { ok: false, error: 'חסר מייל' };
+  const username = String(payload.username || '').trim().toLowerCase().replace(/@.*$/, '');
+  if (!username) return { ok: false, error: 'חסר שם משתמש' };
+  const email = `${username}@${USER_EMAIL_DOMAIN}`;
 
   const pool = await getPool();
   const existing = await pool.request().input('email', sql.NVarChar, email)
@@ -71,24 +91,26 @@ async function create(payload, caller) {
   // Only a SuperAdmin may grant admin flags — an IT/Procedures admin always creates a plain user.
   const isITAdmin = caller.isSuperAdmin ? !!payload.isITAdmin : false;
   const isProceduresAdmin = caller.isSuperAdmin ? !!payload.isProceduresAdmin : false;
+  const isUserRequestSubmitter = caller.isSuperAdmin ? !!payload.isUserRequestSubmitter : false;
 
   await pool.request()
     .input('email', sql.NVarChar, email)
     .input('firstName', sql.NVarChar, String(payload.firstName || ''))
     .input('lastName', sql.NVarChar, String(payload.lastName || ''))
     .input('phone', sql.NVarChar, String(payload.phone || ''))
-    .input('branch', sql.NVarChar, String(payload.branch || ''))
+    .input('branchNumber', sql.Int, parseBranchNumber(payload.branchNumber) ?? null)
     .input('role', sql.NVarChar, String(payload.role || ''))
     .input('isITAdmin', sql.Bit, isITAdmin)
     .input('isProceduresAdmin', sql.Bit, isProceduresAdmin)
-    .query(`INSERT INTO Users (Email, FirstName, LastName, Phone, Branch, Role, IsSuperAdmin, IsITAdmin, IsProceduresAdmin)
-      VALUES (@email, @firstName, @lastName, @phone, @branch, @role, 0, @isITAdmin, @isProceduresAdmin)`);
+    .input('isUserRequestSubmitter', sql.Bit, isUserRequestSubmitter)
+    .query(`INSERT INTO Users (Email, FirstName, LastName, Phone, BranchNumber, Role, IsSuperAdmin, IsITAdmin, IsProceduresAdmin, IsUserRequestSubmitter)
+      VALUES (@email, @firstName, @lastName, @phone, @branchNumber, @role, 0, @isITAdmin, @isProceduresAdmin, @isUserRequestSubmitter)`);
 
   if (payload.assignedComputerName) await setAssignment(pool, payload.assignedComputerName, email);
   return { ok: true };
 }
 
-const EDITABLE_ADMIN_USER_FIELDS = ['FirstName', 'LastName', 'Phone', 'Branch', 'Role'];
+const EDITABLE_ADMIN_USER_FIELDS = ['FirstName', 'LastName', 'Phone', 'Role'];
 
 async function adminUpdate(payload, caller) {
   if (!isAnyAdmin(caller)) return { ok: false, error: 'אין הרשאה' };
@@ -112,6 +134,11 @@ async function adminUpdate(payload, caller) {
       sets.push(`${f} = @${f}`);
     }
   });
+  const branchNumber = parseBranchNumber(payload.branchNumber);
+  if (branchNumber !== undefined) {
+    req.input('BranchNumber', sql.Int, branchNumber);
+    sets.push('BranchNumber = @BranchNumber');
+  }
   // IsSuperAdmin is never settable through this (or any) endpoint. Admin flags: SuperAdmin only.
   if (caller.isSuperAdmin) {
     if (Object.prototype.hasOwnProperty.call(payload, 'isITAdmin')) {
@@ -121,6 +148,10 @@ async function adminUpdate(payload, caller) {
     if (Object.prototype.hasOwnProperty.call(payload, 'isProceduresAdmin')) {
       req.input('IsProceduresAdmin', sql.Bit, !!payload.isProceduresAdmin);
       sets.push('IsProceduresAdmin = @IsProceduresAdmin');
+    }
+    if (Object.prototype.hasOwnProperty.call(payload, 'isUserRequestSubmitter')) {
+      req.input('IsUserRequestSubmitter', sql.Bit, !!payload.isUserRequestSubmitter);
+      sets.push('IsUserRequestSubmitter = @IsUserRequestSubmitter');
     }
   }
   await req.query(`UPDATE Users SET ${sets.join(', ')} WHERE Email = @email`);

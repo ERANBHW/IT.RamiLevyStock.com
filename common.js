@@ -81,6 +81,9 @@ var Portal = (function () {
   function isSuperAdmin() { return !!(currentUser && currentUser.isSuperAdmin); }
   function isITAdmin() { return !!(currentUser && (currentUser.isITAdmin || currentUser.isSuperAdmin)); }
   function isProceduresAdmin() { return !!(currentUser && (currentUser.isProceduresAdmin || currentUser.isSuperAdmin)); }
+  function isUserRequestSubmitter() {
+    return !!(currentUser && (currentUser.isUserRequestSubmitter || currentUser.isITAdmin || currentUser.isSuperAdmin));
+  }
 
   return {
     loadIdentity: loadIdentity,
@@ -89,6 +92,7 @@ var Portal = (function () {
     isSuperAdmin: isSuperAdmin,
     isITAdmin: isITAdmin,
     isProceduresAdmin: isProceduresAdmin,
+    isUserRequestSubmitter: isUserRequestSubmitter,
     acquireToken: acquireToken,
   };
 })();
@@ -152,6 +156,51 @@ function showLoading(visible) {
 function escapeHtml(str) {
   return String(str == null ? '' : str).replace(/[&<>"']/g, function (c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+// Every edit modal in the app follows the same rule (v2.1, section 6): a backdrop click
+// never closes it — only the explicit "ביטול" button does, and if the user changed
+// anything since the modal opened, that button asks for confirmation first.
+function makeDirtyTracker(modalEl) {
+  var dirty = false;
+  modalEl.addEventListener('input', function () { dirty = true; });
+  modalEl.addEventListener('change', function () { dirty = true; });
+  return {
+    reset: function () { dirty = false; },
+    isDirty: function () { return dirty; },
+    confirmDiscard: function () {
+      return !dirty || confirm('יש נתונים שלא נשמרו - לצאת בכל זאת?');
+    },
+  };
+}
+
+// v2.1, section 6.5 — XXX-XXX-XXXX as the user types, digits only, no library.
+function maskPhoneInput(el) {
+  el.addEventListener('input', function () {
+    var digits = el.value.replace(/\D/g, '').slice(0, 10);
+    var parts = [];
+    if (digits.length > 0) parts.push(digits.slice(0, 3));
+    if (digits.length > 3) parts.push(digits.slice(3, 6));
+    if (digits.length > 6) parts.push(digits.slice(6, 10));
+    el.value = parts.join('-');
+  });
+}
+
+// Copies text and gives brief inline feedback on the triggering button (v2.1, section 4ב —
+// script/welcome-message copy boxes). Falls back silently if the Clipboard API is blocked.
+function copyToClipboard(text, buttonEl) {
+  var restore = buttonEl ? buttonEl.textContent : null;
+  navigator.clipboard.writeText(text || '').then(function () {
+    if (buttonEl) {
+      buttonEl.textContent = 'הועתק!';
+      setTimeout(function () { buttonEl.textContent = restore; }, 1500);
+    }
+  }).catch(function () {
+    if (buttonEl) {
+      buttonEl.textContent = 'העתקה נכשלה';
+      setTimeout(function () { buttonEl.textContent = restore; }, 1500);
+    }
   });
 }
 

@@ -45,6 +45,7 @@ SQL_DATABASE="it-portal-db"
 SHARED_MAILBOX_UPN="support@rami-levy-stock.co.il"      # the shared mailbox Graph sends from
 IT_COMPANY_EMAIL="support@rami-levy-stock.co.il"        # recipient for new-ticket notifications — swap for the real IT company mailbox after go-live
 ADMIN_EMAIL="eran@rami-levy-stock.co.il"                # recipient for new-ticket notifications
+PRINTER_SUPPORT_EMAIL="support@rami-levy-stock.co.il"   # v2.1 section 8 — tickets opened "for: a printer" route here instead of IT_COMPANY_EMAIL/ADMIN_EMAIL; swap for the real printer-support mailbox
 # ─────────────────────────────────────────────────────────────────────────
 
 SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
@@ -153,6 +154,11 @@ step_appregs() {
 
   say "Recommended hardening (optional, do it once Mail.Send works): scope the mail app to ONLY the shared mailbox with an Exchange Online ApplicationAccessPolicy — see infra/README.md."
 
+  # No 4th App Registration for reading Entra ID users — deliberately. v2.1 decided against
+  # any standing Graph permission (read or write) on user objects; the one-time bootstrap of
+  # existing users runs under IT's own delegated login (infra/export-entra-users.ps1), never
+  # through an app registration/client secret. See infra/README.md "ייבוא חד-פעמי".
+
   # Persist non-secret IDs for later steps / for you to hand back to Claude.
   cat > "${SCRIPT_DIR}/.provision-state" <<EOF
 TENANT_ID=${TENANT_ID}
@@ -237,6 +243,7 @@ step_appsettings() {
     "GRAPH_SENDER_MAILBOX=${SHARED_MAILBOX_UPN}" \
     "IT_COMPANY_EMAIL=${IT_COMPANY_EMAIL}" \
     "ADMIN_EMAIL=${ADMIN_EMAIL}" \
+    "PRINTER_SUPPORT_EMAIL=${PRINTER_SUPPORT_EMAIL}" \
     "MAIL_SENDER_NAME=IT-Rami-Levy-Stock" \
     >/dev/null
   rm -f "${SCRIPT_DIR}/.mail-secret.tmp"

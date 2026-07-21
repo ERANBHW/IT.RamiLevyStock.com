@@ -140,10 +140,87 @@ Intune admin center → Devices → Configuration → **Settings Catalog** →
   "already exists in location X" למרות ש-`show` מחזיר ResourceNotFound, זה
   באג ידוע ב-Azure; הפתרון הוא שם חדש.
 
+## ייבוא חד-פעמי של משתמשים קיימים מ-365 (v2.1, סעיף 4א — עודכן)
+
+**הוחלט מפורשות: לפורטל אין ולא יהיה שום App Registration עם הרשאת Graph על משתמשים —
+לא קריאה, לא כתיבה, לא מחיקה, לא הוספה.** שום סוד/credential קבוע לא יושב באוויר עם
+גישה לספריית המשתמשים. הקמת/עדכון משתמשים ב-Entra ID תמיד ידני, דרך הסקריפט שהפורטל
+מייצר (ראה PROJECT_STATUS.md סעיף 4ב/4ג) שרץ תחת ההתחברות האישית של IT.
+
+כדי לאכלס את `Users` בפעם הראשונה עם המשתמשים הקיימים כבר ב-365, יש תהליך חד-פעמי:
+
+1. **אתה** מריץ את `infra/export-entra-users.ps1` (ב-Cloud Shell או PowerShell מקומי עם
+   מודול Microsoft.Graph) — מתחבר עם `Connect-MgGraph` תחת **ההתחברות האישית שלך**
+   (delegated, לא app-only), לא דרך שום App Registration של הפורטל. מייצא משתמשי Member
+   פעילים בלבד (לא אורחים, לא מושבתים) ל-`entra-users-export.json`.
+2. מעביר לי (ל-Claude, בשיחה) את הקובץ.
+3. אני מריץ `node infra/generate-user-seed.js entra-users-export.json` שמתאים כל משתמש
+   לפי `department` לטבלת `Branches` (התאמה מדויקת בלבד — אחרת נשאר `NULL`, לתקן ידנית
+   בפורטל) ומייצר `infra/bootstrap-users.sql` — כל שורה מוגנת (`IF NOT EXISTS`), בטוח
+   להריץ גם אם חלק מהמשתמשים כבר קיימים (למשל שני ה-SuperAdmin הזרועים).
+4. אתה מריץ את `infra/bootstrap-users.sql` פעם אחת דרך Portal → SQL Database → Query
+   editor (אותו תהליך כמו `schema.sql`/`seed.sql`).
+
+מהנקודה הזו והלאה — **כל ניהול המשתמשים דרך מסך "ניהול משתמשים" בפורטל בלבד**, ידני
+לגמרי, בלי שום סנכרון אוטומטי חוזר מ-365.
+
+## הגבלת גישה רשתית (v2.1, סעיף 1) — checklist ידני
+
+שתי מדיניות משלימות, שתיהן הקמה ידנית ב-Portal-ים המתאימים — **אין כאן קוד לפרוס**,
+רק שלבים. לא בוצע עדיין; מצב ה-DNS/Zero Trust הנוכחי לא אומת מול המשתמש, אז הצ'קליסט
+הזה מכסה את שלושת המצבים האפשריים — תתחיל מ"שלב 0" כדי לדעת איפה אתה נמצא.
+
+### שלב 0 — איפה אנחנו עומדים היום
+1. Cloudflare dashboard → הדומיין → DNS → Records → שורת ה-record של
+   `it.ramilevystock.com`: ענן **כתום** = Proxied, ענן **אפור** = DNS only.
+2. Cloudflare dashboard → תפריט צד → **Zero Trust**: אם נדרש "Get started"/הגדרת billing
+   ראשונית — טרם הופעל (יש free tier עד 50 users, מספיק כאן).
+
+### מקרה א' — DNS עדיין לא Proxied דרך Cloudflare
+1. באותה שורת ה-DNS record, הפוך את הענן ל**כתום** (Proxied). GitHub Pages תומך בזה
+   (עובד גם עם CNAME וגם עם A records מאחורי Cloudflare).
+2. המתן להפצת ה-DNS (בד"כ דקות ספורות), ודא שהאתר עדיין עולה תקין.
+3. המשך למקרה ב'.
+
+### מקרה ב' — Proxied, בלי Zero Trust מופעל
+1. Zero Trust → Settings → כניסה ראשונה מפעילה את התוכנית (free tier).
+2. המשך להקמת המדיניות למטה.
+
+### מקרה ג' — Proxied + Zero Trust כבר קיים
+ישר להקמת המדיניות.
+
+### הקמת Cloudflare Access
+1. Zero Trust → Settings → Authentication → Login methods → **הוסף Azure AD** כ-Identity
+   Provider (Client ID/Secret של App Registration ב-Entra ID — אפשר `it-portal-spa`
+   הקיים או אחד ייעודי `it-portal-cf-access`; Redirect URI מוצג ע"י Cloudflare בזמן
+   ההגדרה, יש להוסיף אותו ל-App Registration ב-Entra ID).
+2. Zero Trust → Access → Applications → **Add an application** → Self-hosted.
+   - Domain: `it.ramilevystock.com`.
+   - Policy (Allow) — **OR** בין שני תנאים:
+     - **IP Ranges**: 3 כתובות ה-IP הציבוריות של הסניפים (פרדס חנה, רמלה, ומרוחק אם
+       רלוונטי) — לברר מול ספק האינטרנט של כל סניף אם הכתובת קבועה.
+     - **Login method** = Azure AD (מה-שלב הקודם) — כל מי שמתחבר בהצלחה ל-Entra ID
+       עובר, ללא הגבלת קבוצה נוספת בשכבה הזו (ה-Conditional Access למטה היא השכבה
+       שמגבילה לפי משתמש/קבוצה בפועל).
+3. שמור, ובדוק גישה בפועל: מרשת סניף — אמור לעבור ישר בלי מסך התחברות של Cloudflare;
+   מרשת אחרת — אמור להציג מסך Cloudflare Access ואז לדרוש התחברות Entra ID.
+
+### Entra ID Conditional Access (שכבה שנייה, כלולה ב-Business Premium)
+1. Entra admin center → Protection → Conditional Access → **New policy**.
+2. Users: כל המשתמשים, או קבוצה ספציפית אם רוצים לצמצם.
+3. Target resources → Cloud apps: `it-portal-api` + `it-portal-spa`.
+4. Grant: לבחור לפי מדיניות הארגון — למשל Require multifactor authentication ו/או
+   Require device to be marked as compliant.
+5. Enable policy: להתחיל ב-**Report-only**, לבדוק ב-Sign-in logs שהמדיניות לא חוסמת
+   כניסות לגיטימיות, ואז לעבור ל-**On**.
+
+### אחרי ההקמה
+לעדכן את `PROJECT_STATUS.md` (סעיף "סטטוס נוכחי") עם: האם Cloudflare Access פעיל,
+ואיזו Conditional Access policy הופעלה — כדי שסעיף 1 בתוכנית v2.1 יסומן כבוצע.
+
 ## אבטחה
 
-- ה-SQL secret היחיד שנוצר (Graph mail client secret) נכתב ישירות ל-App Settings
-  של ה-Function App ומעולם לא מודפס למסך — הקובץ הזמני שמכיל אותו נמחק בסוף
-  `appsettings`.
+- ה-secret היחיד שנוצר (Graph mail client secret) נכתב ישירות ל-App Settings של
+  ה-Function App ומעולם לא מודפס למסך — הקובץ הזמני שמכיל אותו נמחק בסוף `appsettings`.
 - ה-Function App מתחבר ל-SQL עם ה-Managed Identity שלו, בלי סיסמה בכלל.
 - `IsSuperAdmin` לא ניתן לשינוי משום endpoint — רק `seed.sql`/גישה ישירה ל-DB.

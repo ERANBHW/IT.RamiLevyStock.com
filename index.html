@@ -109,6 +109,27 @@
         .role-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; background: var(--brand-pink-soft); color: var(--brand-pink-dark); margin-inline-end: 4px; }
         .admin-row-actions { display: flex; gap: 4px; }
         .anydesk-link { color: var(--brand-pink-dark); text-decoration: none; font-weight: 700; }
+
+        .folder-checkbox-list { display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; padding: 8px 10px; border: 1px solid #cfd1d6; border-radius: 9px; }
+        .folder-checkbox-list label { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 400; cursor: pointer; }
+        .folder-checkbox-list input { width: auto; margin: 0; }
+        .script-box { width: 100%; font-family: Consolas, Menlo, monospace; font-size: 12px; direction: ltr; text-align: left; resize: vertical; }
+        .email-suffix-row { display: flex; align-items: center; gap: 8px; }
+        .email-suffix-row input { flex: 1; }
+        .email-suffix { color: var(--muted); font-size: 13px; white-space: nowrap; }
+
+        .dashboard-counters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .dashboard-counter { border-radius: 12px; padding: 14px 10px; text-align: center; border: 1px solid var(--border); }
+        .dashboard-counter span { display: block; font-size: 26px; font-weight: 700; }
+        .dashboard-counter label { font-size: 12px; color: var(--muted); }
+        .dashboard-counter.dc-open { background: #fff8e6; }
+        .dashboard-counter.dc-progress { background: #e8f1ff; }
+        .dashboard-counter.dc-closed { background: #f0fdf6; }
+        .dashboard-branch-breakdown { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .dashboard-branch-chip { padding: 4px 10px; border-radius: 20px; background: var(--background); font-size: 12px; border: 1px solid var(--border); }
+
+        .ticket-summary-line { font-size: 17px; margin: 0; line-height: 2; }
+        .ticket-summary-line .icon-button { padding: 2px 6px; font-size: 13px; margin: 0 2px; vertical-align: middle; }
     </style>
 </head>
 
@@ -125,7 +146,7 @@
             <div class="field"><label for="pfFirstName">שם פרטי</label><input id="pfFirstName" type="text"></div>
             <div class="field"><label for="pfLastName">שם משפחה</label><input id="pfLastName" type="text"></div>
             <div class="field"><label for="pfPhone">טלפון</label><input id="pfPhone" type="tel" dir="ltr"></div>
-            <div class="field"><label for="pfBranch">סניף</label><input id="pfBranch" type="text"></div>
+            <div class="field"><label for="pfBranch">סניף</label><select id="pfBranch"></select></div>
             <div class="field"><label for="pfRole">תפקיד</label><input id="pfRole" type="text"></div>
             <div id="profileModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
         </div>
@@ -166,6 +187,25 @@
             <div id="hubAdminSection" style="display:none">
                 <h3 class="procedure-category-title">ניהול</h3>
                 <div class="hub-actions" id="hubAdminActions"></div>
+
+                <div id="hubTicketsDashboard" style="display:none">
+                    <h3 class="procedure-category-title">קריאות שירות</h3>
+                    <div class="dashboard-counters">
+                        <div class="dashboard-counter dc-open"><span id="dashOpenCount">0</span><label>פתוחות</label></div>
+                        <div class="dashboard-counter dc-progress"><span id="dashProgressCount">0</span><label>בטיפול</label></div>
+                        <div class="dashboard-counter dc-closed"><span id="dashClosedCount">0</span><label>סגורות</label></div>
+                    </div>
+                    <div id="dashBranchBreakdown" class="dashboard-branch-breakdown"></div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin:14px 0 8px;flex-wrap:wrap">
+                        <select id="dashUserFilter" style="max-width:220px"></select>
+                        <div style="display:flex;gap:8px">
+                            <button type="button" class="secondary-button" id="dashClosedToggleBtn">קריאות סגורות</button>
+                            <button type="button" class="secondary-button" id="dashViewAllBtn">לכל הקריאות</button>
+                        </div>
+                    </div>
+                    <div id="dashTicketsList" style="display:flex;flex-direction:column;gap:8px"></div>
+                    <div id="dashClosedTicketsList" style="display:none;flex-direction:column;gap:8px;margin-top:8px"></div>
+                </div>
             </div>
         </div>
     </main>
@@ -183,20 +223,40 @@
                 <p class="page-subtitle">מלאו את פרטי התקלה ונחזור אליכם בהקדם.</p>
 
                 <section class="section">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-                        <h2 class="section-title" style="margin:0">פרטי הפונה והמחשב</h2>
-                        <button type="button" class="icon-button" id="ticketComputerEditBtn" title="עריכה נקודתית לקריאה זו">✏️</button>
+                    <p class="ticket-summary-line">
+                        פותח/ת קריאה בשם <strong id="tkNameDisplay"></strong><button type="button" class="icon-button" id="tkNameEditBtn" title="שינוי שם לקריאה זו">✏️</button>
+                        על <strong id="tkComputerDisplay"></strong><button type="button" class="icon-button" id="tkComputerEditBtn" title="שינוי מחשב/מדפסת לקריאה זו">✏️</button>
+                    </p>
+                    <p style="font-size:12px;color:var(--muted);margin:2px 0 10px">השינויים בעיפרונות משפיעים רק על הקריאה הזו.</p>
+
+                    <div class="field" id="tkNameEditField" style="display:none">
+                        <label for="tkName">שם (לקריאה זו בלבד)</label>
+                        <input id="tkName" type="text">
                     </div>
-                    <div class="grid-2">
-                        <div class="field"><label>שם</label><input id="tkName" readonly></div>
-                        <div class="field"><label>טלפון</label><input id="tkPhone" readonly dir="ltr"></div>
-                        <div class="field"><label>סניף</label><input id="tkBranch" readonly></div>
-                        <div class="field"><label>מחשב</label><input id="tkComputerName" readonly dir="ltr"></div>
-                        <div class="field"><label>IP</label><input id="tkIp" readonly dir="ltr"></div>
-                        <div class="field"><label>מדפסת</label><input id="tkPrinter" readonly></div>
-                        <div class="field"><label>AnyDesk</label><input id="tkAnyDesk" readonly dir="ltr"></div>
+
+                    <div id="tkComputerEditSection" style="display:none">
+                        <div class="field">
+                            <label>עבור</label>
+                            <div style="display:flex;gap:16px">
+                                <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="tkForType" value="computer" checked style="width:auto">מחשב</label>
+                                <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="tkForType" value="printer" style="width:auto">מדפסת</label>
+                            </div>
+                        </div>
+                        <div class="field" id="tkComputerSelectField">
+                            <label for="tkComputerSelect">מחשב</label>
+                            <select id="tkComputerSelect"></select>
+                        </div>
+                        <div class="field" id="tkPrinterSelectField" style="display:none">
+                            <label for="tkPrinterSelect">מדפסת</label>
+                            <select id="tkPrinterSelect"></select>
+                        </div>
                     </div>
-                    <p style="font-size:12px;color:var(--muted);margin:8px 0 0">לחצו על העיפרון אם אתם פותחים קריאה עבור מחשב/משתמש אחר - השינוי ישפיע רק על הקריאה הזו.</p>
+
+                    <input id="tkPhone" type="hidden">
+                    <input id="tkBranch" type="hidden">
+                    <input id="tkComputerName" type="hidden">
+                    <input id="tkPrinter" type="hidden">
+                    <input id="tkAnyDesk" type="hidden">
                 </section>
 
                 <section class="section">
@@ -271,6 +331,57 @@
         </div>
     </main>
 
+    <!-- VIEW: user request form -->
+    <main class="app" id="view-user-request">
+        <div class="content">
+            <div id="userRequestFormContainer">
+                <h1 class="page-title">בקשת הקמת משתמש</h1>
+                <p class="page-subtitle">הפרטים יישלחו לצוות ה-IT להקמה ב-365. הכתובת מחושבת אוטומטית משם באנגלית.</p>
+
+                <section class="section">
+                    <h2 class="section-title">שם</h2>
+                    <div class="grid-2">
+                        <div class="field"><label for="urFirstNameHe">שם פרטי (עברית)</label><input id="urFirstNameHe" type="text"></div>
+                        <div class="field"><label for="urLastNameHe">שם משפחה (עברית)</label><input id="urLastNameHe" type="text"></div>
+                        <div class="field"><label for="urFirstNameEn">שם פרטי (אנגלית)</label><input id="urFirstNameEn" type="text" dir="ltr"></div>
+                        <div class="field"><label for="urLastNameEn">שם משפחה (אנגלית)</label><input id="urLastNameEn" type="text" dir="ltr"></div>
+                    </div>
+                </section>
+
+                <section class="section">
+                    <h2 class="section-title">פרטים נוספים</h2>
+                    <div class="field"><label for="urBranch">סניף</label><select id="urBranch"></select></div>
+                    <div class="field"><label for="urRole">תפקיד</label><input id="urRole" type="text"></div>
+                    <div class="field"><label>תיקיות משותפות</label><div id="urFolders" class="folder-checkbox-list"></div></div>
+                </section>
+
+                <div id="userRequestSubmitError" style="display:none;color:var(--danger);font-size:13px;margin-bottom:12px"></div>
+                <button type="button" class="primary-button" style="width:100%" id="userRequestSubmitBtn">שלח בקשה</button>
+            </div>
+
+            <div id="userRequestConfirmation" style="display:none;text-align:center;padding:40px 20px">
+                <div style="font-size:44px">✅</div>
+                <h2 style="color:var(--success);margin:10px 0 6px">הבקשה נשלחה בהצלחה!</h2>
+                <div style="display:inline-block;padding:8px 20px;border-radius:30px;background:var(--success-bg);color:var(--success);font-weight:700;margin:6px 0 14px" id="confirmUserRequestNumber"></div>
+                <p style="color:var(--muted)">צוות ה-IT יקים את המשתמש בהקדם.</p>
+                <button type="button" class="secondary-button" id="userRequestHomeBtn">חזור לדף הבית</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- VIEW: admin user requests queue -->
+    <main class="app" id="view-admin-user-requests">
+        <div class="content">
+            <h1 class="page-title">בקשות הקמת משתמש</h1>
+            <p class="page-subtitle">בקשות ממתינות; לחיצה פותחת עריכה + סקריפט הקמה</p>
+            <div id="userRequestsQueueList" style="display:flex;flex-direction:column;gap:10px"></div>
+            <div class="closed-tickets-toggle">
+                <button type="button" class="secondary-button" id="userRequestsCompletedToggleBtn">בקשות שהוקמו</button>
+            </div>
+            <div id="userRequestsCompletedList" style="display:none"></div>
+        </div>
+    </main>
+
     <!-- VIEW: admin users -->
     <main class="app" id="view-admin-users">
         <div class="content">
@@ -299,9 +410,58 @@
             <div style="overflow-x:auto">
                 <table class="admin-table" id="computersTable">
                     <thead>
-                        <tr><th>שם מחשב</th><th>סוג</th><th>IP</th><th>מדפסת</th><th>AnyDesk</th><th>משתמש</th><th></th></tr>
+                        <tr><th>שם מחשב</th><th>סוג</th><th>מדפסת</th><th>AnyDesk</th><th>משתמש</th><th></th></tr>
                     </thead>
                     <tbody id="computersTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- VIEW: admin branches -->
+    <main class="app" id="view-admin-branches">
+        <div class="content">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h1 class="page-title" style="margin:0">ניהול סניפים</h1>
+                <button type="button" class="primary-button" id="branchAdminAddBtn">+ הוסף סניף</button>
+            </div>
+            <div style="overflow-x:auto">
+                <table class="admin-table" id="branchesTable">
+                    <thead><tr><th>מספר</th><th>שם</th><th></th></tr></thead>
+                    <tbody id="branchesTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- VIEW: admin shared folders -->
+    <main class="app" id="view-admin-sharedfolders">
+        <div class="content">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h1 class="page-title" style="margin:0">ניהול תיקיות משותפות</h1>
+                <button type="button" class="primary-button" id="sharedFolderAdminAddBtn">+ הוסף תיקייה</button>
+            </div>
+            <p class="page-subtitle">Object ID = קבוצת Entra ID / אתר SharePoint המשויך (Entra ID → Groups)</p>
+            <div style="overflow-x:auto">
+                <table class="admin-table" id="sharedFoldersTable">
+                    <thead><tr><th>שם</th><th>Entra Group Object ID</th><th></th></tr></thead>
+                    <tbody id="sharedFoldersTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- VIEW: admin printers -->
+    <main class="app" id="view-admin-printers">
+        <div class="content">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h1 class="page-title" style="margin:0">קטלוג מדפסות</h1>
+                <button type="button" class="primary-button" id="printerAdminAddBtn">+ הוסף מדפסת</button>
+            </div>
+            <div style="overflow-x:auto">
+                <table class="admin-table" id="printersTable">
+                    <thead><tr><th>שם מדפסת</th><th>IP</th><th>סניף</th><th>הערות</th><th></th></tr></thead>
+                    <tbody id="printersTableBody"></tbody>
                 </table>
             </div>
         </div>
@@ -322,12 +482,14 @@
     <div class="profile-modal" style="max-width:480px">
         <div class="profile-modal-header"><h2 id="userAdminModalTitle">משתמש חדש</h2></div>
         <div class="profile-modal-body">
-            <div class="field"><label for="uaEmail">מייל (ה-UPN)</label><input id="uaEmail" type="email" dir="ltr"></div>
+            <div class="field"><label for="uaUsername">מייל</label>
+                <div class="email-suffix-row"><input id="uaUsername" type="text" dir="ltr"><span class="email-suffix" dir="ltr">@rami-levy-stock.co.il</span></div>
+            </div>
             <div class="grid-2">
                 <div class="field"><label for="uaFirstName">שם פרטי</label><input id="uaFirstName" type="text"></div>
                 <div class="field"><label for="uaLastName">שם משפחה</label><input id="uaLastName" type="text"></div>
                 <div class="field"><label for="uaPhone">טלפון</label><input id="uaPhone" type="tel" dir="ltr"></div>
-                <div class="field"><label for="uaBranch">סניף</label><input id="uaBranch" type="text"></div>
+                <div class="field"><label for="uaBranch">סניף</label><select id="uaBranch"></select></div>
             </div>
             <div class="field"><label for="uaRole">תפקיד</label><input id="uaRole" type="text"></div>
             <div class="field"><label for="uaComputer">מחשב משוייך</label><select id="uaComputer"></select></div>
@@ -338,8 +500,28 @@
                 <div class="field" style="flex-direction:row;align-items:center;gap:8px">
                     <input id="uaIsProceduresAdmin" type="checkbox" style="width:auto"><label for="uaIsProceduresAdmin" style="margin:0">הרשאת ניהול נהלים</label>
                 </div>
+                <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+                    <input id="uaIsUserRequestSubmitter" type="checkbox" style="width:auto"><label for="uaIsUserRequestSubmitter" style="margin:0">מורשה להקמת משתמשים</label>
+                </div>
             </div>
             <div id="userAdminModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+
+            <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+                <p class="page-subtitle" style="margin:0 0 10px">הכנת סקריפט הקמה ב-365 (לשם באנגלית ותיקיות משותפות)</p>
+                <div class="grid-2">
+                    <div class="field"><label for="uaFirstNameEn">שם פרטי (אנגלית)</label><input id="uaFirstNameEn" type="text" dir="ltr"></div>
+                    <div class="field"><label for="uaLastNameEn">שם משפחה (אנגלית)</label><input id="uaLastNameEn" type="text" dir="ltr"></div>
+                </div>
+                <div class="field"><label>תיקיות משותפות</label><div id="uaFolders" class="folder-checkbox-list"></div></div>
+                <button type="button" class="secondary-button" id="uaGenerateScriptBtn">הכן סקריפט הקמה</button>
+                <div id="uaScriptResult" style="display:none;margin-top:10px">
+                    <div class="field"><label>מייל מחושב</label><input id="uaScriptEmail" readonly dir="ltr"></div>
+                    <div class="field"><label>סקריפט</label>
+                        <textarea id="uaScriptBox" class="script-box" rows="8" readonly></textarea>
+                        <button type="button" class="secondary-button" id="uaCopyScriptBtn" style="margin-top:6px">העתק סקריפט</button>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="profile-modal-actions">
             <button type="button" class="primary-button" style="flex:1" id="userAdminSaveBtn">שמור</button>
@@ -357,10 +539,9 @@
             <div class="grid-2">
                 <div class="field"><label for="caType">סוג</label><input id="caType" type="text" placeholder="נייח / נייד"></div>
                 <div class="field"><label for="caRam">זיכרון (RAM)</label><input id="caRam" type="text" placeholder="16GB"></div>
-                <div class="field"><label for="caIp">IP</label><input id="caIp" type="text" dir="ltr"></div>
-                <div class="field"><label for="caPrinter">מדפסת</label><input id="caPrinter" type="text"></div>
+                <div class="field"><label for="caPrinter">מדפסת ברירת מחדל</label><select id="caPrinter"></select></div>
                 <div class="field"><label for="caAnyDesk">AnyDesk</label><input id="caAnyDesk" type="text" dir="ltr"></div>
-                <div class="field"><label for="caBranch">סניף</label><input id="caBranch" type="text"></div>
+                <div class="field"><label for="caBranch">סניף</label><select id="caBranch"></select></div>
             </div>
             <div class="field"><label for="caNotes">הערות</label><textarea id="caNotes" rows="3"></textarea></div>
             <div id="computerAdminModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
@@ -372,6 +553,56 @@
     </div>
 </div>
 
+<!-- Branch admin modal -->
+<div class="profile-modal-backdrop" id="branchAdminModalBackdrop">
+    <div class="profile-modal" style="max-width:420px">
+        <div class="profile-modal-header"><h2 id="branchAdminModalTitle">סניף חדש</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="baNumber">מספר סניף</label><input id="baNumber" type="number" dir="ltr"></div>
+            <div class="field"><label for="baName">שם סניף</label><input id="baName" type="text"></div>
+            <div id="branchAdminModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="branchAdminSaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="branchAdminCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<!-- Shared folder admin modal -->
+<div class="profile-modal-backdrop" id="sharedFolderAdminModalBackdrop">
+    <div class="profile-modal" style="max-width:420px">
+        <div class="profile-modal-header"><h2 id="sharedFolderAdminModalTitle">תיקייה חדשה</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="sfName">שם תיקייה</label><input id="sfName" type="text"></div>
+            <div class="field"><label for="sfObjectId">Entra Group Object ID</label><input id="sfObjectId" type="text" dir="ltr"></div>
+            <div id="sharedFolderAdminModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="sharedFolderAdminSaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="sharedFolderAdminCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<!-- Printer admin modal -->
+<div class="profile-modal-backdrop" id="printerAdminModalBackdrop">
+    <div class="profile-modal" style="max-width:420px">
+        <div class="profile-modal-header"><h2 id="printerAdminModalTitle">מדפסת חדשה</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="paPrinterName">שם מדפסת</label><input id="paPrinterName" type="text" dir="ltr"></div>
+            <div class="field"><label for="paIp">IP</label><input id="paIp" type="text" dir="ltr"></div>
+            <div class="field"><label for="paBranch">סניף</label><select id="paBranch"></select></div>
+            <div class="field"><label for="paNotes">הערות</label><textarea id="paNotes" rows="3"></textarea></div>
+            <div id="printerAdminModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="printerAdminSaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="printerAdminCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
 <!-- Computer ticket history modal -->
 <div class="profile-modal-backdrop" id="computerHistoryBackdrop">
     <div class="profile-modal" style="max-width:520px">
@@ -379,6 +610,42 @@
         <div class="profile-modal-body" id="computerHistoryBody"></div>
         <div class="profile-modal-actions">
             <button type="button" class="secondary-button" style="flex:1" id="computerHistoryCloseBtn">סגור</button>
+        </div>
+    </div>
+</div>
+
+<!-- User request detail modal (review + script) -->
+<div class="profile-modal-backdrop" id="userRequestDetailBackdrop">
+    <div class="profile-modal" style="max-width:560px">
+        <div class="profile-modal-header"><h2 id="userRequestDetailTitle"></h2></div>
+        <div class="profile-modal-body">
+            <div class="grid-2">
+                <div class="field"><label for="urdFirstNameHe">שם פרטי (עברית)</label><input id="urdFirstNameHe" type="text"></div>
+                <div class="field"><label for="urdLastNameHe">שם משפחה (עברית)</label><input id="urdLastNameHe" type="text"></div>
+                <div class="field"><label for="urdFirstNameEn">שם פרטי (אנגלית)</label><input id="urdFirstNameEn" type="text" dir="ltr"></div>
+                <div class="field"><label for="urdLastNameEn">שם משפחה (אנגלית)</label><input id="urdLastNameEn" type="text" dir="ltr"></div>
+            </div>
+            <div class="field"><label for="urdBranch">סניף</label><select id="urdBranch"></select></div>
+            <div class="field"><label for="urdRole">תפקיד</label><input id="urdRole" type="text"></div>
+            <div class="field"><label>תיקיות משותפות</label><div id="urdFolders" class="folder-checkbox-list"></div></div>
+            <div class="field"><label>מייל מחושב</label><input id="urdSuggestedEmail" readonly dir="ltr"></div>
+            <div class="field"><label>סקריפט הקמה (Cloud Shell / PowerShell)</label>
+                <textarea id="urdScript" class="script-box" rows="10" readonly></textarea>
+                <button type="button" class="secondary-button" id="urdCopyScriptBtn" style="margin-top:6px">העתק סקריפט</button>
+            </div>
+            <div id="userRequestDetailError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+
+            <div id="urdWelcomeSection" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+                <div class="field"><label>הודעת ברוכים-הבאים למשתמש</label>
+                    <textarea id="urdWelcomeMessage" class="script-box" rows="5" readonly></textarea>
+                    <button type="button" class="secondary-button" id="urdCopyWelcomeBtn" style="margin-top:6px">העתק הודעה</button>
+                </div>
+            </div>
+        </div>
+        <div class="profile-modal-actions" style="flex-wrap:wrap">
+            <button type="button" class="primary-button" id="urdSaveBtn">שמור שינויים</button>
+            <button type="button" class="primary-button" id="urdMarkCompletedBtn" style="display:none">סימון כהוקם</button>
+            <button type="button" class="secondary-button" id="urdCancelBtn">ביטול</button>
         </div>
     </div>
 </div>
@@ -420,6 +687,80 @@
         if (id === 'admin-users') loadUsersAdminPage();
         if (id === 'admin-computers') loadComputersAdminPage();
         if (id === 'admin-tickets') loadTicketsAdminPage();
+        if (id === 'admin-branches') loadBranchesAdminPage();
+        if (id === 'admin-sharedfolders') loadSharedFoldersAdminPage();
+        if (id === 'user-request') loadUserRequestFormPage();
+        if (id === 'admin-user-requests') loadUserRequestsAdminPage();
+        if (id === 'admin-printers') loadPrintersAdminPage();
+
+        if (id === 'hub') { loadHubDashboard(); startDashboardAutoRefresh(); }
+        else { stopDashboardAutoRefresh(); }
+    }
+
+    // ── BRANCHES: shared cache used by profile/ticket/admin screens ───
+    var branchesCache = null;
+
+    async function ensureBranchesLoaded() {
+        if (branchesCache) return branchesCache;
+        var res = await apiGet('branches', 'list', {});
+        branchesCache = res.ok ? res.data : [];
+        return branchesCache;
+    }
+
+    function branchName(branchNumber) {
+        if (branchNumber === null || branchNumber === undefined || branchNumber === '') return '';
+        var b = (branchesCache || []).find(function (x) { return x.number === Number(branchNumber); });
+        return b ? b.name : '';
+    }
+
+    function populateBranchSelect(selectEl, selectedNumber) {
+        var options = (branchesCache || []).map(function (b) {
+            return '<option value="' + b.number + '"' + (String(selectedNumber) === String(b.number) ? ' selected' : '') + '>' + escapeHtml(b.name) + '</option>';
+        }).join('');
+        selectEl.innerHTML = '<option value="">בחר סניף</option>' + options;
+    }
+
+    // ── SHARED FOLDERS: shared cache used by the user-request form + admin screens ───
+    var allSharedFoldersCache = null;
+
+    async function ensureSharedFoldersLoaded() {
+        if (allSharedFoldersCache) return allSharedFoldersCache;
+        var res = await apiGet('sharedFolders', 'list', {});
+        allSharedFoldersCache = res.ok ? res.data : [];
+        return allSharedFoldersCache;
+    }
+
+    function renderFolderCheckboxes(containerEl, selectedIds) {
+        selectedIds = selectedIds || [];
+        containerEl.innerHTML = (allSharedFoldersCache || []).map(function (f) {
+            var checked = selectedIds.indexOf(f.id) !== -1 ? ' checked' : '';
+            return '<label><input type="checkbox" value="' + f.id + '"' + checked + '>' + escapeHtml(f.name) + '</label>';
+        }).join('') || '<p style="color:var(--muted);font-size:13px;margin:0">אין תיקיות מוגדרות עדיין.</p>';
+    }
+
+    function getSelectedFolderIds(containerEl) {
+        return Array.from(containerEl.querySelectorAll('input[type="checkbox"]:checked')).map(function (el) { return el.value; });
+    }
+
+    // ── PRINTERS: shared cache used by the computer-admin modal + ticket form ───
+    var printersCache = null;
+
+    async function ensurePrintersLoaded() {
+        if (printersCache) return printersCache;
+        var res = await apiGet('printers', 'list', {});
+        printersCache = res.ok ? res.data : [];
+        return printersCache;
+    }
+
+    function populatePrinterSelect(selectEl, selectedName, filterBranchNumber) {
+        var list = printersCache || [];
+        if (filterBranchNumber !== undefined && filterBranchNumber !== null && filterBranchNumber !== '') {
+            list = list.filter(function (p) { return String(p.branchNumber) === String(filterBranchNumber); });
+        }
+        var options = list.map(function (p) {
+            return '<option value="' + escapeHtml(p.printerName) + '"' + (p.printerName === selectedName ? ' selected' : '') + '>' + escapeHtml(p.printerName) + '</option>';
+        }).join('');
+        selectEl.innerHTML = '<option value="">ללא</option>' + options;
     }
 
     // ── HUB VIEW ──────────────────────────────────────────────
@@ -427,6 +768,7 @@
         { id: 'ticket', icon: '📋', label: 'פתיחת קריאה' },
         { id: 'signature', icon: '✍️', label: 'יצירת חתימה' },
         { id: 'procedures', icon: '📖', label: 'נהלי עבודה' },
+        { id: 'user-request', icon: '🧑‍💼', label: 'בקשת הקמת משתמש', check: function () { return Portal.isUserRequestSubmitter(); } },
     ];
 
     var HUB_ADMIN_BUTTONS = [
@@ -435,6 +777,10 @@
         } },
         { id: 'admin-computers', icon: '💻', label: 'ניהול מחשבים', check: function () { return Portal.isITAdmin(); } },
         { id: 'admin-tickets', icon: '🎫', label: 'תור קריאות', check: function () { return Portal.isITAdmin(); } },
+        { id: 'admin-branches', icon: '🏢', label: 'ניהול סניפים', check: function () { return Portal.isSuperAdmin(); } },
+        { id: 'admin-sharedfolders', icon: '📁', label: 'תיקיות משותפות', check: function () { return Portal.isSuperAdmin(); } },
+        { id: 'admin-user-requests', icon: '🧑‍💼', label: 'בקשות הקמת משתמש', check: function () { return Portal.isITAdmin(); } },
+        { id: 'admin-printers', icon: '🖨️', label: 'קטלוג מדפסות', check: function () { return Portal.isITAdmin(); } },
     ];
 
     function renderHubButtons(container, buttons) {
@@ -450,7 +796,8 @@
     }
 
     function renderHubActions() {
-        renderHubButtons(document.getElementById('hubActions'), HUB_BUTTONS);
+        var mainButtons = HUB_BUTTONS.filter(function (b) { return !b.check || b.check(); });
+        renderHubButtons(document.getElementById('hubActions'), mainButtons);
 
         var adminButtons = HUB_ADMIN_BUTTONS.filter(function (b) { return b.check(); });
         document.getElementById('hubAdminSection').style.display = adminButtons.length ? 'block' : 'none';
@@ -465,36 +812,41 @@
         greetingEl.innerHTML = 'שלום' + (name ? ', ' + escapeHtml(name) : '') +
             '<button type="button" class="hub-edit-pencil" id="hubEditPencil" title="עריכת פרטים">✏️</button>';
         document.getElementById('hubEditPencil').addEventListener('click', openProfileModal);
-        infoEl.textContent = [user.role, user.branch].filter(Boolean).join(' | ');
+        infoEl.textContent = [user.role, branchName(user.branchNumber)].filter(Boolean).join(' | ');
     }
 
     // ── PROFILE EDIT MODAL ────────────────────────────────────
     var profileModal = document.getElementById('profileModalBackdrop');
     var profileError = document.getElementById('profileModalError');
+    var profileTracker = makeDirtyTracker(profileModal);
+    maskPhoneInput(document.getElementById('pfPhone'));
 
-    function openProfileModal() {
+    async function openProfileModal() {
         var user = Portal.getUser();
         document.getElementById('pfFirstName').value = user.firstName || '';
         document.getElementById('pfLastName').value = user.lastName || '';
         document.getElementById('pfPhone').value = user.phone || '';
-        document.getElementById('pfBranch').value = user.branch || '';
+        await ensureBranchesLoaded();
+        populateBranchSelect(document.getElementById('pfBranch'), user.branchNumber);
         document.getElementById('pfRole').value = user.role || '';
         profileError.style.display = 'none';
         profileModal.classList.add('visible');
+        profileTracker.reset();
     }
 
     function closeProfileModal() { profileModal.classList.remove('visible'); }
 
     document.getElementById('hubUserIcon').addEventListener('click', openProfileModal);
-    document.getElementById('profileCancelBtn').addEventListener('click', closeProfileModal);
-    profileModal.addEventListener('click', function (e) { if (e.target === profileModal) closeProfileModal(); });
+    document.getElementById('profileCancelBtn').addEventListener('click', function () {
+        if (profileTracker.confirmDiscard()) closeProfileModal();
+    });
 
     document.getElementById('profileSaveBtn').addEventListener('click', async function () {
         var payload = {
             firstName: document.getElementById('pfFirstName').value.trim(),
             lastName: document.getElementById('pfLastName').value.trim(),
             phone: document.getElementById('pfPhone').value.trim(),
-            branch: document.getElementById('pfBranch').value.trim(),
+            branchNumber: document.getElementById('pfBranch').value,
             role: document.getElementById('pfRole').value.trim(),
         };
         showLoading(true);
@@ -504,6 +856,7 @@
             if (res.ok) {
                 Portal.setUser(res.data);
                 renderHubGreeting();
+                profileTracker.reset();
                 closeProfileModal();
             } else {
                 profileError.textContent = res.error || 'שגיאה בשמירה';
@@ -543,26 +896,90 @@
         }).join('');
     }
 
-    function setComputerFieldsReadonly(readonly) {
-        ['tkComputerName', 'tkIp', 'tkPrinter', 'tkAnyDesk'].forEach(function (id) {
-            var el = document.getElementById(id);
-            if (readonly) el.setAttribute('readonly', 'readonly'); else el.removeAttribute('readonly');
-        });
+    // ── Computer names (v2.1, section 10 — "pick a different computer" pencil) ──
+    var computerNamesCache = null;
+
+    async function ensureComputerNamesLoaded() {
+        if (computerNamesCache) return computerNamesCache;
+        var res = await apiGet('computers', 'listNames', {});
+        computerNamesCache = res.ok ? res.data : [];
+        return computerNamesCache;
+    }
+
+    function populateComputerNameSelect(selectEl, selectedName) {
+        selectEl.innerHTML = (computerNamesCache || []).map(function (name) {
+            return '<option' + (name === selectedName ? ' selected' : '') + '>' + escapeHtml(name) + '</option>';
+        }).join('');
     }
 
     function fillComputerFields(data) {
         var user = Portal.getUser();
-        document.getElementById('tkName').value = [user.firstName, user.lastName].filter(Boolean).join(' ');
+        var name = [user.firstName, user.lastName].filter(Boolean).join(' ');
+        document.getElementById('tkName').value = name;
+        document.getElementById('tkNameDisplay').textContent = name;
         document.getElementById('tkPhone').value = user.phone || '';
-        document.getElementById('tkBranch').value = user.branch || '';
+        document.getElementById('tkBranch').value = branchName(user.branchNumber);
         document.getElementById('tkComputerName').value = data ? (data.computerName || '') : '';
-        document.getElementById('tkIp').value = data ? (data.ip || '') : '';
-        document.getElementById('tkPrinter').value = data ? (data.printer || '') : '';
+        document.getElementById('tkComputerDisplay').textContent = data ? data.computerName : 'ללא מחשב משוייך';
+        document.getElementById('tkPrinter').value = data ? (data.defaultPrinterName || '') : '';
         document.getElementById('tkAnyDesk').value = data ? (data.anyDeskId || '') : '';
-        setComputerFieldsReadonly(true);
     }
 
-    document.getElementById('ticketComputerEditBtn').addEventListener('click', function () { setComputerFieldsReadonly(false); });
+    // v2.1, section 10 — both pencils only affect this one ticket, never the profile/
+    // computer record itself; hidden by default, revealed on click.
+    document.getElementById('tkNameEditBtn').addEventListener('click', function () {
+        document.getElementById('tkNameEditField').style.display = 'block';
+        document.getElementById('tkName').focus();
+    });
+    document.getElementById('tkName').addEventListener('input', function () {
+        document.getElementById('tkNameDisplay').textContent = document.getElementById('tkName').value || '';
+    });
+
+    document.getElementById('tkComputerEditBtn').addEventListener('click', async function () {
+        document.getElementById('tkComputerEditSection').style.display = 'block';
+        await ensureComputerNamesLoaded();
+        populateComputerNameSelect(document.getElementById('tkComputerSelect'), document.getElementById('tkComputerName').value);
+    });
+
+    function updateTicketComputerDisplay() {
+        var isPrinter = document.querySelector('input[name="tkForType"]:checked').value === 'printer';
+        if (isPrinter) {
+            var printerName = document.getElementById('tkPrinterSelect').value;
+            document.getElementById('tkComputerDisplay').textContent = printerName ? ('מדפסת ' + printerName) : 'מדפסת';
+        } else {
+            document.getElementById('tkComputerDisplay').textContent = document.getElementById('tkComputerName').value || 'ללא מחשב משוייך';
+        }
+    }
+
+    document.getElementById('tkComputerSelect').addEventListener('change', function () {
+        document.getElementById('tkComputerName').value = this.value;
+        updateTicketComputerDisplay();
+    });
+
+    // "for: my computer / a printer" toggle (section 8). Switching to "printer" shows a
+    // printer <select> filtered to the caller's own branch, defaulting to the assigned
+    // computer's default printer.
+    function resetForTypeToggle() {
+        document.querySelector('input[name="tkForType"][value="computer"]').checked = true;
+        document.getElementById('tkComputerSelectField').style.display = 'block';
+        document.getElementById('tkPrinterSelectField').style.display = 'none';
+        document.getElementById('tkNameEditField').style.display = 'none';
+        document.getElementById('tkComputerEditSection').style.display = 'none';
+    }
+
+    document.querySelectorAll('input[name="tkForType"]').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            var isPrinter = document.querySelector('input[name="tkForType"]:checked').value === 'printer';
+            document.getElementById('tkComputerSelectField').style.display = isPrinter ? 'none' : 'block';
+            document.getElementById('tkPrinterSelectField').style.display = isPrinter ? 'block' : 'none';
+            if (isPrinter) {
+                var user = Portal.getUser();
+                var defaultPrinter = assignedComputer ? assignedComputer.defaultPrinterName : '';
+                populatePrinterSelect(document.getElementById('tkPrinterSelect'), defaultPrinter, user.branchNumber);
+            }
+            updateTicketComputerDisplay();
+        });
+    });
 
     async function loadTicketPage() {
         renderCategoryOptions();
@@ -570,11 +987,13 @@
         document.getElementById('ticketFormContainer').style.display = 'block';
         document.getElementById('ticketConfirmation').style.display = 'none';
         document.getElementById('closedTicketsList').style.display = 'none';
+        resetForTypeToggle();
 
         showLoading(true);
         var compRes = await apiGet('computers', 'getAssigned', {});
         assignedComputer = compRes.ok ? compRes.data : null;
         fillComputerFields(assignedComputer);
+        await ensurePrintersLoaded();
         await refreshMyTickets();
         showLoading(false);
     }
@@ -652,12 +1071,16 @@
     function refreshTicketViews() {
         if (document.getElementById('view-ticket').classList.contains('active')) refreshMyTickets();
         if (Portal.isITAdmin() && document.getElementById('view-admin-tickets').classList.contains('active')) loadTicketsAdminPage();
+        if (isHubActive() && Portal.isITAdmin()) loadHubDashboard();
     }
+
+    var ticketDetailTracker = makeDirtyTracker(document.getElementById('ticketDetailBackdrop'));
 
     async function openTicketDetail(ticketSummary) {
         document.getElementById('ticketDetailTitle').textContent = ticketSummary.ticketNumber;
         document.getElementById('ticketDetailBody').innerHTML = '<p style="color:var(--muted);font-size:13px">טוען...</p>';
         document.getElementById('ticketDetailBackdrop').classList.add('visible');
+        ticketDetailTracker.reset();
 
         var res = await apiGet('tickets', 'get', { ticketNumber: ticketSummary.ticketNumber });
         if (!res.ok) {
@@ -683,16 +1106,32 @@
             '<div><strong>סטטוס:</strong> ' + escapeHtml(t.status) + '</div>' +
             '<div><strong>קטגוריה:</strong> ' + escapeHtml(t.category) + '</div>' +
             '<div><strong>דחיפות:</strong> ' + escapeHtml(t.urgency) + '</div>' +
-            '<div><strong>מחשב:</strong> ' + escapeHtml(t.computerName) + ' | IP: ' + escapeHtml(t.ip) + '</div>' +
+            '<div><strong>מחשב:</strong> ' + escapeHtml(t.computerName) + '</div>' +
             '<div><strong>תאריך פתיחה:</strong> ' + formatDateTime(t.timestamp) + '</div>' +
             (t.assignedToName ? '<div><strong>מטופל ע"י:</strong> ' + escapeHtml(t.assignedToName) + '</div>' : '') +
             '<div><strong>תיאור:</strong><br><span style="white-space:pre-wrap">' + escapeHtml(t.description) + '</span></div>' +
             '<div id="ticketDetailEditForm" style="display:none"></div>' +
             (actionsHtml ? '<div style="display:flex;gap:8px;flex-wrap:wrap">' + actionsHtml + '</div>' : '') +
-            '<div><strong>היסטוריה:</strong><div style="margin-top:6px">' +
+            (isIT ? '<div class="field" style="margin:0"><label for="ticketDetailNoteInput">הוסף הערה</label>' +
+                '<div style="display:flex;gap:8px"><input id="ticketDetailNoteInput" type="text" style="flex:1">' +
+                '<button type="button" class="secondary-button" id="ticketDetailAddNoteBtn">הוסף</button></div></div>' : '') +
+            '<div><strong>היסטוריה:</strong><div style="margin-top:6px" id="ticketDetailLog">' +
             (log.length ? log.map(renderLogEntry).join('') : '<span style="color:var(--muted);font-size:12px">אין רשומות</span>') +
             '</div></div>' +
             '</div>';
+
+        var addNoteBtn = document.getElementById('ticketDetailAddNoteBtn');
+        if (addNoteBtn) {
+            addNoteBtn.addEventListener('click', async function () {
+                var input = document.getElementById('ticketDetailNoteInput');
+                var note = input.value.trim();
+                if (!note) return;
+                showLoading(true);
+                var res = await apiPost('tickets', 'updateStatus', { ticketNumber: t.ticketNumber, status: t.status, message: note });
+                showLoading(false);
+                if (res.ok) { refreshTicketViews(); openTicketDetail(t); } else alert(res.error || 'שגיאה');
+            });
+        }
 
         var editBtn = document.getElementById('ticketDetailEditBtn');
         if (editBtn) editBtn.addEventListener('click', function () { openTicketEditForm(t); });
@@ -745,10 +1184,7 @@
     }
 
     document.getElementById('ticketDetailCloseBtn').addEventListener('click', function () {
-        document.getElementById('ticketDetailBackdrop').classList.remove('visible');
-    });
-    document.getElementById('ticketDetailBackdrop').addEventListener('click', function (e) {
-        if (e.target === this) this.classList.remove('visible');
+        if (ticketDetailTracker.confirmDiscard()) document.getElementById('ticketDetailBackdrop').classList.remove('visible');
     });
 
     // ── ADMIN: TICKETS QUEUE ──────────────────────────────────
@@ -785,6 +1221,109 @@
         });
     }
 
+    // ── HUB DASHBOARD (v2.1, section 5) ─────────────────────────
+    var dashboardOpenTickets = [];
+    var dashboardClosedTickets = null; // null = not fetched yet (lazy, behind the toggle)
+    var dashboardRefreshTimer = null;
+
+    function isHubActive() { return document.getElementById('view-hub').classList.contains('active'); }
+
+    async function loadHubDashboard() {
+        var block = document.getElementById('hubTicketsDashboard');
+        if (!Portal.isITAdmin()) { block.style.display = 'none'; return; }
+        block.style.display = 'block';
+
+        var listRes = await apiGet('tickets', 'list', {});
+        dashboardOpenTickets = listRes.ok ? listRes.data : [];
+        var countRes = await apiGet('tickets', 'closedCount', {});
+        var closedCount = countRes.ok ? countRes.data.count : 0;
+
+        renderDashboardCounts(closedCount);
+        renderDashboardBranchBreakdown();
+        renderDashboardUserFilter();
+        renderDashboardTicketsList();
+    }
+
+    function renderDashboardCounts(closedCount) {
+        var openCount = dashboardOpenTickets.filter(function (t) { return t.status === 'פתוחה'; }).length;
+        var progressCount = dashboardOpenTickets.filter(function (t) { return t.status === 'בטיפול'; }).length;
+        document.getElementById('dashOpenCount').textContent = openCount;
+        document.getElementById('dashProgressCount').textContent = progressCount;
+        document.getElementById('dashClosedCount').textContent = closedCount;
+    }
+
+    function renderDashboardBranchBreakdown() {
+        var counts = {};
+        dashboardOpenTickets.forEach(function (t) {
+            var branch = t.branch || 'ללא סניף';
+            counts[branch] = (counts[branch] || 0) + 1;
+        });
+        var container = document.getElementById('dashBranchBreakdown');
+        var branches = Object.keys(counts);
+        container.innerHTML = branches.length
+            ? branches.map(function (b) { return '<span class="dashboard-branch-chip">' + escapeHtml(b) + ': ' + counts[b] + '</span>'; }).join('')
+            : '<span style="color:var(--muted);font-size:12px">אין קריאות פתוחות/בטיפול כרגע.</span>';
+    }
+
+    function renderDashboardUserFilter() {
+        var sel = document.getElementById('dashUserFilter');
+        var current = sel.value;
+        var users = Array.from(new Set(dashboardOpenTickets.map(function (t) { return t.userName || t.userEmail; }))).sort();
+        sel.innerHTML = '<option value="">כל המשתמשים</option>' +
+            users.map(function (u) { return '<option' + (u === current ? ' selected' : '') + '>' + escapeHtml(u) + '</option>'; }).join('');
+    }
+
+    function renderDashboardTicketsList() {
+        var filterUser = document.getElementById('dashUserFilter').value;
+        var list = filterUser
+            ? dashboardOpenTickets.filter(function (t) { return (t.userName || t.userEmail) === filterUser; })
+            : dashboardOpenTickets;
+
+        var container = document.getElementById('dashTicketsList');
+        container.innerHTML = '';
+        if (!list.length) {
+            container.innerHTML = '<p style="color:var(--muted);font-size:13px">אין קריאות פתוחות/בטיפול.</p>';
+            return;
+        }
+        list.forEach(function (t) {
+            var card = buildTicketCard(t);
+            var meta = document.createElement('div');
+            meta.style.cssText = 'font-size:12px;color:var(--muted);margin-top:4px';
+            meta.textContent = (t.userName || t.userEmail) + (t.branch ? ' | ' + t.branch : '');
+            card.appendChild(meta);
+            container.appendChild(card);
+        });
+    }
+
+    document.getElementById('dashUserFilter').addEventListener('change', renderDashboardTicketsList);
+    document.getElementById('dashViewAllBtn').addEventListener('click', function () { showView('admin-tickets'); });
+
+    document.getElementById('dashClosedToggleBtn').addEventListener('click', async function () {
+        var el = document.getElementById('dashClosedTicketsList');
+        var willShow = el.style.display === 'none';
+        if (willShow && dashboardClosedTickets === null) {
+            showLoading(true);
+            var res = await apiGet('tickets', 'listClosed', {});
+            showLoading(false);
+            dashboardClosedTickets = res.ok ? res.data : [];
+            el.innerHTML = '';
+            dashboardClosedTickets.forEach(function (t) { el.appendChild(buildTicketCard(t)); });
+        }
+        el.style.display = willShow ? 'flex' : 'none';
+    });
+
+    function stopDashboardAutoRefresh() {
+        if (dashboardRefreshTimer) { clearInterval(dashboardRefreshTimer); dashboardRefreshTimer = null; }
+    }
+
+    function startDashboardAutoRefresh() {
+        stopDashboardAutoRefresh();
+        dashboardRefreshTimer = setInterval(function () {
+            if (isHubActive() && Portal.isITAdmin()) loadHubDashboard();
+            else stopDashboardAutoRefresh();
+        }, 25000);
+    }
+
     document.getElementById('ticketSubmitBtn').addEventListener('click', async function () {
         var errEl = document.getElementById('ticketSubmitError');
         errEl.style.display = 'none';
@@ -792,8 +1331,10 @@
         var category = document.getElementById('tkCategory').value;
         var urgencyEl = document.querySelector('input[name="tkUrgency"]:checked');
         var description = document.getElementById('tkDescription').value.trim();
-        if (!category || !urgencyEl || !description) {
-            errEl.textContent = 'יש למלא את כל שדות החובה.';
+        var isPrinterTicket = document.querySelector('input[name="tkForType"]:checked').value === 'printer';
+        var printerName = isPrinterTicket ? document.getElementById('tkPrinterSelect').value : '';
+        if (!category || !urgencyEl || !description || (isPrinterTicket && !printerName)) {
+            errEl.textContent = isPrinterTicket && !printerName ? 'יש לבחור מדפסת' : 'יש למלא את כל שדות החובה.';
             errEl.style.display = 'block';
             return;
         }
@@ -803,8 +1344,8 @@
             phone: document.getElementById('tkPhone').value,
             branch: document.getElementById('tkBranch').value,
             computerName: document.getElementById('tkComputerName').value,
-            ip: document.getElementById('tkIp').value,
             printer: document.getElementById('tkPrinter').value,
+            printerName: printerName,
             anyDeskId: document.getElementById('tkAnyDesk').value,
             category: category,
             urgency: urgencyEl.value,
@@ -836,6 +1377,7 @@
         document.getElementById('ticketConfirmation').style.display = 'none';
         document.getElementById('tkCategory').value = '';
         document.getElementById('tkDescription').value = '';
+        resetForTypeToggle();
         fillComputerFields(assignedComputer);
     });
     document.getElementById('ticketHomeBtn').addEventListener('click', function () { showView('hub'); });
@@ -904,6 +1446,8 @@
         });
     }
 
+    var procedureTracker = makeDirtyTracker(document.getElementById('procedureModalBackdrop'));
+
     function openProcedureModal(proc) {
         editingProcedureId = proc ? proc.id : null;
         document.getElementById('procedureModalTitle').textContent = proc ? 'עריכת נוהל' : 'נוהל חדש';
@@ -913,13 +1457,15 @@
         document.getElementById('prContent').value = proc ? proc.content : '';
         document.getElementById('procedureModalError').style.display = 'none';
         document.getElementById('procedureModalBackdrop').classList.add('visible');
+        procedureTracker.reset();
     }
 
     function closeProcedureModal() { document.getElementById('procedureModalBackdrop').classList.remove('visible'); }
 
     document.getElementById('procedureAddBtn').addEventListener('click', function () { openProcedureModal(null); });
-    document.getElementById('procedureCancelBtn').addEventListener('click', closeProcedureModal);
-    document.getElementById('procedureModalBackdrop').addEventListener('click', function (e) { if (e.target === this) closeProcedureModal(); });
+    document.getElementById('procedureCancelBtn').addEventListener('click', function () {
+        if (procedureTracker.confirmDiscard()) closeProcedureModal();
+    });
 
     document.getElementById('procedureSaveBtn').addEventListener('click', async function () {
         var errEl = document.getElementById('procedureModalError');
@@ -940,6 +1486,7 @@
         var res = await apiPost('procedures', editingProcedureId ? 'update' : 'create', payload);
         showLoading(false);
         if (res.ok) {
+            procedureTracker.reset();
             closeProcedureModal();
             loadProceduresPage();
         } else {
@@ -957,12 +1504,234 @@
         else alert(res.error || 'שגיאה במחיקה');
     }
 
+    // ── USER REQUEST FORM (v2.1, section 4ב) ───────────────────
+    async function loadUserRequestFormPage() {
+        document.getElementById('userRequestFormContainer').style.display = 'block';
+        document.getElementById('userRequestConfirmation').style.display = 'none';
+        document.getElementById('userRequestSubmitError').style.display = 'none';
+        ['urFirstNameHe', 'urLastNameHe', 'urFirstNameEn', 'urLastNameEn', 'urRole'].forEach(function (id) {
+            document.getElementById(id).value = '';
+        });
+        showLoading(true);
+        await ensureBranchesLoaded();
+        populateBranchSelect(document.getElementById('urBranch'), '');
+        await ensureSharedFoldersLoaded();
+        renderFolderCheckboxes(document.getElementById('urFolders'), []);
+        showLoading(false);
+    }
+
+    document.getElementById('userRequestSubmitBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('userRequestSubmitError');
+        var payload = {
+            firstNameHe: document.getElementById('urFirstNameHe').value.trim(),
+            lastNameHe: document.getElementById('urLastNameHe').value.trim(),
+            firstNameEn: document.getElementById('urFirstNameEn').value.trim(),
+            lastNameEn: document.getElementById('urLastNameEn').value.trim(),
+            branchNumber: document.getElementById('urBranch').value,
+            role: document.getElementById('urRole').value.trim(),
+            folderIds: getSelectedFolderIds(document.getElementById('urFolders')),
+        };
+        if (!payload.firstNameHe || !payload.lastNameHe || !payload.firstNameEn || !payload.lastNameEn) {
+            errEl.textContent = 'יש למלא שם פרטי ומשפחה בעברית ובאנגלית';
+            errEl.style.display = 'block';
+            return;
+        }
+        showLoading(true);
+        var res = await apiPost('userRequests', 'create', payload);
+        showLoading(false);
+        if (res.ok) {
+            document.getElementById('confirmUserRequestNumber').textContent = res.data.requestNumber;
+            document.getElementById('userRequestFormContainer').style.display = 'none';
+            document.getElementById('userRequestConfirmation').style.display = 'block';
+        } else {
+            errEl.textContent = res.error || 'שגיאה בשליחת הבקשה';
+            errEl.style.display = 'block';
+        }
+    });
+
+    document.getElementById('userRequestHomeBtn').addEventListener('click', function () { showView('hub'); });
+
+    // ── ADMIN: USER REQUESTS QUEUE (v2.1, section 4ב) ───────────
+    var userRequestsCache = [];
+    var openUserRequestId = null;
+
+    async function loadUserRequestsAdminPage() {
+        showLoading(true);
+        var res = await apiGet('userRequests', 'list', {});
+        showLoading(false);
+        userRequestsCache = res.ok ? res.data : [];
+        renderUserRequestsQueue();
+    }
+
+    function buildUserRequestCard(r) {
+        var card = document.createElement('div');
+        card.className = 'ticket-card';
+        var statusClass = r.status === 'הוקם' ? 'status-closed' : 'status-open';
+        card.innerHTML =
+            '<div class="ticket-card-header"><strong>' + escapeHtml(r.requestNumber) + '</strong>' +
+            '<span class="status-badge ' + statusClass + '">' + escapeHtml(r.status) + '</span></div>' +
+            '<div class="ticket-meta">' + formatDateTime(r.timestamp) + ' | ' + escapeHtml(r.firstNameHe + ' ' + r.lastNameHe) +
+            ' | ' + escapeHtml(r.suggestedEmail) + '</div>';
+        card.addEventListener('click', function () { openUserRequestDetail(r); });
+        return card;
+    }
+
+    function renderUserRequestsQueue() {
+        var pending = userRequestsCache.filter(function (r) { return r.status !== 'הוקם'; });
+        var completed = userRequestsCache.filter(function (r) { return r.status === 'הוקם'; });
+
+        var pendingEl = document.getElementById('userRequestsQueueList');
+        pendingEl.innerHTML = pending.length ? '' : '<p style="color:var(--muted);font-size:13px">אין בקשות ממתינות.</p>';
+        pending.forEach(function (r) { pendingEl.appendChild(buildUserRequestCard(r)); });
+
+        var completedEl = document.getElementById('userRequestsCompletedList');
+        completedEl.innerHTML = completed.length ? '' : '<p style="color:var(--muted);font-size:13px">אין בקשות שהוקמו עדיין.</p>';
+        completed.forEach(function (r) { completedEl.appendChild(buildUserRequestCard(r)); });
+    }
+
+    document.getElementById('userRequestsCompletedToggleBtn').addEventListener('click', function () {
+        var el = document.getElementById('userRequestsCompletedList');
+        el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+    });
+
+    var userRequestDetailTracker = makeDirtyTracker(document.getElementById('userRequestDetailBackdrop'));
+    var currentUserRequestFull = null;
+
+    function currentUserRequestFieldPayload() {
+        return {
+            requestId: openUserRequestId,
+            firstNameHe: document.getElementById('urdFirstNameHe').value.trim(),
+            lastNameHe: document.getElementById('urdLastNameHe').value.trim(),
+            firstNameEn: document.getElementById('urdFirstNameEn').value.trim(),
+            lastNameEn: document.getElementById('urdLastNameEn').value.trim(),
+            branchNumber: document.getElementById('urdBranch').value,
+            role: document.getElementById('urdRole').value.trim(),
+            folderIds: getSelectedFolderIds(document.getElementById('urdFolders')),
+        };
+    }
+
+    async function refreshUserRequestScriptPreview() {
+        var res = await apiPost('userRequests', 'previewScript', currentUserRequestFieldPayload());
+        if (res.ok) {
+            document.getElementById('urdSuggestedEmail').value = res.data.suggestedEmail;
+            document.getElementById('urdScript').value = res.data.script;
+        }
+    }
+
+    async function openUserRequestDetail(r) {
+        openUserRequestId = r.requestId;
+        document.getElementById('userRequestDetailTitle').textContent = r.requestNumber;
+        document.getElementById('userRequestDetailError').style.display = 'none';
+        document.getElementById('urdWelcomeSection').style.display = 'none';
+        document.getElementById('userRequestDetailBackdrop').classList.add('visible');
+
+        showLoading(true);
+        var res = await apiGet('userRequests', 'get', { requestId: r.requestId });
+        showLoading(false);
+        if (!res.ok) {
+            document.getElementById('userRequestDetailError').textContent = res.error || 'שגיאה בטעינה';
+            document.getElementById('userRequestDetailError').style.display = 'block';
+            return;
+        }
+        var req = res.data.request;
+        currentUserRequestFull = req;
+        document.getElementById('urdFirstNameHe').value = req.firstNameHe;
+        document.getElementById('urdLastNameHe').value = req.lastNameHe;
+        document.getElementById('urdFirstNameEn').value = req.firstNameEn;
+        document.getElementById('urdLastNameEn').value = req.lastNameEn;
+        await ensureBranchesLoaded();
+        populateBranchSelect(document.getElementById('urdBranch'), req.branchNumber);
+        document.getElementById('urdRole').value = req.role;
+        renderFolderCheckboxes(document.getElementById('urdFolders'), res.data.folders.map(function (f) { return f.id; }));
+        document.getElementById('urdSuggestedEmail').value = req.suggestedEmail;
+
+        var isCompleted = req.status === 'הוקם';
+        document.getElementById('urdMarkCompletedBtn').style.display = isCompleted ? 'none' : 'inline-block';
+        if (isCompleted) {
+            document.getElementById('urdWelcomeSection').style.display = 'block';
+            document.getElementById('urdWelcomeMessage').value = buildWelcomeMessage(req);
+        }
+
+        await refreshUserRequestScriptPreview();
+        userRequestDetailTracker.reset();
+    }
+
+    function buildWelcomeMessage(req) {
+        return 'שלום ' + req.firstNameHe + ',\n\n' +
+            'המשתמש שלך במערכות החברה הוקם.\n' +
+            'שם משתמש: ' + req.suggestedEmail + '\n' +
+            'סיסמה זמנית: ' + req.tempPassword + '\n\n' +
+            'בכניסה הראשונה תתבקש/י לבחור סיסמה חדשה.';
+    }
+
+    document.getElementById('userRequestDetailBackdrop').addEventListener('input', function (e) {
+        if (e.target.closest('#urdFirstNameHe,#urdLastNameHe,#urdFirstNameEn,#urdLastNameEn,#urdRole,#urdFolders')) refreshUserRequestScriptPreview();
+    });
+    document.getElementById('userRequestDetailBackdrop').addEventListener('change', function (e) {
+        if (e.target.closest('#urdFolders,#urdBranch')) refreshUserRequestScriptPreview();
+    });
+
+    function closeUserRequestDetail() { document.getElementById('userRequestDetailBackdrop').classList.remove('visible'); }
+
+    document.getElementById('urdCancelBtn').addEventListener('click', function () {
+        if (userRequestDetailTracker.confirmDiscard()) closeUserRequestDetail();
+    });
+    document.getElementById('urdCopyScriptBtn').addEventListener('click', function () {
+        copyToClipboard(document.getElementById('urdScript').value, this);
+    });
+    document.getElementById('urdCopyWelcomeBtn').addEventListener('click', function () {
+        copyToClipboard(document.getElementById('urdWelcomeMessage').value, this);
+    });
+
+    document.getElementById('urdSaveBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('userRequestDetailError');
+        var payload = currentUserRequestFieldPayload();
+        if (!payload.firstNameHe || !payload.lastNameHe || !payload.firstNameEn || !payload.lastNameEn) {
+            errEl.textContent = 'יש למלא שם פרטי ומשפחה בעברית ובאנגלית';
+            errEl.style.display = 'block';
+            return;
+        }
+        showLoading(true);
+        var res = await apiPost('userRequests', 'update', payload);
+        showLoading(false);
+        if (res.ok) {
+            userRequestDetailTracker.reset();
+            await refreshUserRequestScriptPreview();
+            loadUserRequestsAdminPage();
+        } else {
+            errEl.textContent = res.error || 'שגיאה בשמירה';
+            errEl.style.display = 'block';
+        }
+    });
+
+    document.getElementById('urdMarkCompletedBtn').addEventListener('click', async function () {
+        if (!confirm('לסמן את הבקשה כהוקמה? ודא/י שהרצת את הסקריפט בפועל קודם.')) return;
+        showLoading(true);
+        var res = await apiPost('userRequests', 'markCompleted', { requestId: openUserRequestId });
+        showLoading(false);
+        if (res.ok) {
+            document.getElementById('urdMarkCompletedBtn').style.display = 'none';
+            document.getElementById('urdWelcomeSection').style.display = 'block';
+            document.getElementById('urdWelcomeMessage').value = buildWelcomeMessage({
+                firstNameHe: document.getElementById('urdFirstNameHe').value.trim(),
+                suggestedEmail: document.getElementById('urdSuggestedEmail').value,
+                tempPassword: currentUserRequestFull ? currentUserRequestFull.tempPassword : '',
+            });
+            userRequestDetailTracker.reset();
+            loadUserRequestsAdminPage();
+        } else {
+            document.getElementById('userRequestDetailError').textContent = res.error || 'שגיאה';
+            document.getElementById('userRequestDetailError').style.display = 'block';
+        }
+    });
+
     // ── ADMIN: USERS ──────────────────────────────────────────
     var editingUserEmail = null;
     var computersCache = [];
 
     async function loadUsersAdminPage() {
         showLoading(true);
+        await ensureBranchesLoaded();
         var usersRes = await apiGet('users', 'list', {});
         var compRes = await apiGet('computers', 'list', {});
         showLoading(false);
@@ -991,7 +1760,7 @@
             tr.innerHTML =
                 '<td dir="ltr">' + escapeHtml(u.email) + '</td>' +
                 '<td>' + escapeHtml([u.firstName, u.lastName].filter(Boolean).join(' ')) + '</td>' +
-                '<td>' + escapeHtml(u.branch) + '</td>' +
+                '<td>' + escapeHtml(branchName(u.branchNumber)) + '</td>' +
                 '<td>' + escapeHtml(u.role) + '</td>' +
                 '<td>' + (badges || '-') + '</td>' +
                 '<td>' + escapeHtml(comp ? comp.computerName : '-') + '</td>' +
@@ -1015,18 +1784,28 @@
             }).join('');
     }
 
-    function openUserAdminModal(user) {
+    var userAdminTracker = makeDirtyTracker(document.getElementById('userAdminModalBackdrop'));
+    maskPhoneInput(document.getElementById('uaPhone'));
+
+    async function openUserAdminModal(user) {
         editingUserEmail = user ? user.email : null;
         document.getElementById('userAdminModalTitle').textContent = user ? 'עריכת משתמש' : 'משתמש חדש';
-        document.getElementById('uaEmail').value = user ? user.email : '';
-        document.getElementById('uaEmail').disabled = !!user;
+        document.getElementById('uaUsername').value = user ? user.email.split('@')[0] : '';
+        document.getElementById('uaUsername').disabled = !!user;
         document.getElementById('uaFirstName').value = user ? user.firstName : '';
         document.getElementById('uaLastName').value = user ? user.lastName : '';
+        document.getElementById('uaFirstNameEn').value = '';
+        document.getElementById('uaLastNameEn').value = '';
         document.getElementById('uaPhone').value = user ? user.phone : '';
-        document.getElementById('uaBranch').value = user ? user.branch : '';
+        await ensureBranchesLoaded();
+        populateBranchSelect(document.getElementById('uaBranch'), user ? user.branchNumber : '');
+        await ensureSharedFoldersLoaded();
+        renderFolderCheckboxes(document.getElementById('uaFolders'), []);
+        document.getElementById('uaScriptResult').style.display = 'none';
         document.getElementById('uaRole').value = user ? user.role : '';
         document.getElementById('uaIsITAdmin').checked = !!(user && user.isITAdmin);
         document.getElementById('uaIsProceduresAdmin').checked = !!(user && user.isProceduresAdmin);
+        document.getElementById('uaIsUserRequestSubmitter').checked = !!(user && user.isUserRequestSubmitter);
         // Only a SuperAdmin may grant admin flags — a plain IT/Procedures admin creating
         // a user never sees this section (matches server-side enforcement).
         document.getElementById('uaAdminFlagsSection').style.display = Portal.isSuperAdmin() ? 'block' : 'none';
@@ -1034,34 +1813,74 @@
         populateComputerSelect(assignedComp ? assignedComp.computerName : '');
         document.getElementById('userAdminModalError').style.display = 'none';
         document.getElementById('userAdminModalBackdrop').classList.add('visible');
+        userAdminTracker.reset();
     }
 
     function closeUserAdminModal() { document.getElementById('userAdminModalBackdrop').classList.remove('visible'); }
 
     document.getElementById('userAdminAddBtn').addEventListener('click', function () { openUserAdminModal(null); });
-    document.getElementById('userAdminCancelBtn').addEventListener('click', closeUserAdminModal);
-    document.getElementById('userAdminModalBackdrop').addEventListener('click', function (e) { if (e.target === this) closeUserAdminModal(); });
+    document.getElementById('userAdminCancelBtn').addEventListener('click', function () {
+        if (userAdminTracker.confirmDiscard()) closeUserAdminModal();
+    });
 
     document.getElementById('userAdminSaveBtn').addEventListener('click', async function () {
         var errEl = document.getElementById('userAdminModalError');
         var payload = {
-            email: document.getElementById('uaEmail').value.trim().toLowerCase(),
             firstName: document.getElementById('uaFirstName').value.trim(),
             lastName: document.getElementById('uaLastName').value.trim(),
             phone: document.getElementById('uaPhone').value.trim(),
-            branch: document.getElementById('uaBranch').value.trim(),
+            branchNumber: document.getElementById('uaBranch').value,
             role: document.getElementById('uaRole').value.trim(),
             isITAdmin: document.getElementById('uaIsITAdmin').checked,
             isProceduresAdmin: document.getElementById('uaIsProceduresAdmin').checked,
+            isUserRequestSubmitter: document.getElementById('uaIsUserRequestSubmitter').checked,
             assignedComputerName: document.getElementById('uaComputer').value,
         };
-        if (!payload.email) { errEl.textContent = 'יש למלא מייל'; errEl.style.display = 'block'; return; }
+        if (editingUserEmail) {
+            payload.email = editingUserEmail;
+        } else {
+            payload.username = document.getElementById('uaUsername').value.trim().toLowerCase();
+            if (!payload.username) { errEl.textContent = 'יש למלא מייל'; errEl.style.display = 'block'; return; }
+        }
 
         showLoading(true);
         var res = await apiPost('users', editingUserEmail ? 'adminUpdate' : 'create', payload);
         showLoading(false);
-        if (res.ok) { closeUserAdminModal(); loadUsersAdminPage(); }
+        if (res.ok) { userAdminTracker.reset(); closeUserAdminModal(); loadUsersAdminPage(); }
         else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
+    });
+
+    document.getElementById('uaGenerateScriptBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('userAdminModalError');
+        var scriptPayload = {
+            firstNameHe: document.getElementById('uaFirstName').value.trim(),
+            lastNameHe: document.getElementById('uaLastName').value.trim(),
+            firstNameEn: document.getElementById('uaFirstNameEn').value.trim(),
+            lastNameEn: document.getElementById('uaLastNameEn').value.trim(),
+            role: document.getElementById('uaRole').value.trim(),
+            branchNumber: document.getElementById('uaBranch').value,
+            folderIds: getSelectedFolderIds(document.getElementById('uaFolders')),
+        };
+        if (!scriptPayload.firstNameHe || !scriptPayload.lastNameHe || !scriptPayload.firstNameEn || !scriptPayload.lastNameEn) {
+            errEl.textContent = 'יש למלא שם פרטי ומשפחה בעברית ובאנגלית כדי להכין סקריפט';
+            errEl.style.display = 'block';
+            return;
+        }
+        showLoading(true);
+        var res = await apiPost('userRequests', 'previewScript', scriptPayload);
+        showLoading(false);
+        if (res.ok) {
+            document.getElementById('uaScriptEmail').value = res.data.suggestedEmail;
+            document.getElementById('uaScriptBox').value = res.data.script;
+            document.getElementById('uaScriptResult').style.display = 'block';
+        } else {
+            errEl.textContent = res.error || 'שגיאה בהכנת הסקריפט';
+            errEl.style.display = 'block';
+        }
+    });
+
+    document.getElementById('uaCopyScriptBtn').addEventListener('click', function () {
+        copyToClipboard(document.getElementById('uaScriptBox').value, this);
     });
 
     async function deleteAdminUser(user) {
@@ -1077,6 +1896,7 @@
 
     async function loadComputersAdminPage() {
         showLoading(true);
+        await ensureBranchesLoaded();
         var res = await apiGet('computers', 'list', {});
         showLoading(false);
         computersCache = res.ok ? res.data : [];
@@ -1094,8 +1914,7 @@
             tr.innerHTML =
                 '<td dir="ltr">' + escapeHtml(c.computerName) + '</td>' +
                 '<td>' + escapeHtml(c.type) + '</td>' +
-                '<td dir="ltr">' + escapeHtml(c.ip) + '</td>' +
-                '<td>' + escapeHtml(c.printer) + '</td>' +
+                '<td>' + escapeHtml(c.defaultPrinterName || '-') + '</td>' +
                 '<td>' + anyDeskCell + '</td>' +
                 '<td dir="ltr">' + escapeHtml(c.assignedUserEmail || '-') + '</td>' +
                 '<td class="admin-row-actions">' +
@@ -1110,27 +1929,31 @@
         });
     }
 
-    function openComputerAdminModal(comp) {
+    var computerAdminTracker = makeDirtyTracker(document.getElementById('computerAdminModalBackdrop'));
+
+    async function openComputerAdminModal(comp) {
         editingComputerName = comp ? comp.computerName : null;
         document.getElementById('computerAdminModalTitle').textContent = comp ? 'עריכת מחשב' : 'מחשב חדש';
         document.getElementById('caComputerName').value = comp ? comp.computerName : '';
         document.getElementById('caComputerName').disabled = !!comp;
         document.getElementById('caType').value = comp ? comp.type : '';
         document.getElementById('caRam').value = comp ? comp.ram : '';
-        document.getElementById('caIp').value = comp ? comp.ip : '';
-        document.getElementById('caPrinter').value = comp ? comp.printer : '';
+        await ensurePrintersLoaded();
+        populatePrinterSelect(document.getElementById('caPrinter'), comp ? comp.defaultPrinterName : '');
         document.getElementById('caAnyDesk').value = comp ? comp.anyDeskId : '';
-        document.getElementById('caBranch').value = comp ? comp.branch : '';
+        populateBranchSelect(document.getElementById('caBranch'), comp ? comp.branchNumber : '');
         document.getElementById('caNotes').value = comp ? comp.notes : '';
         document.getElementById('computerAdminModalError').style.display = 'none';
         document.getElementById('computerAdminModalBackdrop').classList.add('visible');
+        computerAdminTracker.reset();
     }
 
     function closeComputerAdminModal() { document.getElementById('computerAdminModalBackdrop').classList.remove('visible'); }
 
     document.getElementById('computerAdminAddBtn').addEventListener('click', function () { openComputerAdminModal(null); });
-    document.getElementById('computerAdminCancelBtn').addEventListener('click', closeComputerAdminModal);
-    document.getElementById('computerAdminModalBackdrop').addEventListener('click', function (e) { if (e.target === this) closeComputerAdminModal(); });
+    document.getElementById('computerAdminCancelBtn').addEventListener('click', function () {
+        if (computerAdminTracker.confirmDiscard()) closeComputerAdminModal();
+    });
 
     document.getElementById('computerAdminSaveBtn').addEventListener('click', async function () {
         var errEl = document.getElementById('computerAdminModalError');
@@ -1138,18 +1961,21 @@
             computerName: document.getElementById('caComputerName').value.trim(),
             type: document.getElementById('caType').value.trim(),
             ram: document.getElementById('caRam').value.trim(),
-            ip: document.getElementById('caIp').value.trim(),
-            printer: document.getElementById('caPrinter').value.trim(),
+            defaultPrinterName: document.getElementById('caPrinter').value,
             anyDeskId: document.getElementById('caAnyDesk').value.trim(),
-            branch: document.getElementById('caBranch').value.trim(),
+            branchNumber: document.getElementById('caBranch').value,
             notes: document.getElementById('caNotes').value.trim(),
         };
         if (!payload.computerName) { errEl.textContent = 'יש למלא שם מחשב'; errEl.style.display = 'block'; return; }
+        var isDuplicate = !editingComputerName && computersCache.some(function (c) {
+            return c.computerName.toLowerCase() === payload.computerName.toLowerCase();
+        });
+        if (isDuplicate) { errEl.textContent = 'מחשב עם שם זה כבר קיים'; errEl.style.display = 'block'; return; }
 
         showLoading(true);
         var res = await apiPost('computers', editingComputerName ? 'update' : 'create', payload);
         showLoading(false);
-        if (res.ok) { closeComputerAdminModal(); loadComputersAdminPage(); }
+        if (res.ok) { computerAdminTracker.reset(); closeComputerAdminModal(); loadComputersAdminPage(); }
         else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
     });
 
@@ -1182,6 +2008,227 @@
     });
     document.getElementById('computerHistoryBackdrop').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('visible'); });
 
+    // ── ADMIN: BRANCHES ───────────────────────────────────────
+    var editingBranchNumber = null;
+
+    async function loadBranchesAdminPage() {
+        showLoading(true);
+        branchesCache = null; // admin screen is the source of truth for this list — force a refetch
+        await ensureBranchesLoaded();
+        showLoading(false);
+        renderBranchesTable(branchesCache);
+    }
+
+    function renderBranchesTable(list) {
+        var body = document.getElementById('branchesTableBody');
+        body.innerHTML = '';
+        list.forEach(function (b) {
+            var tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td dir="ltr">' + escapeHtml(b.number) + '</td>' +
+                '<td>' + escapeHtml(b.name) + '</td>' +
+                '<td class="admin-row-actions">' +
+                '<button type="button" class="icon-button" data-edit title="עריכה">✏️</button>' +
+                '<button type="button" class="icon-button" data-delete title="מחיקה">🗑️</button></td>';
+            tr.querySelector('[data-edit]').addEventListener('click', function () { openBranchAdminModal(b); });
+            tr.querySelector('[data-delete]').addEventListener('click', function () { deleteAdminBranch(b); });
+            body.appendChild(tr);
+        });
+    }
+
+    var branchAdminTracker = makeDirtyTracker(document.getElementById('branchAdminModalBackdrop'));
+
+    function openBranchAdminModal(b) {
+        editingBranchNumber = b ? b.number : null;
+        document.getElementById('branchAdminModalTitle').textContent = b ? 'עריכת סניף' : 'סניף חדש';
+        document.getElementById('baNumber').value = b ? b.number : '';
+        document.getElementById('baNumber').disabled = !!b;
+        document.getElementById('baName').value = b ? b.name : '';
+        document.getElementById('branchAdminModalError').style.display = 'none';
+        document.getElementById('branchAdminModalBackdrop').classList.add('visible');
+        branchAdminTracker.reset();
+    }
+
+    function closeBranchAdminModal() { document.getElementById('branchAdminModalBackdrop').classList.remove('visible'); }
+
+    document.getElementById('branchAdminAddBtn').addEventListener('click', function () { openBranchAdminModal(null); });
+    document.getElementById('branchAdminCancelBtn').addEventListener('click', function () {
+        if (branchAdminTracker.confirmDiscard()) closeBranchAdminModal();
+    });
+
+    document.getElementById('branchAdminSaveBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('branchAdminModalError');
+        var payload = {
+            number: document.getElementById('baNumber').value,
+            name: document.getElementById('baName').value.trim(),
+        };
+        if (payload.number === '' || !payload.name) { errEl.textContent = 'יש למלא מספר ושם סניף'; errEl.style.display = 'block'; return; }
+
+        showLoading(true);
+        var res = await apiPost('branches', editingBranchNumber !== null ? 'update' : 'create', payload);
+        showLoading(false);
+        if (res.ok) { branchAdminTracker.reset(); closeBranchAdminModal(); loadBranchesAdminPage(); }
+        else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
+    });
+
+    async function deleteAdminBranch(b) {
+        if (!confirm('למחוק את הסניף "' + b.name + '"?')) return;
+        showLoading(true);
+        var res = await apiPost('branches', 'delete', { number: b.number });
+        showLoading(false);
+        if (res.ok) loadBranchesAdminPage(); else alert(res.error || 'שגיאה במחיקה');
+    }
+
+    // ── ADMIN: SHARED FOLDERS ─────────────────────────────────
+    var sharedFoldersCache = [];
+    var editingSharedFolderId = null;
+
+    async function loadSharedFoldersAdminPage() {
+        showLoading(true);
+        var res = await apiGet('sharedFolders', 'list', {});
+        showLoading(false);
+        sharedFoldersCache = res.ok ? res.data : [];
+        renderSharedFoldersTable(sharedFoldersCache);
+    }
+
+    function renderSharedFoldersTable(list) {
+        var body = document.getElementById('sharedFoldersTableBody');
+        body.innerHTML = '';
+        list.forEach(function (f) {
+            var tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td>' + escapeHtml(f.name) + '</td>' +
+                '<td dir="ltr">' + (f.entraGroupObjectId ? escapeHtml(f.entraGroupObjectId) : '<span style="color:var(--danger)">חסר</span>') + '</td>' +
+                '<td class="admin-row-actions">' +
+                '<button type="button" class="icon-button" data-edit title="עריכה">✏️</button>' +
+                '<button type="button" class="icon-button" data-delete title="מחיקה">🗑️</button></td>';
+            tr.querySelector('[data-edit]').addEventListener('click', function () { openSharedFolderAdminModal(f); });
+            tr.querySelector('[data-delete]').addEventListener('click', function () { deleteAdminSharedFolder(f); });
+            body.appendChild(tr);
+        });
+    }
+
+    var sharedFolderAdminTracker = makeDirtyTracker(document.getElementById('sharedFolderAdminModalBackdrop'));
+
+    function openSharedFolderAdminModal(f) {
+        editingSharedFolderId = f ? f.id : null;
+        document.getElementById('sharedFolderAdminModalTitle').textContent = f ? 'עריכת תיקייה' : 'תיקייה חדשה';
+        document.getElementById('sfName').value = f ? f.name : '';
+        document.getElementById('sfObjectId').value = f ? f.entraGroupObjectId : '';
+        document.getElementById('sharedFolderAdminModalError').style.display = 'none';
+        document.getElementById('sharedFolderAdminModalBackdrop').classList.add('visible');
+        sharedFolderAdminTracker.reset();
+    }
+
+    function closeSharedFolderAdminModal() { document.getElementById('sharedFolderAdminModalBackdrop').classList.remove('visible'); }
+
+    document.getElementById('sharedFolderAdminAddBtn').addEventListener('click', function () { openSharedFolderAdminModal(null); });
+    document.getElementById('sharedFolderAdminCancelBtn').addEventListener('click', function () {
+        if (sharedFolderAdminTracker.confirmDiscard()) closeSharedFolderAdminModal();
+    });
+
+    document.getElementById('sharedFolderAdminSaveBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('sharedFolderAdminModalError');
+        var payload = {
+            name: document.getElementById('sfName').value.trim(),
+            entraGroupObjectId: document.getElementById('sfObjectId').value.trim(),
+        };
+        if (!payload.name) { errEl.textContent = 'יש למלא שם תיקייה'; errEl.style.display = 'block'; return; }
+        if (editingSharedFolderId) payload.id = editingSharedFolderId;
+
+        showLoading(true);
+        var res = await apiPost('sharedFolders', editingSharedFolderId ? 'update' : 'create', payload);
+        showLoading(false);
+        if (res.ok) { sharedFolderAdminTracker.reset(); closeSharedFolderAdminModal(); loadSharedFoldersAdminPage(); }
+        else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
+    });
+
+    async function deleteAdminSharedFolder(f) {
+        if (!confirm('למחוק את התיקייה "' + f.name + '"?')) return;
+        showLoading(true);
+        var res = await apiPost('sharedFolders', 'delete', { id: f.id });
+        showLoading(false);
+        if (res.ok) loadSharedFoldersAdminPage(); else alert(res.error || 'שגיאה במחיקה');
+    }
+
+    // ── ADMIN: PRINTERS (v2.1, section 8) ───────────────────────
+    var editingPrinterName = null;
+
+    async function loadPrintersAdminPage() {
+        showLoading(true);
+        await ensureBranchesLoaded();
+        printersCache = null; // admin screen is the source of truth for this list — force a refetch
+        await ensurePrintersLoaded();
+        showLoading(false);
+        renderPrintersTable(printersCache);
+    }
+
+    function renderPrintersTable(list) {
+        var body = document.getElementById('printersTableBody');
+        body.innerHTML = '';
+        list.forEach(function (p) {
+            var tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td dir="ltr">' + escapeHtml(p.printerName) + '</td>' +
+                '<td dir="ltr">' + escapeHtml(p.ip) + '</td>' +
+                '<td>' + escapeHtml(branchName(p.branchNumber)) + '</td>' +
+                '<td>' + escapeHtml(p.notes) + '</td>' +
+                '<td class="admin-row-actions">' +
+                '<button type="button" class="icon-button" data-edit title="עריכה">✏️</button>' +
+                '<button type="button" class="icon-button" data-delete title="מחיקה">🗑️</button></td>';
+            tr.querySelector('[data-edit]').addEventListener('click', function () { openPrinterAdminModal(p); });
+            tr.querySelector('[data-delete]').addEventListener('click', function () { deleteAdminPrinter(p); });
+            body.appendChild(tr);
+        });
+    }
+
+    var printerAdminTracker = makeDirtyTracker(document.getElementById('printerAdminModalBackdrop'));
+
+    function openPrinterAdminModal(p) {
+        editingPrinterName = p ? p.printerName : null;
+        document.getElementById('printerAdminModalTitle').textContent = p ? 'עריכת מדפסת' : 'מדפסת חדשה';
+        document.getElementById('paPrinterName').value = p ? p.printerName : '';
+        document.getElementById('paPrinterName').disabled = !!p;
+        document.getElementById('paIp').value = p ? p.ip : '';
+        populateBranchSelect(document.getElementById('paBranch'), p ? p.branchNumber : '');
+        document.getElementById('paNotes').value = p ? p.notes : '';
+        document.getElementById('printerAdminModalError').style.display = 'none';
+        document.getElementById('printerAdminModalBackdrop').classList.add('visible');
+        printerAdminTracker.reset();
+    }
+
+    function closePrinterAdminModal() { document.getElementById('printerAdminModalBackdrop').classList.remove('visible'); }
+
+    document.getElementById('printerAdminAddBtn').addEventListener('click', function () { openPrinterAdminModal(null); });
+    document.getElementById('printerAdminCancelBtn').addEventListener('click', function () {
+        if (printerAdminTracker.confirmDiscard()) closePrinterAdminModal();
+    });
+
+    document.getElementById('printerAdminSaveBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('printerAdminModalError');
+        var payload = {
+            printerName: document.getElementById('paPrinterName').value.trim(),
+            ip: document.getElementById('paIp').value.trim(),
+            branchNumber: document.getElementById('paBranch').value,
+            notes: document.getElementById('paNotes').value.trim(),
+        };
+        if (!payload.printerName) { errEl.textContent = 'יש למלא שם מדפסת'; errEl.style.display = 'block'; return; }
+
+        showLoading(true);
+        var res = await apiPost('printers', editingPrinterName ? 'update' : 'create', payload);
+        showLoading(false);
+        if (res.ok) { printerAdminTracker.reset(); closePrinterAdminModal(); loadPrintersAdminPage(); }
+        else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
+    });
+
+    async function deleteAdminPrinter(p) {
+        if (!confirm('למחוק את המדפסת "' + p.printerName + '"?')) return;
+        showLoading(true);
+        var res = await apiPost('printers', 'delete', { printerName: p.printerName });
+        showLoading(false);
+        if (res.ok) loadPrintersAdminPage(); else alert(res.error || 'שגיאה במחיקה');
+    }
+
     // ── INIT ──────────────────────────────────────────────────
     (async function init() {
         showLoading(true);
@@ -1192,6 +2239,9 @@
             showView('notfound');
             return;
         }
+        showLoading(true);
+        await ensureBranchesLoaded();
+        showLoading(false);
         renderHubGreeting();
         renderHubActions();
         showView('hub');

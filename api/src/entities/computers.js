@@ -7,15 +7,23 @@ function rowToComputer(r) {
     computerName: r.ComputerName,
     type: r.Type,
     ram: r.RAM,
-    ip: r.IP,
-    printer: r.Printer,
     anyDeskId: r.AnyDeskId,
     assignedUserEmail: r.AssignedUserEmail,
-    branch: r.Branch,
+    branchNumber: r.BranchNumber,
+    defaultPrinterName: r.DefaultPrinterName,
     notes: r.Notes,
     createdAt: r.CreatedAt,
     updatedAt: r.UpdatedAt,
   };
+}
+
+// '' / null / undefined all mean "no branch selected" — stored as NULL, never as 0
+// unless 0 (the seeded "מרוחק") was actually chosen.
+function parseBranchNumber(v) {
+  if (v === undefined) return undefined;
+  if (v === null || v === '') return null;
+  const n = Number(v);
+  return Number.isInteger(n) ? n : null;
 }
 
 async function getAssigned(_payload, caller) {
@@ -32,7 +40,15 @@ async function list(_payload, caller) {
   return { ok: true, data: result.recordset.map(rowToComputer) };
 }
 
-const EDITABLE_COMPUTER_FIELDS = ['Type', 'RAM', 'IP', 'Printer', 'AnyDeskId', 'AssignedUserEmail', 'Branch', 'Notes'];
+// Every authenticated user needs this for the ticket form's "pick a different computer"
+// pencil (v2.1, section 10) — just names, none of the sensitive fields list() exposes.
+async function listNames(_payload, _caller) {
+  const pool = await getPool();
+  const result = await pool.request().query('SELECT ComputerName FROM Computers ORDER BY ComputerName');
+  return { ok: true, data: result.recordset.map((r) => r.ComputerName) };
+}
+
+const EDITABLE_COMPUTER_FIELDS = ['Type', 'RAM', 'AnyDeskId', 'AssignedUserEmail', 'DefaultPrinterName', 'Notes'];
 
 async function create(payload, caller) {
   if (!caller.isITAdmin) return { ok: false, error: 'אין הרשאה' };
@@ -44,13 +60,14 @@ async function create(payload, caller) {
     .query('SELECT ComputerName FROM Computers WHERE ComputerName = @name');
   if (existing.recordset.length) return { ok: false, error: 'מחשב עם שם זה כבר קיים' };
 
-  const req = pool.request().input('computerName', sql.NVarChar, computerName);
+  const req = pool.request().input('computerName', sql.NVarChar, computerName)
+    .input('BranchNumber', sql.Int, parseBranchNumber(payload.branchNumber) ?? null);
   EDITABLE_COMPUTER_FIELDS.forEach((f) => {
     const key = f.charAt(0).toLowerCase() + f.slice(1);
     req.input(f, sql.NVarChar, payload[key] ? String(payload[key]) : null);
   });
-  await req.query(`INSERT INTO Computers (ComputerName, Type, RAM, IP, Printer, AnyDeskId, AssignedUserEmail, Branch, Notes)
-    VALUES (@computerName, @Type, @RAM, @IP, @Printer, @AnyDeskId, @AssignedUserEmail, @Branch, @Notes)`);
+  await req.query(`INSERT INTO Computers (ComputerName, Type, RAM, AnyDeskId, AssignedUserEmail, DefaultPrinterName, BranchNumber, Notes)
+    VALUES (@computerName, @Type, @RAM, @AnyDeskId, @AssignedUserEmail, @DefaultPrinterName, @BranchNumber, @Notes)`);
   return { ok: true };
 }
 
@@ -71,6 +88,11 @@ async function update(payload, caller) {
       sets.push(`${f} = @${f}`);
     }
   });
+  const branchNumber = parseBranchNumber(payload.branchNumber);
+  if (branchNumber !== undefined) {
+    req.input('BranchNumber', sql.Int, branchNumber);
+    sets.push('BranchNumber = @BranchNumber');
+  }
   await req.query(`UPDATE Computers SET ${sets.join(', ')} WHERE ComputerName = @computerName`);
   return { ok: true };
 }
@@ -93,4 +115,4 @@ async function ticketHistory(payload, caller) {
   return { ok: true, data: result.recordset.map(rowToTicket) };
 }
 
-module.exports = { getAssigned, list, create, update, remove, ticketHistory, rowToComputer };
+module.exports = { getAssigned, list, listNames, create, update, remove, ticketHistory, rowToComputer };

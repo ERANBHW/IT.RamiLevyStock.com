@@ -43,16 +43,21 @@ async function graphSendMail({ to, subject, body }) {
 
 const MAIL_SENDER_NAME = process.env.MAIL_SENDER_NAME || 'IT-Rami-Levy-Stock';
 
-async function sendTicketEmails(ticket) {
-  const itEmail = process.env.IT_COMPANY_EMAIL;
-  const adminEmail = process.env.ADMIN_EMAIL;
+// v2.1, section 8: a ticket opened "for: a printer" routes to PRINTER_SUPPORT_EMAIL
+// instead of the usual IT_COMPANY_EMAIL/ADMIN_EMAIL pair.
+async function sendTicketEmails(ticket, opts = {}) {
+  const printerEmail = process.env.PRINTER_SUPPORT_EMAIL;
+  const staffRecipients = opts.isPrinterTicket
+    ? [printerEmail].filter(Boolean)
+    : [process.env.IT_COMPANY_EMAIL, process.env.ADMIN_EMAIL].filter(Boolean);
+
   const subject = `קריאת שירות חדשה ${ticket.TicketNumber} - ${ticket.Category}`;
   const body = [
     `קריאה: ${ticket.TicketNumber}`,
     `שם: ${ticket.UserName}`,
     `טלפון: ${ticket.Phone}`,
     `סניף: ${ticket.Branch}`,
-    `מחשב: ${ticket.ComputerName} | IP: ${ticket.IP}`,
+    `מחשב: ${ticket.ComputerName}`,
     `מדפסת: ${ticket.Printer} | AnyDesk: ${ticket.AnyDeskId}`,
     `קטגוריה: ${ticket.Category}`,
     `דחיפות: ${ticket.Urgency}`,
@@ -63,7 +68,6 @@ async function sendTicketEmails(ticket) {
     `נשלח מטעם ${MAIL_SENDER_NAME}`,
   ].join('\n');
 
-  const staffRecipients = [itEmail, adminEmail].filter(Boolean);
   if (staffRecipients.length) {
     await graphSendMail({ to: staffRecipients, subject, body });
   }
@@ -77,4 +81,26 @@ async function sendTicketEmails(ticket) {
   }
 }
 
-module.exports = { sendTicketEmails };
+async function sendUserRequestEmail(request) {
+  const itEmail = process.env.IT_COMPANY_EMAIL;
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const staffRecipients = [itEmail, adminEmail].filter(Boolean);
+  if (!staffRecipients.length) return;
+
+  const subject = `בקשת הקמת משתמש חדש ${request.RequestNumber}`;
+  const body = [
+    `בקשה: ${request.RequestNumber}`,
+    `הוגשה ע"י: ${request.RequesterName} (${request.RequesterEmail})`,
+    `שם: ${request.FirstNameHe} ${request.LastNameHe} / ${request.FirstNameEn} ${request.LastNameEn}`,
+    `תפקיד: ${request.Role}`,
+    `מייל מוצע: ${request.SuggestedEmail}`,
+    '',
+    'פרטים מלאים, סקריפט ההקמה וסיסמה זמנית נמצאים בתור "בקשות הקמת משתמש" בפורטל.',
+    '',
+    `נשלח מטעם ${MAIL_SENDER_NAME}`,
+  ].join('\n');
+
+  await graphSendMail({ to: staffRecipients, subject, body });
+}
+
+module.exports = { sendTicketEmails, sendUserRequestEmail };

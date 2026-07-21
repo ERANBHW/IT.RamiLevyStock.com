@@ -17,6 +17,10 @@ const users = require('../entities/users');
 const computers = require('../entities/computers');
 const tickets = require('../entities/tickets');
 const procedures = require('../entities/procedures');
+const branches = require('../entities/branches');
+const sharedFolders = require('../entities/sharedFolders');
+const userRequests = require('../entities/userRequests');
+const printers = require('../entities/printers');
 
 const ROUTES = {
   users: {
@@ -30,6 +34,7 @@ const ROUTES = {
   computers: {
     getAssigned: computers.getAssigned,
     list: computers.list,
+    listNames: computers.listNames,
     create: computers.create,
     update: computers.update,
     delete: computers.remove,
@@ -39,6 +44,8 @@ const ROUTES = {
     create: tickets.create,
     listMine: tickets.listMine,
     list: tickets.list,
+    closedCount: tickets.closedCount,
+    listClosed: tickets.listClosed,
     get: tickets.get,
     update: tickets.update,
     take: tickets.take,
@@ -50,6 +57,32 @@ const ROUTES = {
     create: procedures.create,
     update: procedures.update,
     delete: procedures.remove,
+  },
+  branches: {
+    list: branches.list,
+    create: branches.create,
+    update: branches.update,
+    delete: branches.remove,
+  },
+  sharedFolders: {
+    list: sharedFolders.list,
+    create: sharedFolders.create,
+    update: sharedFolders.update,
+    delete: sharedFolders.remove,
+  },
+  userRequests: {
+    create: userRequests.create,
+    list: userRequests.list,
+    get: userRequests.get,
+    update: userRequests.update,
+    previewScript: userRequests.previewScript,
+    markCompleted: userRequests.markCompleted,
+  },
+  printers: {
+    list: printers.list,
+    create: printers.create,
+    update: printers.update,
+    delete: printers.remove,
   },
 };
 
@@ -65,6 +98,7 @@ async function loadCaller(identity) {
     isSuperAdmin: !!(row && row.IsSuperAdmin),
     isITAdmin: !!(row && (row.IsITAdmin || row.IsSuperAdmin)),
     isProceduresAdmin: !!(row && (row.IsProceduresAdmin || row.IsSuperAdmin)),
+    isUserRequestSubmitter: !!(row && (row.IsUserRequestSubmitter || row.IsITAdmin || row.IsSuperAdmin)),
   };
 }
 
