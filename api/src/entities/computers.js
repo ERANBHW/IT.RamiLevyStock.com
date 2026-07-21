@@ -7,7 +7,6 @@ function rowToComputer(r) {
     computerName: r.ComputerName,
     type: r.Type,
     ram: r.RAM,
-    printer: r.Printer,
     anyDeskId: r.AnyDeskId,
     assignedUserEmail: r.AssignedUserEmail,
     branchNumber: r.BranchNumber,
@@ -41,7 +40,7 @@ async function list(_payload, caller) {
   return { ok: true, data: result.recordset.map(rowToComputer) };
 }
 
-const EDITABLE_COMPUTER_FIELDS = ['Type', 'RAM', 'Printer', 'AnyDeskId', 'AssignedUserEmail', 'Notes'];
+const EDITABLE_COMPUTER_FIELDS = ['Type', 'RAM', 'AnyDeskId', 'AssignedUserEmail', 'DefaultPrinterName', 'Notes'];
 
 async function create(payload, caller) {
   if (!caller.isITAdmin) return { ok: false, error: 'אין הרשאה' };
@@ -59,8 +58,8 @@ async function create(payload, caller) {
     const key = f.charAt(0).toLowerCase() + f.slice(1);
     req.input(f, sql.NVarChar, payload[key] ? String(payload[key]) : null);
   });
-  await req.query(`INSERT INTO Computers (ComputerName, Type, RAM, Printer, AnyDeskId, AssignedUserEmail, BranchNumber, Notes)
-    VALUES (@computerName, @Type, @RAM, @Printer, @AnyDeskId, @AssignedUserEmail, @BranchNumber, @Notes)`);
+  await req.query(`INSERT INTO Computers (ComputerName, Type, RAM, AnyDeskId, AssignedUserEmail, DefaultPrinterName, BranchNumber, Notes)
+    VALUES (@computerName, @Type, @RAM, @AnyDeskId, @AssignedUserEmail, @DefaultPrinterName, @BranchNumber, @Notes)`);
   return { ok: true };
 }
 

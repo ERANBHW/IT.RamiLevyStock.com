@@ -64,6 +64,12 @@ async function getTicketOr404(pool, ticketNumber) {
 }
 
 async function create(payload, caller) {
+  // "printerName" (section 8's "for: a printer" toggle) means this ticket is about a
+  // printer, not the caller's computer — it both fills the Printer column and routes the
+  // notification email to printer support instead of IT.
+  const isPrinterTicket = !!String(payload.printerName || '').trim();
+  const printer = String(payload.printerName || payload.printer || '');
+
   const pool = await getPool();
   const result = await pool.request()
     .input('userEmail', sql.NVarChar, caller.email)
@@ -72,7 +78,7 @@ async function create(payload, caller) {
     .input('branch', sql.NVarChar, String(payload.branch || ''))
     .input('computerName', sql.NVarChar, String(payload.computerName || ''))
     .input('ip', sql.NVarChar, String(payload.ip || ''))
-    .input('printer', sql.NVarChar, String(payload.printer || ''))
+    .input('printer', sql.NVarChar, printer)
     .input('anyDeskId', sql.NVarChar, String(payload.anyDeskId || ''))
     .input('category', sql.NVarChar, String(payload.category || ''))
     .input('urgency', sql.NVarChar, String(payload.urgency || ''))
@@ -86,7 +92,7 @@ async function create(payload, caller) {
   const ticket = result.recordset[0];
   await writeLog(pool, ticket.TicketNumber, caller, 'created', { message: 'הקריאה נפתחה' });
 
-  sendTicketEmails(ticket).catch((err) => console.error('sendTicketEmails failed', err));
+  sendTicketEmails(ticket, { isPrinterTicket }).catch((err) => console.error('sendTicketEmails failed', err));
 
   return { ok: true, data: { ticketNumber: ticket.TicketNumber } };
 }

@@ -195,6 +195,17 @@
                         <h2 class="section-title" style="margin:0">פרטי הפונה והמחשב</h2>
                         <button type="button" class="icon-button" id="ticketComputerEditBtn" title="עריכה נקודתית לקריאה זו">✏️</button>
                     </div>
+                    <div class="field">
+                        <label>עבור</label>
+                        <div style="display:flex;gap:16px">
+                            <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="tkForType" value="computer" checked style="width:auto">המחשב שלי</label>
+                            <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="tkForType" value="printer" style="width:auto">מדפסת</label>
+                        </div>
+                    </div>
+                    <div class="field" id="tkPrinterSelectField" style="display:none">
+                        <label for="tkPrinterSelect">מדפסת</label>
+                        <select id="tkPrinterSelect"></select>
+                    </div>
                     <div class="grid-2">
                         <div class="field"><label>שם</label><input id="tkName" readonly></div>
                         <div class="field"><label>טלפון</label><input id="tkPhone" readonly dir="ltr"></div>
@@ -398,6 +409,22 @@
         </div>
     </main>
 
+    <!-- VIEW: admin printers -->
+    <main class="app" id="view-admin-printers">
+        <div class="content">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h1 class="page-title" style="margin:0">קטלוג מדפסות</h1>
+                <button type="button" class="primary-button" id="printerAdminAddBtn">+ הוסף מדפסת</button>
+            </div>
+            <div style="overflow-x:auto">
+                <table class="admin-table" id="printersTable">
+                    <thead><tr><th>שם מדפסת</th><th>IP</th><th>סניף</th><th>הערות</th><th></th></tr></thead>
+                    <tbody id="printersTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
     <!-- VIEW: admin tickets queue -->
     <main class="app" id="view-admin-tickets">
         <div class="content">
@@ -470,7 +497,7 @@
             <div class="grid-2">
                 <div class="field"><label for="caType">סוג</label><input id="caType" type="text" placeholder="נייח / נייד"></div>
                 <div class="field"><label for="caRam">זיכרון (RAM)</label><input id="caRam" type="text" placeholder="16GB"></div>
-                <div class="field"><label for="caPrinter">מדפסת</label><input id="caPrinter" type="text"></div>
+                <div class="field"><label for="caPrinter">מדפסת ברירת מחדל</label><select id="caPrinter"></select></div>
                 <div class="field"><label for="caAnyDesk">AnyDesk</label><input id="caAnyDesk" type="text" dir="ltr"></div>
                 <div class="field"><label for="caBranch">סניף</label><select id="caBranch"></select></div>
             </div>
@@ -512,6 +539,24 @@
         <div class="profile-modal-actions">
             <button type="button" class="primary-button" style="flex:1" id="sharedFolderAdminSaveBtn">שמור</button>
             <button type="button" class="secondary-button" id="sharedFolderAdminCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<!-- Printer admin modal -->
+<div class="profile-modal-backdrop" id="printerAdminModalBackdrop">
+    <div class="profile-modal" style="max-width:420px">
+        <div class="profile-modal-header"><h2 id="printerAdminModalTitle">מדפסת חדשה</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="paPrinterName">שם מדפסת</label><input id="paPrinterName" type="text" dir="ltr"></div>
+            <div class="field"><label for="paIp">IP</label><input id="paIp" type="text" dir="ltr"></div>
+            <div class="field"><label for="paBranch">סניף</label><select id="paBranch"></select></div>
+            <div class="field"><label for="paNotes">הערות</label><textarea id="paNotes" rows="3"></textarea></div>
+            <div id="printerAdminModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="printerAdminSaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="printerAdminCancelBtn">ביטול</button>
         </div>
     </div>
 </div>
@@ -604,6 +649,7 @@
         if (id === 'admin-sharedfolders') loadSharedFoldersAdminPage();
         if (id === 'user-request') loadUserRequestFormPage();
         if (id === 'admin-user-requests') loadUserRequestsAdminPage();
+        if (id === 'admin-printers') loadPrintersAdminPage();
     }
 
     // ── BRANCHES: shared cache used by profile/ticket/admin screens ───
@@ -651,6 +697,27 @@
         return Array.from(containerEl.querySelectorAll('input[type="checkbox"]:checked')).map(function (el) { return el.value; });
     }
 
+    // ── PRINTERS: shared cache used by the computer-admin modal + ticket form ───
+    var printersCache = null;
+
+    async function ensurePrintersLoaded() {
+        if (printersCache) return printersCache;
+        var res = await apiGet('printers', 'list', {});
+        printersCache = res.ok ? res.data : [];
+        return printersCache;
+    }
+
+    function populatePrinterSelect(selectEl, selectedName, filterBranchNumber) {
+        var list = printersCache || [];
+        if (filterBranchNumber !== undefined && filterBranchNumber !== null && filterBranchNumber !== '') {
+            list = list.filter(function (p) { return String(p.branchNumber) === String(filterBranchNumber); });
+        }
+        var options = list.map(function (p) {
+            return '<option value="' + escapeHtml(p.printerName) + '"' + (p.printerName === selectedName ? ' selected' : '') + '>' + escapeHtml(p.printerName) + '</option>';
+        }).join('');
+        selectEl.innerHTML = '<option value="">ללא</option>' + options;
+    }
+
     // ── HUB VIEW ──────────────────────────────────────────────
     var HUB_BUTTONS = [
         { id: 'ticket', icon: '📋', label: 'פתיחת קריאה' },
@@ -668,6 +735,7 @@
         { id: 'admin-branches', icon: '🏢', label: 'ניהול סניפים', check: function () { return Portal.isSuperAdmin(); } },
         { id: 'admin-sharedfolders', icon: '📁', label: 'תיקיות משותפות', check: function () { return Portal.isSuperAdmin(); } },
         { id: 'admin-user-requests', icon: '🧑‍💼', label: 'בקשות הקמת משתמש', check: function () { return Portal.isITAdmin(); } },
+        { id: 'admin-printers', icon: '🖨️', label: 'קטלוג מדפסות', check: function () { return Portal.isITAdmin(); } },
     ];
 
     function renderHubButtons(container, buttons) {
@@ -796,12 +864,33 @@
         document.getElementById('tkPhone').value = user.phone || '';
         document.getElementById('tkBranch').value = branchName(user.branchNumber);
         document.getElementById('tkComputerName').value = data ? (data.computerName || '') : '';
-        document.getElementById('tkPrinter').value = data ? (data.printer || '') : '';
+        document.getElementById('tkPrinter').value = data ? (data.defaultPrinterName || '') : '';
         document.getElementById('tkAnyDesk').value = data ? (data.anyDeskId || '') : '';
         setComputerFieldsReadonly(true);
     }
 
     document.getElementById('ticketComputerEditBtn').addEventListener('click', function () { setComputerFieldsReadonly(false); });
+
+    // v2.1, section 8 — "for: my computer / a printer" toggle. Switching to "printer"
+    // shows a printer <select> filtered to the caller's own branch, defaulting to the
+    // assigned computer's default printer; the computer fields above stay visible for
+    // context but stop being what the ticket is "about".
+    function resetForTypeToggle() {
+        document.querySelector('input[name="tkForType"][value="computer"]').checked = true;
+        document.getElementById('tkPrinterSelectField').style.display = 'none';
+    }
+
+    document.querySelectorAll('input[name="tkForType"]').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            var isPrinter = document.querySelector('input[name="tkForType"]:checked').value === 'printer';
+            document.getElementById('tkPrinterSelectField').style.display = isPrinter ? 'block' : 'none';
+            if (isPrinter) {
+                var user = Portal.getUser();
+                var defaultPrinter = assignedComputer ? assignedComputer.defaultPrinterName : '';
+                populatePrinterSelect(document.getElementById('tkPrinterSelect'), defaultPrinter, user.branchNumber);
+            }
+        });
+    });
 
     async function loadTicketPage() {
         renderCategoryOptions();
@@ -809,11 +898,13 @@
         document.getElementById('ticketFormContainer').style.display = 'block';
         document.getElementById('ticketConfirmation').style.display = 'none';
         document.getElementById('closedTicketsList').style.display = 'none';
+        resetForTypeToggle();
 
         showLoading(true);
         var compRes = await apiGet('computers', 'getAssigned', {});
         assignedComputer = compRes.ok ? compRes.data : null;
         fillComputerFields(assignedComputer);
+        await ensurePrintersLoaded();
         await refreshMyTickets();
         showLoading(false);
     }
@@ -1031,8 +1122,10 @@
         var category = document.getElementById('tkCategory').value;
         var urgencyEl = document.querySelector('input[name="tkUrgency"]:checked');
         var description = document.getElementById('tkDescription').value.trim();
-        if (!category || !urgencyEl || !description) {
-            errEl.textContent = 'יש למלא את כל שדות החובה.';
+        var isPrinterTicket = document.querySelector('input[name="tkForType"]:checked').value === 'printer';
+        var printerName = isPrinterTicket ? document.getElementById('tkPrinterSelect').value : '';
+        if (!category || !urgencyEl || !description || (isPrinterTicket && !printerName)) {
+            errEl.textContent = isPrinterTicket && !printerName ? 'יש לבחור מדפסת' : 'יש למלא את כל שדות החובה.';
             errEl.style.display = 'block';
             return;
         }
@@ -1043,6 +1136,7 @@
             branch: document.getElementById('tkBranch').value,
             computerName: document.getElementById('tkComputerName').value,
             printer: document.getElementById('tkPrinter').value,
+            printerName: printerName,
             anyDeskId: document.getElementById('tkAnyDesk').value,
             category: category,
             urgency: urgencyEl.value,
@@ -1074,6 +1168,7 @@
         document.getElementById('ticketConfirmation').style.display = 'none';
         document.getElementById('tkCategory').value = '';
         document.getElementById('tkDescription').value = '';
+        resetForTypeToggle();
         fillComputerFields(assignedComputer);
     });
     document.getElementById('ticketHomeBtn').addEventListener('click', function () { showView('hub'); });
@@ -1610,7 +1705,7 @@
             tr.innerHTML =
                 '<td dir="ltr">' + escapeHtml(c.computerName) + '</td>' +
                 '<td>' + escapeHtml(c.type) + '</td>' +
-                '<td>' + escapeHtml(c.printer) + '</td>' +
+                '<td>' + escapeHtml(c.defaultPrinterName || '-') + '</td>' +
                 '<td>' + anyDeskCell + '</td>' +
                 '<td dir="ltr">' + escapeHtml(c.assignedUserEmail || '-') + '</td>' +
                 '<td class="admin-row-actions">' +
@@ -1627,14 +1722,15 @@
 
     var computerAdminTracker = makeDirtyTracker(document.getElementById('computerAdminModalBackdrop'));
 
-    function openComputerAdminModal(comp) {
+    async function openComputerAdminModal(comp) {
         editingComputerName = comp ? comp.computerName : null;
         document.getElementById('computerAdminModalTitle').textContent = comp ? 'עריכת מחשב' : 'מחשב חדש';
         document.getElementById('caComputerName').value = comp ? comp.computerName : '';
         document.getElementById('caComputerName').disabled = !!comp;
         document.getElementById('caType').value = comp ? comp.type : '';
         document.getElementById('caRam').value = comp ? comp.ram : '';
-        document.getElementById('caPrinter').value = comp ? comp.printer : '';
+        await ensurePrintersLoaded();
+        populatePrinterSelect(document.getElementById('caPrinter'), comp ? comp.defaultPrinterName : '');
         document.getElementById('caAnyDesk').value = comp ? comp.anyDeskId : '';
         populateBranchSelect(document.getElementById('caBranch'), comp ? comp.branchNumber : '');
         document.getElementById('caNotes').value = comp ? comp.notes : '';
@@ -1656,7 +1752,7 @@
             computerName: document.getElementById('caComputerName').value.trim(),
             type: document.getElementById('caType').value.trim(),
             ram: document.getElementById('caRam').value.trim(),
-            printer: document.getElementById('caPrinter').value.trim(),
+            defaultPrinterName: document.getElementById('caPrinter').value,
             anyDeskId: document.getElementById('caAnyDesk').value.trim(),
             branchNumber: document.getElementById('caBranch').value,
             notes: document.getElementById('caNotes').value.trim(),
@@ -1844,6 +1940,84 @@
         var res = await apiPost('sharedFolders', 'delete', { id: f.id });
         showLoading(false);
         if (res.ok) loadSharedFoldersAdminPage(); else alert(res.error || 'שגיאה במחיקה');
+    }
+
+    // ── ADMIN: PRINTERS (v2.1, section 8) ───────────────────────
+    var editingPrinterName = null;
+
+    async function loadPrintersAdminPage() {
+        showLoading(true);
+        await ensureBranchesLoaded();
+        printersCache = null; // admin screen is the source of truth for this list — force a refetch
+        await ensurePrintersLoaded();
+        showLoading(false);
+        renderPrintersTable(printersCache);
+    }
+
+    function renderPrintersTable(list) {
+        var body = document.getElementById('printersTableBody');
+        body.innerHTML = '';
+        list.forEach(function (p) {
+            var tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td dir="ltr">' + escapeHtml(p.printerName) + '</td>' +
+                '<td dir="ltr">' + escapeHtml(p.ip) + '</td>' +
+                '<td>' + escapeHtml(branchName(p.branchNumber)) + '</td>' +
+                '<td>' + escapeHtml(p.notes) + '</td>' +
+                '<td class="admin-row-actions">' +
+                '<button type="button" class="icon-button" data-edit title="עריכה">✏️</button>' +
+                '<button type="button" class="icon-button" data-delete title="מחיקה">🗑️</button></td>';
+            tr.querySelector('[data-edit]').addEventListener('click', function () { openPrinterAdminModal(p); });
+            tr.querySelector('[data-delete]').addEventListener('click', function () { deleteAdminPrinter(p); });
+            body.appendChild(tr);
+        });
+    }
+
+    var printerAdminTracker = makeDirtyTracker(document.getElementById('printerAdminModalBackdrop'));
+
+    function openPrinterAdminModal(p) {
+        editingPrinterName = p ? p.printerName : null;
+        document.getElementById('printerAdminModalTitle').textContent = p ? 'עריכת מדפסת' : 'מדפסת חדשה';
+        document.getElementById('paPrinterName').value = p ? p.printerName : '';
+        document.getElementById('paPrinterName').disabled = !!p;
+        document.getElementById('paIp').value = p ? p.ip : '';
+        populateBranchSelect(document.getElementById('paBranch'), p ? p.branchNumber : '');
+        document.getElementById('paNotes').value = p ? p.notes : '';
+        document.getElementById('printerAdminModalError').style.display = 'none';
+        document.getElementById('printerAdminModalBackdrop').classList.add('visible');
+        printerAdminTracker.reset();
+    }
+
+    function closePrinterAdminModal() { document.getElementById('printerAdminModalBackdrop').classList.remove('visible'); }
+
+    document.getElementById('printerAdminAddBtn').addEventListener('click', function () { openPrinterAdminModal(null); });
+    document.getElementById('printerAdminCancelBtn').addEventListener('click', function () {
+        if (printerAdminTracker.confirmDiscard()) closePrinterAdminModal();
+    });
+
+    document.getElementById('printerAdminSaveBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('printerAdminModalError');
+        var payload = {
+            printerName: document.getElementById('paPrinterName').value.trim(),
+            ip: document.getElementById('paIp').value.trim(),
+            branchNumber: document.getElementById('paBranch').value,
+            notes: document.getElementById('paNotes').value.trim(),
+        };
+        if (!payload.printerName) { errEl.textContent = 'יש למלא שם מדפסת'; errEl.style.display = 'block'; return; }
+
+        showLoading(true);
+        var res = await apiPost('printers', editingPrinterName ? 'update' : 'create', payload);
+        showLoading(false);
+        if (res.ok) { printerAdminTracker.reset(); closePrinterAdminModal(); loadPrintersAdminPage(); }
+        else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
+    });
+
+    async function deleteAdminPrinter(p) {
+        if (!confirm('למחוק את המדפסת "' + p.printerName + '"?')) return;
+        showLoading(true);
+        var res = await apiPost('printers', 'delete', { printerName: p.printerName });
+        showLoading(false);
+        if (res.ok) loadPrintersAdminPage(); else alert(res.error || 'שגיאה במחיקה');
     }
 
     // ── INIT ──────────────────────────────────────────────────

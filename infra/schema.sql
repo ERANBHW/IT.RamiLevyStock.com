@@ -169,8 +169,6 @@ CREATE INDEX IX_Users_BranchNumber ON Users(BranchNumber);
 GO
 
 -- Computers: Branch (free text) → BranchNumber FK now (step 2 lands the code for this).
--- Printer is still dropped later (step 5), once the printer-catalog code lands — but IP
--- drops now, together with the step-3 computers.js/index.html change that stops reading it.
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Computers') AND name = 'BranchNumber')
 ALTER TABLE Computers ADD BranchNumber INT NULL;
 GO
@@ -187,9 +185,12 @@ IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Computers_Default
 ALTER TABLE Computers ADD CONSTRAINT FK_Computers_DefaultPrinter FOREIGN KEY (DefaultPrinterName) REFERENCES Printers(PrinterName) ON DELETE SET NULL;
 GO
 -- IP dropped entirely (v2.1, section 7 — no longer relevant, superseded by AnyDesk).
--- Printer is dropped later (step 5), once the printer-catalog code replaces it.
+-- Printer (free text) dropped now too — replaced by DefaultPrinterName above (section 8).
 IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Computers') AND name = 'IP')
 ALTER TABLE Computers DROP COLUMN IP;
+GO
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Computers') AND name = 'Printer')
+ALTER TABLE Computers DROP COLUMN Printer;
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Computers_BranchNumber')
 CREATE INDEX IX_Computers_BranchNumber ON Computers(BranchNumber);

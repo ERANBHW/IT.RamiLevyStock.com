@@ -20,6 +20,7 @@ const procedures = require('../entities/procedures');
 const branches = require('../entities/branches');
 const sharedFolders = require('../entities/sharedFolders');
 const userRequests = require('../entities/userRequests');
+const printers = require('../entities/printers');
 
 const ROUTES = {
   users: {
@@ -73,6 +74,12 @@ const ROUTES = {
     update: userRequests.update,
     previewScript: userRequests.previewScript,
     markCompleted: userRequests.markCompleted,
+  },
+  printers: {
+    list: printers.list,
+    create: printers.create,
+    update: printers.update,
+    delete: printers.remove,
   },
 };
 
