@@ -482,12 +482,17 @@
     <div class="profile-modal" style="max-width:480px">
         <div class="profile-modal-header"><h2 id="userAdminModalTitle">משתמש חדש</h2></div>
         <div class="profile-modal-body">
+            <p class="page-subtitle" style="margin:0 0 10px">שם באנגלית ממלא אוטומטית את שם המשתמש (ניתן לשינוי ידני)</p>
+            <div class="grid-2">
+                <div class="field"><label for="uaFirstNameEn">שם פרטי (אנגלית)</label><input id="uaFirstNameEn" type="text" dir="ltr"></div>
+                <div class="field"><label for="uaLastNameEn">שם משפחה (אנגלית)</label><input id="uaLastNameEn" type="text" dir="ltr"></div>
+            </div>
             <div class="field"><label for="uaUsername">מייל</label>
                 <div class="email-suffix-row"><input id="uaUsername" type="text" dir="ltr"><span class="email-suffix" dir="ltr">@rami-levy-stock.co.il</span></div>
             </div>
             <div class="grid-2">
-                <div class="field"><label for="uaFirstName">שם פרטי</label><input id="uaFirstName" type="text"></div>
-                <div class="field"><label for="uaLastName">שם משפחה</label><input id="uaLastName" type="text"></div>
+                <div class="field"><label for="uaFirstName">שם פרטי (עברית)</label><input id="uaFirstName" type="text"></div>
+                <div class="field"><label for="uaLastName">שם משפחה (עברית)</label><input id="uaLastName" type="text"></div>
                 <div class="field"><label for="uaPhone">טלפון</label><input id="uaPhone" type="tel" dir="ltr"></div>
                 <div class="field"><label for="uaBranch">סניף</label><select id="uaBranch"></select></div>
             </div>
@@ -507,15 +512,15 @@
             <div id="userAdminModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
 
             <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-                <p class="page-subtitle" style="margin:0 0 10px">הכנת סקריפט הקמה ב-365 (לשם באנגלית ותיקיות משותפות)</p>
-                <div class="grid-2">
-                    <div class="field"><label for="uaFirstNameEn">שם פרטי (אנגלית)</label><input id="uaFirstNameEn" type="text" dir="ltr"></div>
-                    <div class="field"><label for="uaLastNameEn">שם משפחה (אנגלית)</label><input id="uaLastNameEn" type="text" dir="ltr"></div>
-                </div>
+                <p class="page-subtitle" style="margin:0 0 10px">הכנת סקריפט הקמה ב-365 (תיקיות משותפות)</p>
                 <div class="field"><label>תיקיות משותפות</label><div id="uaFolders" class="folder-checkbox-list"></div></div>
                 <button type="button" class="secondary-button" id="uaGenerateScriptBtn">הכן סקריפט הקמה</button>
                 <div id="uaScriptResult" style="display:none;margin-top:10px">
                     <div class="field"><label>מייל מחושב</label><input id="uaScriptEmail" readonly dir="ltr"></div>
+                    <div class="field"><label>סיסמה זמנית</label>
+                        <div class="email-suffix-row"><input id="uaScriptPassword" readonly dir="ltr">
+                        <button type="button" class="secondary-button" id="uaCopyPasswordBtn">העתק</button></div>
+                    </div>
                     <div class="field"><label>סקריפט</label>
                         <textarea id="uaScriptBox" class="script-box" rows="8" readonly></textarea>
                         <button type="button" class="secondary-button" id="uaCopyScriptBtn" style="margin-top:6px">העתק סקריפט</button>
@@ -1787,8 +1792,29 @@
     var userAdminTracker = makeDirtyTracker(document.getElementById('userAdminModalBackdrop'));
     maskPhoneInput(document.getElementById('uaPhone'));
 
+    // Same formula as the server (userRequests.js computeSuggestedEmail) — kept in sync
+    // manually since this is just a live preview; the server always recomputes for real.
+    function computeUsernameFromEnglishName(firstNameEn, lastNameEn) {
+        var first = String(firstNameEn || '').trim().toLowerCase().replace(/[^a-z]/g, '');
+        var last = String(lastNameEn || '').trim().toLowerCase().replace(/[^a-z]/g, '').slice(0, 2);
+        if (!first || !last) return '';
+        return first + '.' + last;
+    }
+
+    var uaUsernameManuallyEdited = false;
+    document.getElementById('uaUsername').addEventListener('input', function () { uaUsernameManuallyEdited = true; });
+
+    function autoFillUsernameFromEnglishName() {
+        if (editingUserEmail || uaUsernameManuallyEdited) return;
+        var computed = computeUsernameFromEnglishName(document.getElementById('uaFirstNameEn').value, document.getElementById('uaLastNameEn').value);
+        if (computed) document.getElementById('uaUsername').value = computed;
+    }
+    document.getElementById('uaFirstNameEn').addEventListener('input', autoFillUsernameFromEnglishName);
+    document.getElementById('uaLastNameEn').addEventListener('input', autoFillUsernameFromEnglishName);
+
     async function openUserAdminModal(user) {
         editingUserEmail = user ? user.email : null;
+        uaUsernameManuallyEdited = false;
         document.getElementById('userAdminModalTitle').textContent = user ? 'עריכת משתמש' : 'משתמש חדש';
         document.getElementById('uaUsername').value = user ? user.email.split('@')[0] : '';
         document.getElementById('uaUsername').disabled = !!user;
@@ -1871,6 +1897,7 @@
         showLoading(false);
         if (res.ok) {
             document.getElementById('uaScriptEmail').value = res.data.suggestedEmail;
+            document.getElementById('uaScriptPassword').value = res.data.tempPassword;
             document.getElementById('uaScriptBox').value = res.data.script;
             document.getElementById('uaScriptResult').style.display = 'block';
         } else {
@@ -1881,6 +1908,9 @@
 
     document.getElementById('uaCopyScriptBtn').addEventListener('click', function () {
         copyToClipboard(document.getElementById('uaScriptBox').value, this);
+    });
+    document.getElementById('uaCopyPasswordBtn').addEventListener('click', function () {
+        copyToClipboard(document.getElementById('uaScriptPassword').value, this);
     });
 
     async function deleteAdminUser(user) {
