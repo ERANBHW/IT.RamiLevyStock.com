@@ -89,7 +89,7 @@
             0%, 100% { box-shadow: 0 0 0 0 var(--urgency-glow-start, rgba(217, 78, 78, 0.35)); }
             50% { box-shadow: 0 0 0 5px var(--urgency-glow-end, rgba(217, 78, 78, 0)); }
         }
-        .ticket-card.request-card { background: #f4f0ff; border-right-color: #8b5cf6 !important; animation: none !important; box-shadow: none !important; }
+        .ticket-card.request-card { background: #f4f0ff; }
 
         .urgency-options-row { display: flex; gap: 8px; }
         .urgency-pill { flex: 1; display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 10px; cursor: pointer; border: 1px solid transparent; }
@@ -99,11 +99,19 @@
         .urgency-pill-text span { font-size: 10px; color: #5a5a5a; }
         @media (max-width: 480px) { .urgency-options-row { flex-direction: column; } }
 
-        .tc-category-card { border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
-        .tc-category-header { display: flex; justify-content: space-between; align-items: center; }
+        .tc-category-card { border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--white); }
+        .tc-category-card.tc-drag-over { border-color: var(--brand-pink); background: #fff5f9; }
+        .tc-category-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .tc-category-header-left { display: flex; align-items: center; gap: 8px; }
         .tc-sub-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-top: 1px solid var(--border); font-size: 13px; }
+        .tc-sub-row.tc-drag-over { background: #fff5f9; }
+        .tc-sub-row-left { display: flex; align-items: center; gap: 8px; }
         .tc-urgency-row { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; }
-        .tc-color-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-left: 8px; vertical-align: middle; }
+        .tc-urgency-row.tc-drag-over { border-color: var(--brand-pink); background: #fff5f9; }
+        .tc-urgency-row-left { display: flex; align-items: center; gap: 8px; }
+        .tc-color-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: middle; }
+        .tc-drag-handle { cursor: grab; color: var(--muted); font-size: 15px; user-select: none; touch-action: none; }
+        .tc-drag-handle:active { cursor: grabbing; }
 
         .closed-tickets-toggle { margin-bottom: 16px; }
         #closedTicketsList { display: flex; flex-direction: column; gap: 10px; }
@@ -687,7 +695,6 @@
         <div class="profile-modal-header"><h2 id="tcCategoryModalTitle">קטגוריה חדשה</h2></div>
         <div class="profile-modal-body">
             <div class="field"><label for="tcCategoryName">שם קטגוריה</label><input id="tcCategoryName" type="text"></div>
-            <div class="field"><label for="tcCategoryOrder">סדר תצוגה</label><input id="tcCategoryOrder" type="number" dir="ltr"></div>
             <div id="tcCategoryModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
         </div>
         <div class="profile-modal-actions">
@@ -710,7 +717,6 @@
                     <option value="printers-by-branch">רשימת מדפסות לפי סניף המשתמש</option>
                 </select>
             </div>
-            <div class="field"><label for="tcSubcategoryOrder">סדר תצוגה</label><input id="tcSubcategoryOrder" type="number" dir="ltr"></div>
             <div id="tcSubcategoryModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
         </div>
         <div class="profile-modal-actions">
@@ -727,11 +733,8 @@
         <div class="profile-modal-body">
             <div class="field"><label for="tcUrgencyName">שם הדרגה</label><input id="tcUrgencyName" type="text"></div>
             <div class="field"><label for="tcUrgencyDescription">הסבר (מוצג ליד הדרגה בטופס)</label><input id="tcUrgencyDescription" type="text"></div>
-            <div class="grid-2">
-                <div class="field"><label for="tcUrgencyColor">צבע</label><input id="tcUrgencyColor" type="color"></div>
-                <div class="field"><label for="tcUrgencySeverity">חומרה (מספר, גבוה יותר = דחוף יותר)</label><input id="tcUrgencySeverity" type="number" dir="ltr"></div>
-            </div>
-            <div class="field"><label for="tcUrgencyOrder">סדר תצוגה</label><input id="tcUrgencyOrder" type="number" dir="ltr"></div>
+            <div class="field"><label for="tcUrgencyColor">צבע</label><input id="tcUrgencyColor" type="color"></div>
+            <p class="page-subtitle" style="margin:0">הסדר (מהכי פחות דחוף להכי דחוף) נקבע לפי גרירה ברשימה, אחרי השמירה.</p>
             <div id="tcUrgencyModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
         </div>
         <div class="profile-modal-actions">
@@ -1265,22 +1268,24 @@
         renderClosedTickets();
     }
 
+    // Every open row (ticket or user-creation request) blinks with a border in its own
+    // color — same visual language as the "you have an open ticket" banner a regular
+    // user sees on their own ticket page.
+    function applyOpenRowBlink(card, color) {
+        card.style.borderRightWidth = '4px';
+        card.style.borderRightStyle = 'solid';
+        card.style.borderRightColor = color;
+        card.classList.add('urgency-blink');
+        var rgb = hexToRgb(color);
+        card.style.setProperty('--urgency-glow-start', 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.35)');
+        card.style.setProperty('--urgency-glow-end', 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0)');
+    }
+
     function buildTicketCard(t) {
         var card = document.createElement('div');
         card.className = 'ticket-card';
         var color = URGENCY_COLOR[t.urgency];
-        if (t.status !== 'סגורה' && color) {
-            card.style.borderRightWidth = '4px';
-            card.style.borderRightStyle = 'solid';
-            card.style.borderRightColor = color;
-            var maxSeverity = Math.max.apply(null, Object.keys(URGENCY_SEVERITY).map(function (k) { return URGENCY_SEVERITY[k]; }).concat([0]));
-            if (URGENCY_SEVERITY[t.urgency] === maxSeverity) {
-                card.classList.add('urgency-blink');
-                var rgb = hexToRgb(color);
-                card.style.setProperty('--urgency-glow-start', 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.35)');
-                card.style.setProperty('--urgency-glow-end', 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0)');
-            }
-        }
+        if (t.status !== 'סגורה' && color) applyOpenRowBlink(card, color);
         var statusClass = t.status === 'סגורה' ? 'status-closed' : (t.status === 'בטיפול' ? 'status-progress' : 'status-open');
         card.innerHTML =
             '<div class="ticket-card-header"><strong>' + escapeHtml(t.ticketNumber) + '</strong>' +
@@ -1928,9 +1933,12 @@
         renderUserRequestsQueue();
     }
 
+    var REQUEST_CARD_COLOR = '#8b5cf6';
+
     function buildUserRequestCard(r) {
         var card = document.createElement('div');
         card.className = 'ticket-card request-card';
+        if (r.status !== 'הוקם') applyOpenRowBlink(card, REQUEST_CARD_COLOR);
         var statusClass = r.status === 'הוקם' ? 'status-closed' : (r.status === 'בטיפול' ? 'status-progress' : 'status-open');
         card.innerHTML =
             '<div class="ticket-card-header"><strong>' + escapeHtml(r.requestNumber) + ' · הקמת משתמש</strong>' +
@@ -2705,6 +2713,8 @@
     }
 
     // ── ADMIN: TICKET CONFIG — categories/subcategories/urgencies (v2.1, section 7) ──
+    // Order is set by drag-and-drop, not manual numbers — dropping re-numbers the whole
+    // list ((index+1)*10) and persists every row whose order actually changed.
     async function loadTicketConfigAdminPage() {
         showLoading(true);
         ticketConfigCache = null; // this screen is the source of truth — force a refetch
@@ -2714,6 +2724,10 @@
         renderTicketConfigUrgencies();
     }
 
+    var draggedCategoryId = null;
+    var draggedSubcategoryId = null;
+    var draggedUrgencyId = null;
+
     function renderTicketConfigCategories() {
         var container = document.getElementById('tcCategoriesList');
         container.innerHTML = '';
@@ -2722,15 +2736,18 @@
         categories.forEach(function (c) {
             var card = document.createElement('div');
             card.className = 'tc-category-card';
+            card.draggable = true;
             var subsHtml = c.subcategories.map(function (s) {
-                return '<div class="tc-sub-row" data-sub-id="' + s.id + '">' +
-                    '<span>' + escapeHtml(s.name) + (s.isDynamic ? ' <span style="color:var(--muted);font-size:11px">(דינמי)</span>' : '') + '</span>' +
+                return '<div class="tc-sub-row" data-sub-id="' + s.id + '" draggable="true">' +
+                    '<span class="tc-sub-row-left"><span class="tc-drag-handle" title="גרירה לסידור מחדש">⠿</span>' +
+                    escapeHtml(s.name) + (s.isDynamic ? ' <span style="color:var(--muted);font-size:11px">(דינמי)</span>' : '') + '</span>' +
                     '<span class="admin-row-actions">' +
                     '<button type="button" class="icon-button" data-edit-sub title="עריכה">✏️</button>' +
                     '<button type="button" class="icon-button" data-delete-sub title="מחיקה">🗑️</button></span></div>';
             }).join('');
             card.innerHTML =
-                '<div class="tc-category-header"><strong>' + escapeHtml(c.name) + '</strong>' +
+                '<div class="tc-category-header"><span class="tc-category-header-left">' +
+                '<span class="tc-drag-handle" title="גרירה לסידור מחדש">⠿</span><strong>' + escapeHtml(c.name) + '</strong></span>' +
                 '<span class="admin-row-actions">' +
                 '<button type="button" class="icon-button" data-add-sub title="הוסף תת-קטגוריה">➕</button>' +
                 '<button type="button" class="icon-button" data-edit title="עריכה">✏️</button>' +
@@ -2739,13 +2756,86 @@
             card.querySelector('[data-edit]').addEventListener('click', function () { openCategoryModal(c); });
             card.querySelector('[data-delete]').addEventListener('click', function () { deleteTicketCategory(c); });
             card.querySelector('[data-add-sub]').addEventListener('click', function () { openSubcategoryModal(null, c.id); });
+
+            card.addEventListener('dragstart', function (e) { draggedCategoryId = c.id; e.stopPropagation(); });
+            card.addEventListener('dragover', function (e) { e.preventDefault(); e.stopPropagation(); card.classList.add('tc-drag-over'); });
+            card.addEventListener('dragleave', function () { card.classList.remove('tc-drag-over'); });
+            card.addEventListener('drop', function (e) {
+                e.preventDefault(); e.stopPropagation();
+                card.classList.remove('tc-drag-over');
+                reorderCategories(draggedCategoryId, c.id);
+            });
+
             c.subcategories.forEach(function (s) {
                 var row = card.querySelector('[data-sub-id="' + s.id + '"]');
                 row.querySelector('[data-edit-sub]').addEventListener('click', function () { openSubcategoryModal(s, c.id); });
                 row.querySelector('[data-delete-sub]').addEventListener('click', function () { deleteTicketSubcategory(s); });
+                row.addEventListener('dragstart', function (e) { draggedSubcategoryId = s.id; e.stopPropagation(); });
+                row.addEventListener('dragover', function (e) { e.preventDefault(); e.stopPropagation(); row.classList.add('tc-drag-over'); });
+                row.addEventListener('dragleave', function () { row.classList.remove('tc-drag-over'); });
+                row.addEventListener('drop', function (e) {
+                    e.preventDefault(); e.stopPropagation();
+                    row.classList.remove('tc-drag-over');
+                    reorderSubcategories(draggedSubcategoryId, s.id);
+                });
             });
             container.appendChild(card);
         });
+    }
+
+    function reorderCategories(draggedId, targetId) {
+        if (!draggedId || draggedId === targetId) return;
+        var list = ticketConfigCache.categories;
+        var fromIdx = list.findIndex(function (x) { return x.id === draggedId; });
+        var toIdx = list.findIndex(function (x) { return x.id === targetId; });
+        if (fromIdx < 0 || toIdx < 0) return;
+        list.splice(toIdx, 0, list.splice(fromIdx, 1)[0]);
+        renderTicketConfigCategories();
+        persistCategoryOrder();
+    }
+
+    async function persistCategoryOrder() {
+        showLoading(true);
+        for (var i = 0; i < ticketConfigCache.categories.length; i++) {
+            var c = ticketConfigCache.categories[i];
+            var newOrder = (i + 1) * 10;
+            if (c.order !== newOrder) {
+                c.order = newOrder;
+                await apiPost('ticketConfig', 'saveCategory', { id: c.id, name: c.name, order: newOrder });
+            }
+        }
+        showLoading(false);
+    }
+
+    function reorderSubcategories(draggedId, targetId) {
+        if (!draggedId || draggedId === targetId) return;
+        var category = ticketConfigCache.categories.filter(function (c) {
+            return c.subcategories.some(function (s) { return s.id === draggedId; });
+        })[0];
+        if (!category) return;
+        var list = category.subcategories;
+        var fromIdx = list.findIndex(function (x) { return x.id === draggedId; });
+        var toIdx = list.findIndex(function (x) { return x.id === targetId; });
+        if (fromIdx < 0 || toIdx < 0) return;
+        list.splice(toIdx, 0, list.splice(fromIdx, 1)[0]);
+        renderTicketConfigCategories();
+        persistSubcategoryOrder(category);
+    }
+
+    async function persistSubcategoryOrder(category) {
+        showLoading(true);
+        for (var i = 0; i < category.subcategories.length; i++) {
+            var s = category.subcategories[i];
+            var newOrder = (i + 1) * 10;
+            if (s.order !== newOrder) {
+                s.order = newOrder;
+                await apiPost('ticketConfig', 'saveSubcategory', {
+                    id: s.id, categoryId: category.id, name: s.name,
+                    isDynamic: s.isDynamic, dynamicSource: s.dynamicSource || '', order: newOrder,
+                });
+            }
+        }
+        showLoading(false);
     }
 
     function renderTicketConfigUrgencies() {
@@ -2754,15 +2844,58 @@
         ticketConfigCache.urgencies.forEach(function (u) {
             var row = document.createElement('div');
             row.className = 'tc-urgency-row';
+            row.draggable = true;
             row.innerHTML =
-                '<span><span class="tc-color-dot" style="background:' + escapeHtml(u.colorHex) + '"></span><strong>' + escapeHtml(u.name) + '</strong> — ' + escapeHtml(u.description) + '</span>' +
+                '<span class="tc-urgency-row-left"><span class="tc-drag-handle" title="גרירה לסידור מחדש">⠿</span>' +
+                '<span class="tc-color-dot" style="background:' + escapeHtml(u.colorHex) + '"></span>' +
+                '<strong>' + escapeHtml(u.name) + '</strong> — ' + escapeHtml(u.description) + '</span>' +
                 '<span class="admin-row-actions">' +
                 '<button type="button" class="icon-button" data-edit title="עריכה">✏️</button>' +
                 '<button type="button" class="icon-button" data-delete title="מחיקה">🗑️</button></span>';
             row.querySelector('[data-edit]').addEventListener('click', function () { openUrgencyModal(u); });
             row.querySelector('[data-delete]').addEventListener('click', function () { deleteTicketUrgency(u); });
+            row.addEventListener('dragstart', function () { draggedUrgencyId = u.id; });
+            row.addEventListener('dragover', function (e) { e.preventDefault(); row.classList.add('tc-drag-over'); });
+            row.addEventListener('dragleave', function () { row.classList.remove('tc-drag-over'); });
+            row.addEventListener('drop', function (e) {
+                e.preventDefault();
+                row.classList.remove('tc-drag-over');
+                reorderUrgencies(draggedUrgencyId, u.id);
+            });
             container.appendChild(row);
         });
+    }
+
+    function reorderUrgencies(draggedId, targetId) {
+        if (!draggedId || draggedId === targetId) return;
+        var list = ticketConfigCache.urgencies;
+        var fromIdx = list.findIndex(function (x) { return x.id === draggedId; });
+        var toIdx = list.findIndex(function (x) { return x.id === targetId; });
+        if (fromIdx < 0 || toIdx < 0) return;
+        list.splice(toIdx, 0, list.splice(fromIdx, 1)[0]);
+        renderTicketConfigUrgencies();
+        applyUrgencyConfig();
+        persistUrgencyOrder();
+    }
+
+    // Position IS the severity — top of the list is least urgent, bottom is most urgent
+    // (matches the drag order), so there's no separate "severity number" for IT to manage.
+    async function persistUrgencyOrder() {
+        showLoading(true);
+        for (var i = 0; i < ticketConfigCache.urgencies.length; i++) {
+            var u = ticketConfigCache.urgencies[i];
+            var newRank = i + 1;
+            if (u.order !== newRank || u.severity !== newRank) {
+                u.order = newRank;
+                u.severity = newRank;
+                await apiPost('ticketConfig', 'saveUrgency', {
+                    id: u.id, name: u.name, description: u.description, colorHex: u.colorHex,
+                    severity: newRank, order: newRank,
+                });
+            }
+        }
+        applyUrgencyConfig();
+        showLoading(false);
     }
 
     var editingCategoryId = null;
@@ -2772,7 +2905,6 @@
         editingCategoryId = c ? c.id : null;
         document.getElementById('tcCategoryModalTitle').textContent = c ? 'עריכת קטגוריה' : 'קטגוריה חדשה';
         document.getElementById('tcCategoryName').value = c ? c.name : '';
-        document.getElementById('tcCategoryOrder').value = c ? c.order : (ticketConfigCache.categories.length + 1) * 10;
         document.getElementById('tcCategoryModalError').style.display = 'none';
         document.getElementById('tcCategoryModalBackdrop').classList.add('visible');
         tcCategoryTracker.reset();
@@ -2787,7 +2919,8 @@
         var errEl = document.getElementById('tcCategoryModalError');
         var name = document.getElementById('tcCategoryName').value.trim();
         if (!name) { errEl.textContent = 'יש למלא שם קטגוריה'; errEl.style.display = 'block'; return; }
-        var payload = { name: name, order: Number(document.getElementById('tcCategoryOrder').value || 0) };
+        var existing = editingCategoryId ? ticketConfigCache.categories.filter(function (c) { return c.id === editingCategoryId; })[0] : null;
+        var payload = { name: name, order: existing ? existing.order : (ticketConfigCache.categories.length + 1) * 10 };
         if (editingCategoryId) payload.id = editingCategoryId;
         showLoading(true);
         var res = await apiPost('ticketConfig', 'saveCategory', payload);
@@ -2816,7 +2949,6 @@
         document.getElementById('tcSubcategoryDynamic').checked = s ? s.isDynamic : false;
         document.getElementById('tcSubcategoryDynamicSource').value = (s && s.dynamicSource) ? s.dynamicSource : 'printers-by-branch';
         document.getElementById('tcSubcategoryDynamicSourceField').style.display = (s && s.isDynamic) ? 'block' : 'none';
-        document.getElementById('tcSubcategoryOrder').value = s ? s.order : 0;
         document.getElementById('tcSubcategoryModalError').style.display = 'none';
         document.getElementById('tcSubcategoryModalBackdrop').classList.add('visible');
         tcSubcategoryTracker.reset();
@@ -2834,12 +2966,15 @@
         var name = document.getElementById('tcSubcategoryName').value.trim();
         if (!name) { errEl.textContent = 'יש למלא שם'; errEl.style.display = 'block'; return; }
         var isDynamic = document.getElementById('tcSubcategoryDynamic').checked;
+        var category = ticketConfigCache.categories.filter(function (c) { return c.id === editingSubcategoryCategoryId; })[0];
+        var existing = (editingSubcategoryId && category)
+            ? category.subcategories.filter(function (s) { return s.id === editingSubcategoryId; })[0] : null;
         var payload = {
             categoryId: editingSubcategoryCategoryId,
             name: name,
             isDynamic: isDynamic,
             dynamicSource: isDynamic ? document.getElementById('tcSubcategoryDynamicSource').value : '',
-            order: Number(document.getElementById('tcSubcategoryOrder').value || 0),
+            order: existing ? existing.order : ((category ? category.subcategories.length : 0) + 1) * 10,
         };
         if (editingSubcategoryId) payload.id = editingSubcategoryId;
         showLoading(true);
@@ -2866,8 +3001,6 @@
         document.getElementById('tcUrgencyName').value = u ? u.name : '';
         document.getElementById('tcUrgencyDescription').value = u ? u.description : '';
         document.getElementById('tcUrgencyColor').value = u ? u.colorHex : '#edd76f';
-        document.getElementById('tcUrgencySeverity').value = u ? u.severity : (ticketConfigCache.urgencies.length + 1);
-        document.getElementById('tcUrgencyOrder').value = u ? u.order : (ticketConfigCache.urgencies.length + 1) * 10;
         document.getElementById('tcUrgencyModalError').style.display = 'none';
         document.getElementById('tcUrgencyModalBackdrop').classList.add('visible');
         tcUrgencyTracker.reset();
@@ -2882,12 +3015,14 @@
         var errEl = document.getElementById('tcUrgencyModalError');
         var name = document.getElementById('tcUrgencyName').value.trim();
         if (!name) { errEl.textContent = 'יש למלא שם'; errEl.style.display = 'block'; return; }
+        var existing = editingUrgencyId ? ticketConfigCache.urgencies.filter(function (u) { return u.id === editingUrgencyId; })[0] : null;
+        var rank = existing ? existing.order : ticketConfigCache.urgencies.length + 1;
         var payload = {
             name: name,
             description: document.getElementById('tcUrgencyDescription').value.trim(),
             colorHex: document.getElementById('tcUrgencyColor').value,
-            severity: Number(document.getElementById('tcUrgencySeverity').value || 1),
-            order: Number(document.getElementById('tcUrgencyOrder').value || 0),
+            severity: rank,
+            order: rank,
         };
         if (editingUrgencyId) payload.id = editingUrgencyId;
         showLoading(true);
