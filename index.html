@@ -84,17 +84,12 @@
         .ticket-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 10px; }
         .ticket-meta { font-size: 12px; color: var(--muted); }
 
-        .ticket-card.urgency-card-normal { border-right: 4px solid #edd76f; }
-        .ticket-card.urgency-card-high { border-right: 4px solid #e99b36; }
-        .ticket-card.urgency-card-down { border-right: 4px solid #d94e4e; animation: blink-border-urgent 1.4s ease-in-out infinite; }
+        .ticket-card.urgency-blink { animation: blink-border-urgent 1.4s ease-in-out infinite; }
         @keyframes blink-border-urgent {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(217, 78, 78, 0.35); }
-            50% { box-shadow: 0 0 0 5px rgba(217, 78, 78, 0); }
+            0%, 100% { box-shadow: 0 0 0 0 var(--urgency-glow-start, rgba(217, 78, 78, 0.35)); }
+            50% { box-shadow: 0 0 0 5px var(--urgency-glow-end, rgba(217, 78, 78, 0)); }
         }
-        .ticket-card.request-card { background: #f4f0ff; }
-        .ticket-card.request-card.urgency-card-normal,
-        .ticket-card.request-card.urgency-card-high,
-        .ticket-card.request-card.urgency-card-down { border-right-color: #8b5cf6; animation: none; box-shadow: none; }
+        .ticket-card.request-card { background: #f4f0ff; border-right-color: #8b5cf6 !important; animation: none !important; box-shadow: none !important; }
 
         .urgency-options-row { display: flex; gap: 8px; }
         .urgency-pill { flex: 1; display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 10px; cursor: pointer; border: 1px solid transparent; }
@@ -102,10 +97,13 @@
         .urgency-pill-text { display: flex; flex-direction: column; line-height: 1.25; }
         .urgency-pill-text strong { font-size: 13px; }
         .urgency-pill-text span { font-size: 10px; color: #5a5a5a; }
-        .urgency-normal { background: #fff9c7; border-color: #edd76f; }
-        .urgency-high { background: #ffe8ca; border-color: #e99b36; }
-        .urgency-down { background: #ffd5d5; border-color: #d94e4e; }
         @media (max-width: 480px) { .urgency-options-row { flex-direction: column; } }
+
+        .tc-category-card { border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+        .tc-category-header { display: flex; justify-content: space-between; align-items: center; }
+        .tc-sub-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-top: 1px solid var(--border); font-size: 13px; }
+        .tc-urgency-row { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; }
+        .tc-color-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-left: 8px; vertical-align: middle; }
 
         .closed-tickets-toggle { margin-bottom: 16px; }
         #closedTicketsList { display: flex; flex-direction: column; gap: 10px; }
@@ -310,6 +308,10 @@
                     <div class="field">
                         <label for="tkCategory">סוג התקלה</label>
                         <select id="tkCategory"></select>
+                    </div>
+                    <div class="field" id="tkSubcategoryField" style="display:none">
+                        <label for="tkSubcategory" id="tkSubcategoryLabel">פירוט</label>
+                        <select id="tkSubcategory"></select>
                     </div>
                     <div class="field">
                         <label>דחיפות</label>
@@ -540,6 +542,30 @@
         </div>
     </main>
 
+    <!-- VIEW: admin ticket config (categories/subcategories/urgencies) -->
+    <main class="app" id="view-admin-ticket-config">
+        <div class="content">
+            <h1 class="page-title">ניהול סוגי קריאות</h1>
+            <p class="page-subtitle">קטגוריות, תת-קטגוריות (קבועות או דינמיות, כמו רשימת מדפסות לפי סניף) ודרגות דחיפות — טופס פתיחת הקריאה נבנה מהנתונים כאן.</p>
+
+            <section class="section">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                    <h2 class="section-title" style="margin:0">קטגוריות ותתי-קטגוריות</h2>
+                    <button type="button" class="primary-button" id="tcCategoryAddBtn">+ קטגוריה חדשה</button>
+                </div>
+                <div id="tcCategoriesList" style="display:flex;flex-direction:column;gap:10px"></div>
+            </section>
+
+            <section class="section">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                    <h2 class="section-title" style="margin:0">דרגות דחיפות</h2>
+                    <button type="button" class="primary-button" id="tcUrgencyAddBtn">+ דרגה חדשה</button>
+                </div>
+                <div id="tcUrgenciesList" style="display:flex;flex-direction:column;gap:8px"></div>
+            </section>
+        </div>
+    </main>
+
     <!-- VIEW: admin tickets queue -->
     <main class="app" id="view-admin-tickets">
         <div class="content">
@@ -651,6 +677,66 @@
         <div class="profile-modal-actions">
             <button type="button" class="primary-button" style="flex:1" id="branchAdminSaveBtn">שמור</button>
             <button type="button" class="secondary-button" id="branchAdminCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<!-- Ticket category admin modal -->
+<div class="profile-modal-backdrop" id="tcCategoryModalBackdrop">
+    <div class="profile-modal" style="max-width:420px">
+        <div class="profile-modal-header"><h2 id="tcCategoryModalTitle">קטגוריה חדשה</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="tcCategoryName">שם קטגוריה</label><input id="tcCategoryName" type="text"></div>
+            <div class="field"><label for="tcCategoryOrder">סדר תצוגה</label><input id="tcCategoryOrder" type="number" dir="ltr"></div>
+            <div id="tcCategoryModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="tcCategorySaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="tcCategoryCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<!-- Ticket subcategory admin modal -->
+<div class="profile-modal-backdrop" id="tcSubcategoryModalBackdrop">
+    <div class="profile-modal" style="max-width:420px">
+        <div class="profile-modal-header"><h2 id="tcSubcategoryModalTitle">תת-קטגוריה חדשה</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="tcSubcategoryName">שם</label><input id="tcSubcategoryName" type="text"></div>
+            <div class="field"><label style="display:flex;align-items:center;gap:8px;font-weight:400"><input type="checkbox" id="tcSubcategoryDynamic" style="width:auto">תת-קטגוריה דינמית (מבוססת נתונים, לא רשימה קבועה)</label></div>
+            <div class="field" id="tcSubcategoryDynamicSourceField" style="display:none">
+                <label for="tcSubcategoryDynamicSource">מקור הנתונים</label>
+                <select id="tcSubcategoryDynamicSource">
+                    <option value="printers-by-branch">רשימת מדפסות לפי סניף המשתמש</option>
+                </select>
+            </div>
+            <div class="field"><label for="tcSubcategoryOrder">סדר תצוגה</label><input id="tcSubcategoryOrder" type="number" dir="ltr"></div>
+            <div id="tcSubcategoryModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="tcSubcategorySaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="tcSubcategoryCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<!-- Ticket urgency admin modal -->
+<div class="profile-modal-backdrop" id="tcUrgencyModalBackdrop">
+    <div class="profile-modal" style="max-width:420px">
+        <div class="profile-modal-header"><h2 id="tcUrgencyModalTitle">דרגת דחיפות חדשה</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="tcUrgencyName">שם הדרגה</label><input id="tcUrgencyName" type="text"></div>
+            <div class="field"><label for="tcUrgencyDescription">הסבר (מוצג ליד הדרגה בטופס)</label><input id="tcUrgencyDescription" type="text"></div>
+            <div class="grid-2">
+                <div class="field"><label for="tcUrgencyColor">צבע</label><input id="tcUrgencyColor" type="color"></div>
+                <div class="field"><label for="tcUrgencySeverity">חומרה (מספר, גבוה יותר = דחוף יותר)</label><input id="tcUrgencySeverity" type="number" dir="ltr"></div>
+            </div>
+            <div class="field"><label for="tcUrgencyOrder">סדר תצוגה</label><input id="tcUrgencyOrder" type="number" dir="ltr"></div>
+            <div id="tcUrgencyModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="tcUrgencySaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="tcUrgencyCancelBtn">ביטול</button>
         </div>
     </div>
 </div>
@@ -799,6 +885,7 @@
         if (id === 'user-request') loadUserRequestFormPage();
         if (id === 'admin-user-requests') loadUserRequestsAdminPage();
         if (id === 'admin-printers') loadPrintersAdminPage();
+        if (id === 'admin-ticket-config') loadTicketConfigAdminPage();
         if (id === 'admin-view-as') loadViewAsPage();
 
         if (id === 'hub') { loadHubDashboard(); startDashboardAutoRefresh(); }
@@ -888,6 +975,7 @@
         { id: 'admin-sharedfolders', icon: '📁', label: 'תיקיות משותפות', check: function () { return Portal.isSuperAdmin(); } },
         { id: 'admin-user-requests', icon: '🧑‍💼', label: 'בקשות הקמת משתמש', check: function () { return Portal.isITAdmin(); } },
         { id: 'admin-printers', icon: '🖨️', label: 'קטלוג מדפסות', check: function () { return Portal.isITAdmin(); } },
+        { id: 'admin-ticket-config', icon: '🏷️', label: 'סוגי קריאות', check: function () { return Portal.isITAdmin(); } },
         { id: 'admin-view-as', icon: '👁️', label: 'צפייה כמשתמש', check: function () { return Portal.isITAdmin(); } },
     ];
 
@@ -978,32 +1066,93 @@
     });
 
     // ── TICKET VIEW ───────────────────────────────────────────
-    var TICKET_CATEGORIES = [
-        'מחשב / Windows', 'Outlook / דואר אלקטרוני', 'Microsoft 365', 'מדפסת / סורק',
-        'אינטרנט / רשת', 'תוכנה ארגונית', 'הרשאות / סיסמה', 'ציוד היקפי', 'אחר',
-    ];
-    var TICKET_URGENCIES = [
-        { value: 'רגילה', cls: 'urgency-normal', desc: 'ניתן להמשיך לעבוד' },
-        { value: 'גבוהה', cls: 'urgency-high', desc: 'העבודה נפגעה משמעותית' },
-        { value: 'משבית', cls: 'urgency-down', desc: 'לא ניתן לעבוד' },
-    ];
+    // v2.1, section 7 — categories/subcategories/urgencies are no longer hardcoded here;
+    // they're loaded from the ticketConfig entity (managed by IT Admins) and cached like
+    // branches/printers/etc. ensureTicketConfigLoaded() is called wherever the ticket form
+    // or an admin screen needs this data.
+    var ticketConfigCache = null;
+
+    async function ensureTicketConfigLoaded() {
+        if (ticketConfigCache) return ticketConfigCache;
+        var res = await apiGet('ticketConfig', 'list', {});
+        ticketConfigCache = res.ok ? res.data : { categories: [], urgencies: [] };
+        applyUrgencyConfig();
+        return ticketConfigCache;
+    }
+
+    function hexToRgb(hex) {
+        var h = String(hex || '').replace('#', '');
+        if (h.length === 3) h = h.split('').map(function (c) { return c + c; }).join('');
+        var num = parseInt(h, 16) || 0;
+        return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+    }
+
     var assignedComputer = null;
     var myTickets = [];
+    var URGENCY_SEVERITY = {};
+    var URGENCY_COLOR = {};
+
+    function applyUrgencyConfig() {
+        URGENCY_SEVERITY = {};
+        URGENCY_COLOR = {};
+        (ticketConfigCache ? ticketConfigCache.urgencies : []).forEach(function (u) {
+            URGENCY_SEVERITY[u.name] = u.severity;
+            URGENCY_COLOR[u.name] = u.colorHex;
+        });
+    }
+
+    function categoryByName(name) {
+        return (ticketConfigCache ? ticketConfigCache.categories : []).filter(function (c) { return c.name === name; })[0] || null;
+    }
 
     function renderCategoryOptions() {
         var sel = document.getElementById('tkCategory');
+        var categories = ticketConfigCache ? ticketConfigCache.categories : [];
         sel.innerHTML = '<option value="">בחרו סוג תקלה</option>' +
-            TICKET_CATEGORIES.map(function (c) { return '<option>' + escapeHtml(c) + '</option>'; }).join('');
+            categories.map(function (c) { return '<option>' + escapeHtml(c.name) + '</option>'; }).join('');
     }
 
     function renderUrgencyOptions() {
         var container = document.getElementById('tkUrgencyOptions');
         container.className = 'urgency-options-row';
-        container.innerHTML = TICKET_URGENCIES.map(function (u, i) {
-            return '<label class="urgency-pill ' + u.cls + '"><input type="radio" name="tkUrgency" value="' + u.value + '"' + (i === 0 ? ' checked' : '') + '>' +
-                '<span class="urgency-pill-text"><strong>' + u.value + '</strong><span>' + u.desc + '</span></span></label>';
+        var urgencies = ticketConfigCache ? ticketConfigCache.urgencies : [];
+        container.innerHTML = urgencies.map(function (u, i) {
+            var rgb = hexToRgb(u.colorHex);
+            var bg = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.16)';
+            return '<label class="urgency-pill" style="background:' + bg + ';border-color:' + escapeHtml(u.colorHex) + '"><input type="radio" name="tkUrgency" value="' + escapeHtml(u.name) + '"' + (i === 0 ? ' checked' : '') + '>' +
+                '<span class="urgency-pill-text"><strong>' + escapeHtml(u.name) + '</strong><span>' + escapeHtml(u.description) + '</span></span></label>';
         }).join('');
     }
+
+    // Populates the subcategory <select> for the currently-chosen category. Static
+    // subcategories just list their names; a dynamic one (currently only
+    // "printers-by-branch") reuses the Printers catalog, filtered to the caller's branch
+    // — "מרוחק" (branch 0) sees every printer, per the product spec. This is recorded on
+    // the ticket for IT's reference only — it does NOT drive the existing "for: my
+    // computer / a printer" email-routing toggle below, which stays independent.
+    async function renderSubcategoryOptions() {
+        var field = document.getElementById('tkSubcategoryField');
+        var sel = document.getElementById('tkSubcategory');
+        var category = categoryByName(document.getElementById('tkCategory').value);
+        var subs = category ? category.subcategories : [];
+        if (!subs.length) { field.style.display = 'none'; sel.innerHTML = ''; return; }
+
+        var dynamicOne = subs.filter(function (s) { return s.isDynamic; })[0];
+        if (dynamicOne && dynamicOne.dynamicSource === 'printers-by-branch') {
+            await ensurePrintersLoaded();
+            var user = Portal.getUser();
+            var branchFilter = user.branchNumber === 0 ? undefined : user.branchNumber;
+            document.getElementById('tkSubcategoryLabel').textContent = dynamicOne.name;
+            populatePrinterSelect(sel, '', branchFilter);
+        } else {
+            document.getElementById('tkSubcategoryLabel').textContent = 'פירוט';
+            sel.innerHTML = '<option value="">בחרו</option>' +
+                subs.map(function (s) { return '<option>' + escapeHtml(s.name) + '</option>'; }).join('');
+        }
+        field.style.display = 'block';
+    }
+
+    document.getElementById('tkCategory').addEventListener('change', renderSubcategoryOptions);
 
     // ── Computer names (v2.1, section 10 — "pick a different computer" pencil) ──
     var computerNamesCache = null;
@@ -1091,14 +1240,16 @@
     });
 
     async function loadTicketPage() {
+        showLoading(true);
+        await ensureTicketConfigLoaded();
         renderCategoryOptions();
         renderUrgencyOptions();
+        document.getElementById('tkSubcategoryField').style.display = 'none';
         document.getElementById('ticketFormContainer').style.display = 'block';
         document.getElementById('ticketConfirmation').style.display = 'none';
         document.getElementById('closedTicketsList').style.display = 'none';
         resetForTypeToggle();
 
-        showLoading(true);
         var compRes = await apiGet('computers', 'getAssigned', {});
         assignedComputer = compRes.ok ? compRes.data : null;
         fillComputerFields(assignedComputer);
@@ -1114,13 +1265,22 @@
         renderClosedTickets();
     }
 
-    var URGENCY_SEVERITY = { 'משבית': 3, 'גבוהה': 2, 'רגילה': 1 };
-    var URGENCY_CARD_CLASS = { 'משבית': 'urgency-card-down', 'גבוהה': 'urgency-card-high', 'רגילה': 'urgency-card-normal' };
-
     function buildTicketCard(t) {
         var card = document.createElement('div');
         card.className = 'ticket-card';
-        if (t.status !== 'סגורה' && URGENCY_CARD_CLASS[t.urgency]) card.classList.add(URGENCY_CARD_CLASS[t.urgency]);
+        var color = URGENCY_COLOR[t.urgency];
+        if (t.status !== 'סגורה' && color) {
+            card.style.borderRightWidth = '4px';
+            card.style.borderRightStyle = 'solid';
+            card.style.borderRightColor = color;
+            var maxSeverity = Math.max.apply(null, Object.keys(URGENCY_SEVERITY).map(function (k) { return URGENCY_SEVERITY[k]; }).concat([0]));
+            if (URGENCY_SEVERITY[t.urgency] === maxSeverity) {
+                card.classList.add('urgency-blink');
+                var rgb = hexToRgb(color);
+                card.style.setProperty('--urgency-glow-start', 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.35)');
+                card.style.setProperty('--urgency-glow-end', 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0)');
+            }
+        }
         var statusClass = t.status === 'סגורה' ? 'status-closed' : (t.status === 'בטיפול' ? 'status-progress' : 'status-open');
         card.innerHTML =
             '<div class="ticket-card-header"><strong>' + escapeHtml(t.ticketNumber) + '</strong>' +
@@ -1262,8 +1422,9 @@
             '<div class="field"><label>תיאור</label><textarea id="tdEditDescription" rows="4"></textarea></div>' +
             '<button type="button" class="primary-button" id="tdEditSaveBtn" style="width:100%">שמירת שינויים</button>';
         var sel = container.querySelector('#tdEditCategory');
-        sel.innerHTML = TICKET_CATEGORIES.map(function (c) {
-            return '<option' + (c === t.category ? ' selected' : '') + '>' + escapeHtml(c) + '</option>';
+        var categories = ticketConfigCache ? ticketConfigCache.categories : [];
+        sel.innerHTML = categories.map(function (c) {
+            return '<option' + (c.name === t.category ? ' selected' : '') + '>' + escapeHtml(c.name) + '</option>';
         }).join('');
         container.querySelector('#tdEditDescription').value = t.description || '';
         container.querySelector('#tdEditSaveBtn').addEventListener('click', async function () {
@@ -1531,8 +1692,12 @@
         var description = document.getElementById('tkDescription').value.trim();
         var isPrinterTicket = document.querySelector('input[name="tkForType"]:checked').value === 'printer';
         var printerName = isPrinterTicket ? document.getElementById('tkPrinterSelect').value : '';
-        if (!category || !urgencyEl || !description || (isPrinterTicket && !printerName)) {
-            errEl.textContent = isPrinterTicket && !printerName ? 'יש לבחור מדפסת' : 'יש למלא את כל שדות החובה.';
+        var subcategoryField = document.getElementById('tkSubcategoryField');
+        var subcategory = subcategoryField.style.display !== 'none' ? document.getElementById('tkSubcategory').value : '';
+        var subcategoryRequired = subcategoryField.style.display !== 'none';
+        if (!category || !urgencyEl || !description || (isPrinterTicket && !printerName) || (subcategoryRequired && !subcategory)) {
+            errEl.textContent = isPrinterTicket && !printerName ? 'יש לבחור מדפסת' :
+                (subcategoryRequired && !subcategory ? 'יש לבחור פירוט לסוג התקלה' : 'יש למלא את כל שדות החובה.');
             errEl.style.display = 'block';
             return;
         }
@@ -1546,6 +1711,7 @@
             printerName: printerName,
             anyDeskId: document.getElementById('tkAnyDesk').value,
             category: category,
+            subcategory: subcategory,
             urgency: urgencyEl.value,
             description: description,
         };
@@ -1575,6 +1741,7 @@
         document.getElementById('ticketConfirmation').style.display = 'none';
         document.getElementById('tkCategory').value = '';
         document.getElementById('tkDescription').value = '';
+        document.getElementById('tkSubcategoryField').style.display = 'none';
         resetForTypeToggle();
         fillComputerFields(assignedComputer);
     });
@@ -2537,6 +2704,207 @@
         if (res.ok) loadPrintersAdminPage(); else alert(res.error || 'שגיאה במחיקה');
     }
 
+    // ── ADMIN: TICKET CONFIG — categories/subcategories/urgencies (v2.1, section 7) ──
+    async function loadTicketConfigAdminPage() {
+        showLoading(true);
+        ticketConfigCache = null; // this screen is the source of truth — force a refetch
+        await ensureTicketConfigLoaded();
+        showLoading(false);
+        renderTicketConfigCategories();
+        renderTicketConfigUrgencies();
+    }
+
+    function renderTicketConfigCategories() {
+        var container = document.getElementById('tcCategoriesList');
+        container.innerHTML = '';
+        var categories = ticketConfigCache.categories;
+        if (!categories.length) { container.innerHTML = '<p style="color:var(--muted);font-size:13px">אין קטגוריות עדיין.</p>'; return; }
+        categories.forEach(function (c) {
+            var card = document.createElement('div');
+            card.className = 'tc-category-card';
+            var subsHtml = c.subcategories.map(function (s) {
+                return '<div class="tc-sub-row" data-sub-id="' + s.id + '">' +
+                    '<span>' + escapeHtml(s.name) + (s.isDynamic ? ' <span style="color:var(--muted);font-size:11px">(דינמי)</span>' : '') + '</span>' +
+                    '<span class="admin-row-actions">' +
+                    '<button type="button" class="icon-button" data-edit-sub title="עריכה">✏️</button>' +
+                    '<button type="button" class="icon-button" data-delete-sub title="מחיקה">🗑️</button></span></div>';
+            }).join('');
+            card.innerHTML =
+                '<div class="tc-category-header"><strong>' + escapeHtml(c.name) + '</strong>' +
+                '<span class="admin-row-actions">' +
+                '<button type="button" class="icon-button" data-add-sub title="הוסף תת-קטגוריה">➕</button>' +
+                '<button type="button" class="icon-button" data-edit title="עריכה">✏️</button>' +
+                '<button type="button" class="icon-button" data-delete title="מחיקה">🗑️</button></span></div>' +
+                subsHtml;
+            card.querySelector('[data-edit]').addEventListener('click', function () { openCategoryModal(c); });
+            card.querySelector('[data-delete]').addEventListener('click', function () { deleteTicketCategory(c); });
+            card.querySelector('[data-add-sub]').addEventListener('click', function () { openSubcategoryModal(null, c.id); });
+            c.subcategories.forEach(function (s) {
+                var row = card.querySelector('[data-sub-id="' + s.id + '"]');
+                row.querySelector('[data-edit-sub]').addEventListener('click', function () { openSubcategoryModal(s, c.id); });
+                row.querySelector('[data-delete-sub]').addEventListener('click', function () { deleteTicketSubcategory(s); });
+            });
+            container.appendChild(card);
+        });
+    }
+
+    function renderTicketConfigUrgencies() {
+        var container = document.getElementById('tcUrgenciesList');
+        container.innerHTML = '';
+        ticketConfigCache.urgencies.forEach(function (u) {
+            var row = document.createElement('div');
+            row.className = 'tc-urgency-row';
+            row.innerHTML =
+                '<span><span class="tc-color-dot" style="background:' + escapeHtml(u.colorHex) + '"></span><strong>' + escapeHtml(u.name) + '</strong> — ' + escapeHtml(u.description) + '</span>' +
+                '<span class="admin-row-actions">' +
+                '<button type="button" class="icon-button" data-edit title="עריכה">✏️</button>' +
+                '<button type="button" class="icon-button" data-delete title="מחיקה">🗑️</button></span>';
+            row.querySelector('[data-edit]').addEventListener('click', function () { openUrgencyModal(u); });
+            row.querySelector('[data-delete]').addEventListener('click', function () { deleteTicketUrgency(u); });
+            container.appendChild(row);
+        });
+    }
+
+    var editingCategoryId = null;
+    var tcCategoryTracker = makeDirtyTracker(document.getElementById('tcCategoryModalBackdrop'));
+
+    function openCategoryModal(c) {
+        editingCategoryId = c ? c.id : null;
+        document.getElementById('tcCategoryModalTitle').textContent = c ? 'עריכת קטגוריה' : 'קטגוריה חדשה';
+        document.getElementById('tcCategoryName').value = c ? c.name : '';
+        document.getElementById('tcCategoryOrder').value = c ? c.order : (ticketConfigCache.categories.length + 1) * 10;
+        document.getElementById('tcCategoryModalError').style.display = 'none';
+        document.getElementById('tcCategoryModalBackdrop').classList.add('visible');
+        tcCategoryTracker.reset();
+    }
+    function closeCategoryModal() { document.getElementById('tcCategoryModalBackdrop').classList.remove('visible'); }
+
+    document.getElementById('tcCategoryAddBtn').addEventListener('click', function () { openCategoryModal(null); });
+    document.getElementById('tcCategoryCancelBtn').addEventListener('click', function () {
+        if (tcCategoryTracker.confirmDiscard()) closeCategoryModal();
+    });
+    document.getElementById('tcCategorySaveBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('tcCategoryModalError');
+        var name = document.getElementById('tcCategoryName').value.trim();
+        if (!name) { errEl.textContent = 'יש למלא שם קטגוריה'; errEl.style.display = 'block'; return; }
+        var payload = { name: name, order: Number(document.getElementById('tcCategoryOrder').value || 0) };
+        if (editingCategoryId) payload.id = editingCategoryId;
+        showLoading(true);
+        var res = await apiPost('ticketConfig', 'saveCategory', payload);
+        showLoading(false);
+        if (res.ok) { tcCategoryTracker.reset(); closeCategoryModal(); loadTicketConfigAdminPage(); }
+        else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
+    });
+
+    async function deleteTicketCategory(c) {
+        if (!confirm('למחוק את הקטגוריה "' + c.name + '"? כל תתי-הקטגוריות שלה יימחקו גם כן.')) return;
+        showLoading(true);
+        var res = await apiPost('ticketConfig', 'deleteCategory', { id: c.id });
+        showLoading(false);
+        if (res.ok) loadTicketConfigAdminPage(); else alert(res.error || 'שגיאה במחיקה');
+    }
+
+    var editingSubcategoryId = null;
+    var editingSubcategoryCategoryId = null;
+    var tcSubcategoryTracker = makeDirtyTracker(document.getElementById('tcSubcategoryModalBackdrop'));
+
+    function openSubcategoryModal(s, categoryId) {
+        editingSubcategoryId = s ? s.id : null;
+        editingSubcategoryCategoryId = categoryId;
+        document.getElementById('tcSubcategoryModalTitle').textContent = s ? 'עריכת תת-קטגוריה' : 'תת-קטגוריה חדשה';
+        document.getElementById('tcSubcategoryName').value = s ? s.name : '';
+        document.getElementById('tcSubcategoryDynamic').checked = s ? s.isDynamic : false;
+        document.getElementById('tcSubcategoryDynamicSource').value = (s && s.dynamicSource) ? s.dynamicSource : 'printers-by-branch';
+        document.getElementById('tcSubcategoryDynamicSourceField').style.display = (s && s.isDynamic) ? 'block' : 'none';
+        document.getElementById('tcSubcategoryOrder').value = s ? s.order : 0;
+        document.getElementById('tcSubcategoryModalError').style.display = 'none';
+        document.getElementById('tcSubcategoryModalBackdrop').classList.add('visible');
+        tcSubcategoryTracker.reset();
+    }
+    function closeSubcategoryModal() { document.getElementById('tcSubcategoryModalBackdrop').classList.remove('visible'); }
+
+    document.getElementById('tcSubcategoryDynamic').addEventListener('change', function () {
+        document.getElementById('tcSubcategoryDynamicSourceField').style.display = this.checked ? 'block' : 'none';
+    });
+    document.getElementById('tcSubcategoryCancelBtn').addEventListener('click', function () {
+        if (tcSubcategoryTracker.confirmDiscard()) closeSubcategoryModal();
+    });
+    document.getElementById('tcSubcategorySaveBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('tcSubcategoryModalError');
+        var name = document.getElementById('tcSubcategoryName').value.trim();
+        if (!name) { errEl.textContent = 'יש למלא שם'; errEl.style.display = 'block'; return; }
+        var isDynamic = document.getElementById('tcSubcategoryDynamic').checked;
+        var payload = {
+            categoryId: editingSubcategoryCategoryId,
+            name: name,
+            isDynamic: isDynamic,
+            dynamicSource: isDynamic ? document.getElementById('tcSubcategoryDynamicSource').value : '',
+            order: Number(document.getElementById('tcSubcategoryOrder').value || 0),
+        };
+        if (editingSubcategoryId) payload.id = editingSubcategoryId;
+        showLoading(true);
+        var res = await apiPost('ticketConfig', 'saveSubcategory', payload);
+        showLoading(false);
+        if (res.ok) { tcSubcategoryTracker.reset(); closeSubcategoryModal(); loadTicketConfigAdminPage(); }
+        else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
+    });
+
+    async function deleteTicketSubcategory(s) {
+        if (!confirm('למחוק את "' + s.name + '"?')) return;
+        showLoading(true);
+        var res = await apiPost('ticketConfig', 'deleteSubcategory', { id: s.id });
+        showLoading(false);
+        if (res.ok) loadTicketConfigAdminPage(); else alert(res.error || 'שגיאה במחיקה');
+    }
+
+    var editingUrgencyId = null;
+    var tcUrgencyTracker = makeDirtyTracker(document.getElementById('tcUrgencyModalBackdrop'));
+
+    function openUrgencyModal(u) {
+        editingUrgencyId = u ? u.id : null;
+        document.getElementById('tcUrgencyModalTitle').textContent = u ? 'עריכת דרגה' : 'דרגת דחיפות חדשה';
+        document.getElementById('tcUrgencyName').value = u ? u.name : '';
+        document.getElementById('tcUrgencyDescription').value = u ? u.description : '';
+        document.getElementById('tcUrgencyColor').value = u ? u.colorHex : '#edd76f';
+        document.getElementById('tcUrgencySeverity').value = u ? u.severity : (ticketConfigCache.urgencies.length + 1);
+        document.getElementById('tcUrgencyOrder').value = u ? u.order : (ticketConfigCache.urgencies.length + 1) * 10;
+        document.getElementById('tcUrgencyModalError').style.display = 'none';
+        document.getElementById('tcUrgencyModalBackdrop').classList.add('visible');
+        tcUrgencyTracker.reset();
+    }
+    function closeUrgencyModal() { document.getElementById('tcUrgencyModalBackdrop').classList.remove('visible'); }
+
+    document.getElementById('tcUrgencyAddBtn').addEventListener('click', function () { openUrgencyModal(null); });
+    document.getElementById('tcUrgencyCancelBtn').addEventListener('click', function () {
+        if (tcUrgencyTracker.confirmDiscard()) closeUrgencyModal();
+    });
+    document.getElementById('tcUrgencySaveBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('tcUrgencyModalError');
+        var name = document.getElementById('tcUrgencyName').value.trim();
+        if (!name) { errEl.textContent = 'יש למלא שם'; errEl.style.display = 'block'; return; }
+        var payload = {
+            name: name,
+            description: document.getElementById('tcUrgencyDescription').value.trim(),
+            colorHex: document.getElementById('tcUrgencyColor').value,
+            severity: Number(document.getElementById('tcUrgencySeverity').value || 1),
+            order: Number(document.getElementById('tcUrgencyOrder').value || 0),
+        };
+        if (editingUrgencyId) payload.id = editingUrgencyId;
+        showLoading(true);
+        var res = await apiPost('ticketConfig', 'saveUrgency', payload);
+        showLoading(false);
+        if (res.ok) { tcUrgencyTracker.reset(); closeUrgencyModal(); loadTicketConfigAdminPage(); }
+        else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
+    });
+
+    async function deleteTicketUrgency(u) {
+        if (!confirm('למחוק את הדרגה "' + u.name + '"?')) return;
+        showLoading(true);
+        var res = await apiPost('ticketConfig', 'deleteUrgency', { id: u.id });
+        showLoading(false);
+        if (res.ok) loadTicketConfigAdminPage(); else alert(res.error || 'שגיאה במחיקה');
+    }
+
     // ── ADMIN: VIEW AS USER (read-only — never submits/edits anything as them) ──
     var viewAsUsersCache = [];
 
@@ -2636,6 +3004,7 @@
         }
         showLoading(true);
         await ensureBranchesLoaded();
+        await ensureTicketConfigLoaded();
         showLoading(false);
         renderHubGreeting();
         renderHubActions();

@@ -20,6 +20,7 @@ function rowToTicket(r) {
     printer: r.Printer,
     anyDeskId: r.AnyDeskId,
     category: r.Category,
+    subcategory: r.Subcategory,
     urgency: r.Urgency,
     description: r.Description,
     status: r.Status,
@@ -81,13 +82,14 @@ async function create(payload, caller) {
     .input('printer', sql.NVarChar, printer)
     .input('anyDeskId', sql.NVarChar, String(payload.anyDeskId || ''))
     .input('category', sql.NVarChar, String(payload.category || ''))
+    .input('subcategory', sql.NVarChar, payload.subcategory ? String(payload.subcategory) : null)
     .input('urgency', sql.NVarChar, String(payload.urgency || ''))
     .input('description', sql.NVarChar, String(payload.description || ''))
     .input('status', sql.NVarChar, STATUS_OPEN)
     .query(`INSERT INTO Tickets
-        (UserEmail, UserName, Phone, Branch, ComputerName, IP, Printer, AnyDeskId, Category, Urgency, Description, Status)
+        (UserEmail, UserName, Phone, Branch, ComputerName, IP, Printer, AnyDeskId, Category, Subcategory, Urgency, Description, Status)
       OUTPUT INSERTED.*
-      VALUES (@userEmail, @userName, @phone, @branch, @computerName, @ip, @printer, @anyDeskId, @category, @urgency, @description, @status)`);
+      VALUES (@userEmail, @userName, @phone, @branch, @computerName, @ip, @printer, @anyDeskId, @category, @subcategory, @urgency, @description, @status)`);
 
   const ticket = result.recordset[0];
   await writeLog(pool, ticket.TicketNumber, caller, 'created', { message: 'הקריאה נפתחה' });
@@ -150,7 +152,7 @@ async function get(payload, caller) {
 }
 
 // The requester may only touch their own ticket, and only before it's picked up.
-const REQUESTER_EDITABLE_FIELDS = ['Category', 'Urgency', 'Description', 'ComputerName', 'IP', 'Printer', 'AnyDeskId'];
+const REQUESTER_EDITABLE_FIELDS = ['Category', 'Subcategory', 'Urgency', 'Description', 'ComputerName', 'IP', 'Printer', 'AnyDeskId'];
 
 async function update(payload, caller) {
   const pool = await getPool();

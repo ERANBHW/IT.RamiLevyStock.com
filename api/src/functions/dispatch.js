@@ -21,6 +21,7 @@ const branches = require('../entities/branches');
 const sharedFolders = require('../entities/sharedFolders');
 const userRequests = require('../entities/userRequests');
 const printers = require('../entities/printers');
+const ticketConfig = require('../entities/ticketConfig');
 
 const ROUTES = {
   users: {
@@ -84,6 +85,15 @@ const ROUTES = {
     create: printers.create,
     update: printers.update,
     delete: printers.remove,
+  },
+  ticketConfig: {
+    list: ticketConfig.list,
+    saveCategory: ticketConfig.saveCategory,
+    deleteCategory: ticketConfig.deleteCategory,
+    saveSubcategory: ticketConfig.saveSubcategory,
+    deleteSubcategory: ticketConfig.deleteSubcategory,
+    saveUrgency: ticketConfig.saveUrgency,
+    deleteUrgency: ticketConfig.deleteUrgency,
   },
 };
 

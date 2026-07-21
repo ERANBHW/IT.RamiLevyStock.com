@@ -286,3 +286,43 @@ CREATE TABLE UserRequestFolders (
         REFERENCES SharedFolders(Id)
 );
 GO
+
+-- v2.1, section 7 — dynamic ticket categories/subcategories/urgency levels, managed
+-- by IT Admins in the portal so the ticket form no longer hardcodes any of this.
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'TicketCategories')
+CREATE TABLE TicketCategories (
+    Id      UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+    Name    NVARCHAR(100)    NOT NULL DEFAULT '',
+    [Order] INT              NOT NULL DEFAULT 0
+);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'TicketSubcategories')
+CREATE TABLE TicketSubcategories (
+    Id            UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+    CategoryId    UNIQUEIDENTIFIER NOT NULL,
+    Name          NVARCHAR(100)    NOT NULL DEFAULT '',
+    IsDynamic     BIT              NOT NULL DEFAULT 0,
+    DynamicSource NVARCHAR(50)     NULL,
+    [Order]       INT              NOT NULL DEFAULT 0,
+    CONSTRAINT FK_TicketSubcategories_Category FOREIGN KEY (CategoryId) REFERENCES TicketCategories(Id) ON DELETE CASCADE
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_TicketSubcategories_CategoryId')
+CREATE INDEX IX_TicketSubcategories_CategoryId ON TicketSubcategories(CategoryId);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'TicketUrgencyLevels')
+CREATE TABLE TicketUrgencyLevels (
+    Id          UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+    Name        NVARCHAR(50)     NOT NULL DEFAULT '',
+    Description NVARCHAR(200)    NOT NULL DEFAULT '',
+    ColorHex    NVARCHAR(9)      NOT NULL DEFAULT '#edd76f',
+    Severity    INT              NOT NULL DEFAULT 1,
+    [Order]     INT              NOT NULL DEFAULT 0
+);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Tickets') AND name = 'Subcategory')
+ALTER TABLE Tickets ADD Subcategory NVARCHAR(200) NULL;
+GO
