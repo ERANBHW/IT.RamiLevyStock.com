@@ -38,7 +38,7 @@ chmod +x provision.sh
 
 ```bash
 ./provision.sh resources     # Function App, Storage, SQL Server+DB, firewall
-./provision.sh appregs       # 4 App Registrations (api/spa/mail/graph) + הרשאות
+./provision.sh appregs       # 3 App Registrations (api/spa/mail) + הרשאות
 ./provision.sh easyauth      # Easy Auth v2 על ה-Function App
 ./provision.sh cors          # CORS מוגבל לדומיין של GitHub Pages
 ./provision.sh identity      # Managed Identity + פקודת ה-SQL להרצה ידנית
@@ -140,14 +140,33 @@ Intune admin center → Devices → Configuration → **Settings Catalog** →
   "already exists in location X" למרות ש-`show` מחזיר ResourceNotFound, זה
   באג ידוע ב-Azure; הפתרון הוא שם חדש.
 
+## ייבוא חד-פעמי של משתמשים קיימים מ-365 (v2.1, סעיף 4א — עודכן)
+
+**הוחלט מפורשות: לפורטל אין ולא יהיה שום App Registration עם הרשאת Graph על משתמשים —
+לא קריאה, לא כתיבה, לא מחיקה, לא הוספה.** שום סוד/credential קבוע לא יושב באוויר עם
+גישה לספריית המשתמשים. הקמת/עדכון משתמשים ב-Entra ID תמיד ידני, דרך הסקריפט שהפורטל
+מייצר (ראה PROJECT_STATUS.md סעיף 4ב/4ג) שרץ תחת ההתחברות האישית של IT.
+
+כדי לאכלס את `Users` בפעם הראשונה עם המשתמשים הקיימים כבר ב-365, יש תהליך חד-פעמי:
+
+1. **אתה** מריץ את `infra/export-entra-users.ps1` (ב-Cloud Shell או PowerShell מקומי עם
+   מודול Microsoft.Graph) — מתחבר עם `Connect-MgGraph` תחת **ההתחברות האישית שלך**
+   (delegated, לא app-only), לא דרך שום App Registration של הפורטל. מייצא משתמשי Member
+   פעילים בלבד (לא אורחים, לא מושבתים) ל-`entra-users-export.json`.
+2. מעביר לי (ל-Claude, בשיחה) את הקובץ.
+3. אני מריץ `node infra/generate-user-seed.js entra-users-export.json` שמתאים כל משתמש
+   לפי `department` לטבלת `Branches` (התאמה מדויקת בלבד — אחרת נשאר `NULL`, לתקן ידנית
+   בפורטל) ומייצר `infra/bootstrap-users.sql` — כל שורה מוגנת (`IF NOT EXISTS`), בטוח
+   להריץ גם אם חלק מהמשתמשים כבר קיימים (למשל שני ה-SuperAdmin הזרועים).
+4. אתה מריץ את `infra/bootstrap-users.sql` פעם אחת דרך Portal → SQL Database → Query
+   editor (אותו תהליך כמו `schema.sql`/`seed.sql`).
+
+מהנקודה הזו והלאה — **כל ניהול המשתמשים דרך מסך "ניהול משתמשים" בפורטל בלבד**, ידני
+לגמרי, בלי שום סנכרון אוטומטי חוזר מ-365.
+
 ## אבטחה
 
-- שני ה-secrets שנוצרים (Graph mail client secret, Graph sync client secret) נכתבים
-  ישירות ל-App Settings של ה-Function App ומעולם לא מודפסים למסך — הקבצים הזמניים
-  שמכילים אותם נמחקים בסוף `appsettings`.
-- `it-portal-graph` (v2.1, סעיף 4א) מקבל **רק** `User.Read.All` (read-only) — אין לו
-  ואסור שיהיה לו שום הרשאת כתיבה. הקוד (`api/src/entities/users.js` → `syncFromEntra`)
-  קורא משתמשים מ-Entra ID ומוסיף חדשים בלבד; אף פעם לא כותב חזרה ל-Entra ולא דורס/מוחק
-  שורה קיימת ב-`Users`.
+- ה-secret היחיד שנוצר (Graph mail client secret) נכתב ישירות ל-App Settings של
+  ה-Function App ומעולם לא מודפס למסך — הקובץ הזמני שמכיל אותו נמחק בסוף `appsettings`.
 - ה-Function App מתחבר ל-SQL עם ה-Managed Identity שלו, בלי סיסמה בכלל.
 - `IsSuperAdmin` לא ניתן לשינוי משום endpoint — רק `seed.sql`/גישה ישירה ל-DB.

@@ -28,7 +28,6 @@ const ROUTES = {
     create: users.create,
     adminUpdate: users.adminUpdate,
     delete: users.remove,
-    syncFromEntra: users.syncFromEntra,
   },
   computers: {
     getAssigned: computers.getAssigned,

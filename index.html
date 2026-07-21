@@ -273,12 +273,9 @@
     <!-- VIEW: admin users -->
     <main class="app" id="view-admin-users">
         <div class="content">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:10px;flex-wrap:wrap">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
                 <h1 class="page-title" style="margin:0">ניהול משתמשים</h1>
-                <div style="display:flex;gap:8px">
-                    <button type="button" class="secondary-button" id="usersSyncBtn" style="display:none">🔄 סנכרון מ-365</button>
-                    <button type="button" class="primary-button" id="userAdminAddBtn">+ הוסף משתמש</button>
-                </div>
+                <button type="button" class="primary-button" id="userAdminAddBtn">+ הוסף משתמש</button>
             </div>
             <div style="overflow-x:auto">
                 <table class="admin-table" id="usersTable">
@@ -1064,7 +1061,6 @@
     var computersCache = [];
 
     async function loadUsersAdminPage() {
-        document.getElementById('usersSyncBtn').style.display = Portal.isSuperAdmin() ? 'inline-block' : 'none';
         showLoading(true);
         await ensureBranchesLoaded();
         var usersRes = await apiGet('users', 'list', {});
@@ -1073,19 +1069,6 @@
         computersCache = compRes.ok ? compRes.data : [];
         renderUsersTable(usersRes.ok ? usersRes.data : []);
     }
-
-    document.getElementById('usersSyncBtn').addEventListener('click', async function () {
-        showLoading(true);
-        var res = await apiPost('users', 'syncFromEntra', {});
-        showLoading(false);
-        if (res.ok) {
-            alert('סנכרון הושלם: ' + res.data.added + ' משתמשים חדשים נוספו מתוך ' + res.data.totalInEntra +
-                ' ב-365. ' + res.data.leaversNotInEntra + ' משתמשים בפורטל לא נמצאים יותר ב-365 (לא נמחקו אוטומטית).');
-            loadUsersAdminPage();
-        } else {
-            alert(res.error || 'שגיאה בסנכרון');
-        }
-    });
 
     function computerAssignedTo(email) {
         return computersCache.find(function (c) { return String(c.assignedUserEmail).toLowerCase() === String(email).toLowerCase(); });
