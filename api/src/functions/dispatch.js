@@ -17,6 +17,8 @@ const users = require('../entities/users');
 const computers = require('../entities/computers');
 const tickets = require('../entities/tickets');
 const procedures = require('../entities/procedures');
+const branches = require('../entities/branches');
+const sharedFolders = require('../entities/sharedFolders');
 
 const ROUTES = {
   users: {
@@ -50,6 +52,18 @@ const ROUTES = {
     create: procedures.create,
     update: procedures.update,
     delete: procedures.remove,
+  },
+  branches: {
+    list: branches.list,
+    create: branches.create,
+    update: branches.update,
+    delete: branches.remove,
+  },
+  sharedFolders: {
+    list: sharedFolders.list,
+    create: sharedFolders.create,
+    update: sharedFolders.update,
+    delete: sharedFolders.remove,
   },
 };
 

@@ -125,7 +125,7 @@
             <div class="field"><label for="pfFirstName">שם פרטי</label><input id="pfFirstName" type="text"></div>
             <div class="field"><label for="pfLastName">שם משפחה</label><input id="pfLastName" type="text"></div>
             <div class="field"><label for="pfPhone">טלפון</label><input id="pfPhone" type="tel" dir="ltr"></div>
-            <div class="field"><label for="pfBranch">סניף</label><input id="pfBranch" type="text"></div>
+            <div class="field"><label for="pfBranch">סניף</label><select id="pfBranch"></select></div>
             <div class="field"><label for="pfRole">תפקיד</label><input id="pfRole" type="text"></div>
             <div id="profileModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
         </div>
@@ -307,6 +307,39 @@
         </div>
     </main>
 
+    <!-- VIEW: admin branches -->
+    <main class="app" id="view-admin-branches">
+        <div class="content">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h1 class="page-title" style="margin:0">ניהול סניפים</h1>
+                <button type="button" class="primary-button" id="branchAdminAddBtn">+ הוסף סניף</button>
+            </div>
+            <div style="overflow-x:auto">
+                <table class="admin-table" id="branchesTable">
+                    <thead><tr><th>מספר</th><th>שם</th><th></th></tr></thead>
+                    <tbody id="branchesTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- VIEW: admin shared folders -->
+    <main class="app" id="view-admin-sharedfolders">
+        <div class="content">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h1 class="page-title" style="margin:0">ניהול תיקיות משותפות</h1>
+                <button type="button" class="primary-button" id="sharedFolderAdminAddBtn">+ הוסף תיקייה</button>
+            </div>
+            <p class="page-subtitle">Object ID = קבוצת Entra ID / אתר SharePoint המשויך (Entra ID → Groups)</p>
+            <div style="overflow-x:auto">
+                <table class="admin-table" id="sharedFoldersTable">
+                    <thead><tr><th>שם</th><th>Entra Group Object ID</th><th></th></tr></thead>
+                    <tbody id="sharedFoldersTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
     <!-- VIEW: admin tickets queue -->
     <main class="app" id="view-admin-tickets">
         <div class="content">
@@ -327,7 +360,7 @@
                 <div class="field"><label for="uaFirstName">שם פרטי</label><input id="uaFirstName" type="text"></div>
                 <div class="field"><label for="uaLastName">שם משפחה</label><input id="uaLastName" type="text"></div>
                 <div class="field"><label for="uaPhone">טלפון</label><input id="uaPhone" type="tel" dir="ltr"></div>
-                <div class="field"><label for="uaBranch">סניף</label><input id="uaBranch" type="text"></div>
+                <div class="field"><label for="uaBranch">סניף</label><select id="uaBranch"></select></div>
             </div>
             <div class="field"><label for="uaRole">תפקיד</label><input id="uaRole" type="text"></div>
             <div class="field"><label for="uaComputer">מחשב משוייך</label><select id="uaComputer"></select></div>
@@ -360,7 +393,7 @@
                 <div class="field"><label for="caIp">IP</label><input id="caIp" type="text" dir="ltr"></div>
                 <div class="field"><label for="caPrinter">מדפסת</label><input id="caPrinter" type="text"></div>
                 <div class="field"><label for="caAnyDesk">AnyDesk</label><input id="caAnyDesk" type="text" dir="ltr"></div>
-                <div class="field"><label for="caBranch">סניף</label><input id="caBranch" type="text"></div>
+                <div class="field"><label for="caBranch">סניף</label><select id="caBranch"></select></div>
             </div>
             <div class="field"><label for="caNotes">הערות</label><textarea id="caNotes" rows="3"></textarea></div>
             <div id="computerAdminModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
@@ -368,6 +401,38 @@
         <div class="profile-modal-actions">
             <button type="button" class="primary-button" style="flex:1" id="computerAdminSaveBtn">שמור</button>
             <button type="button" class="secondary-button" id="computerAdminCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<!-- Branch admin modal -->
+<div class="profile-modal-backdrop" id="branchAdminModalBackdrop">
+    <div class="profile-modal" style="max-width:420px">
+        <div class="profile-modal-header"><h2 id="branchAdminModalTitle">סניף חדש</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="baNumber">מספר סניף</label><input id="baNumber" type="number" dir="ltr"></div>
+            <div class="field"><label for="baName">שם סניף</label><input id="baName" type="text"></div>
+            <div id="branchAdminModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="branchAdminSaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="branchAdminCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<!-- Shared folder admin modal -->
+<div class="profile-modal-backdrop" id="sharedFolderAdminModalBackdrop">
+    <div class="profile-modal" style="max-width:420px">
+        <div class="profile-modal-header"><h2 id="sharedFolderAdminModalTitle">תיקייה חדשה</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="sfName">שם תיקייה</label><input id="sfName" type="text"></div>
+            <div class="field"><label for="sfObjectId">Entra Group Object ID</label><input id="sfObjectId" type="text" dir="ltr"></div>
+            <div id="sharedFolderAdminModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="sharedFolderAdminSaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="sharedFolderAdminCancelBtn">ביטול</button>
         </div>
     </div>
 </div>
@@ -420,6 +485,31 @@
         if (id === 'admin-users') loadUsersAdminPage();
         if (id === 'admin-computers') loadComputersAdminPage();
         if (id === 'admin-tickets') loadTicketsAdminPage();
+        if (id === 'admin-branches') loadBranchesAdminPage();
+        if (id === 'admin-sharedfolders') loadSharedFoldersAdminPage();
+    }
+
+    // ── BRANCHES: shared cache used by profile/ticket/admin screens ───
+    var branchesCache = null;
+
+    async function ensureBranchesLoaded() {
+        if (branchesCache) return branchesCache;
+        var res = await apiGet('branches', 'list', {});
+        branchesCache = res.ok ? res.data : [];
+        return branchesCache;
+    }
+
+    function branchName(branchNumber) {
+        if (branchNumber === null || branchNumber === undefined || branchNumber === '') return '';
+        var b = (branchesCache || []).find(function (x) { return x.number === Number(branchNumber); });
+        return b ? b.name : '';
+    }
+
+    function populateBranchSelect(selectEl, selectedNumber) {
+        var options = (branchesCache || []).map(function (b) {
+            return '<option value="' + b.number + '"' + (String(selectedNumber) === String(b.number) ? ' selected' : '') + '>' + escapeHtml(b.name) + '</option>';
+        }).join('');
+        selectEl.innerHTML = '<option value="">בחר סניף</option>' + options;
     }
 
     // ── HUB VIEW ──────────────────────────────────────────────
@@ -435,6 +525,8 @@
         } },
         { id: 'admin-computers', icon: '💻', label: 'ניהול מחשבים', check: function () { return Portal.isITAdmin(); } },
         { id: 'admin-tickets', icon: '🎫', label: 'תור קריאות', check: function () { return Portal.isITAdmin(); } },
+        { id: 'admin-branches', icon: '🏢', label: 'ניהול סניפים', check: function () { return Portal.isSuperAdmin(); } },
+        { id: 'admin-sharedfolders', icon: '📁', label: 'תיקיות משותפות', check: function () { return Portal.isSuperAdmin(); } },
     ];
 
     function renderHubButtons(container, buttons) {
@@ -465,19 +557,20 @@
         greetingEl.innerHTML = 'שלום' + (name ? ', ' + escapeHtml(name) : '') +
             '<button type="button" class="hub-edit-pencil" id="hubEditPencil" title="עריכת פרטים">✏️</button>';
         document.getElementById('hubEditPencil').addEventListener('click', openProfileModal);
-        infoEl.textContent = [user.role, user.branch].filter(Boolean).join(' | ');
+        infoEl.textContent = [user.role, branchName(user.branchNumber)].filter(Boolean).join(' | ');
     }
 
     // ── PROFILE EDIT MODAL ────────────────────────────────────
     var profileModal = document.getElementById('profileModalBackdrop');
     var profileError = document.getElementById('profileModalError');
 
-    function openProfileModal() {
+    async function openProfileModal() {
         var user = Portal.getUser();
         document.getElementById('pfFirstName').value = user.firstName || '';
         document.getElementById('pfLastName').value = user.lastName || '';
         document.getElementById('pfPhone').value = user.phone || '';
-        document.getElementById('pfBranch').value = user.branch || '';
+        await ensureBranchesLoaded();
+        populateBranchSelect(document.getElementById('pfBranch'), user.branchNumber);
         document.getElementById('pfRole').value = user.role || '';
         profileError.style.display = 'none';
         profileModal.classList.add('visible');
@@ -494,7 +587,7 @@
             firstName: document.getElementById('pfFirstName').value.trim(),
             lastName: document.getElementById('pfLastName').value.trim(),
             phone: document.getElementById('pfPhone').value.trim(),
-            branch: document.getElementById('pfBranch').value.trim(),
+            branchNumber: document.getElementById('pfBranch').value,
             role: document.getElementById('pfRole').value.trim(),
         };
         showLoading(true);
@@ -554,7 +647,7 @@
         var user = Portal.getUser();
         document.getElementById('tkName').value = [user.firstName, user.lastName].filter(Boolean).join(' ');
         document.getElementById('tkPhone').value = user.phone || '';
-        document.getElementById('tkBranch').value = user.branch || '';
+        document.getElementById('tkBranch').value = branchName(user.branchNumber);
         document.getElementById('tkComputerName').value = data ? (data.computerName || '') : '';
         document.getElementById('tkIp').value = data ? (data.ip || '') : '';
         document.getElementById('tkPrinter').value = data ? (data.printer || '') : '';
@@ -963,6 +1056,7 @@
 
     async function loadUsersAdminPage() {
         showLoading(true);
+        await ensureBranchesLoaded();
         var usersRes = await apiGet('users', 'list', {});
         var compRes = await apiGet('computers', 'list', {});
         showLoading(false);
@@ -991,7 +1085,7 @@
             tr.innerHTML =
                 '<td dir="ltr">' + escapeHtml(u.email) + '</td>' +
                 '<td>' + escapeHtml([u.firstName, u.lastName].filter(Boolean).join(' ')) + '</td>' +
-                '<td>' + escapeHtml(u.branch) + '</td>' +
+                '<td>' + escapeHtml(branchName(u.branchNumber)) + '</td>' +
                 '<td>' + escapeHtml(u.role) + '</td>' +
                 '<td>' + (badges || '-') + '</td>' +
                 '<td>' + escapeHtml(comp ? comp.computerName : '-') + '</td>' +
@@ -1015,7 +1109,7 @@
             }).join('');
     }
 
-    function openUserAdminModal(user) {
+    async function openUserAdminModal(user) {
         editingUserEmail = user ? user.email : null;
         document.getElementById('userAdminModalTitle').textContent = user ? 'עריכת משתמש' : 'משתמש חדש';
         document.getElementById('uaEmail').value = user ? user.email : '';
@@ -1023,7 +1117,8 @@
         document.getElementById('uaFirstName').value = user ? user.firstName : '';
         document.getElementById('uaLastName').value = user ? user.lastName : '';
         document.getElementById('uaPhone').value = user ? user.phone : '';
-        document.getElementById('uaBranch').value = user ? user.branch : '';
+        await ensureBranchesLoaded();
+        populateBranchSelect(document.getElementById('uaBranch'), user ? user.branchNumber : '');
         document.getElementById('uaRole').value = user ? user.role : '';
         document.getElementById('uaIsITAdmin').checked = !!(user && user.isITAdmin);
         document.getElementById('uaIsProceduresAdmin').checked = !!(user && user.isProceduresAdmin);
@@ -1049,7 +1144,7 @@
             firstName: document.getElementById('uaFirstName').value.trim(),
             lastName: document.getElementById('uaLastName').value.trim(),
             phone: document.getElementById('uaPhone').value.trim(),
-            branch: document.getElementById('uaBranch').value.trim(),
+            branchNumber: document.getElementById('uaBranch').value,
             role: document.getElementById('uaRole').value.trim(),
             isITAdmin: document.getElementById('uaIsITAdmin').checked,
             isProceduresAdmin: document.getElementById('uaIsProceduresAdmin').checked,
@@ -1077,6 +1172,7 @@
 
     async function loadComputersAdminPage() {
         showLoading(true);
+        await ensureBranchesLoaded();
         var res = await apiGet('computers', 'list', {});
         showLoading(false);
         computersCache = res.ok ? res.data : [];
@@ -1120,7 +1216,7 @@
         document.getElementById('caIp').value = comp ? comp.ip : '';
         document.getElementById('caPrinter').value = comp ? comp.printer : '';
         document.getElementById('caAnyDesk').value = comp ? comp.anyDeskId : '';
-        document.getElementById('caBranch').value = comp ? comp.branch : '';
+        populateBranchSelect(document.getElementById('caBranch'), comp ? comp.branchNumber : '');
         document.getElementById('caNotes').value = comp ? comp.notes : '';
         document.getElementById('computerAdminModalError').style.display = 'none';
         document.getElementById('computerAdminModalBackdrop').classList.add('visible');
@@ -1141,7 +1237,7 @@
             ip: document.getElementById('caIp').value.trim(),
             printer: document.getElementById('caPrinter').value.trim(),
             anyDeskId: document.getElementById('caAnyDesk').value.trim(),
-            branch: document.getElementById('caBranch').value.trim(),
+            branchNumber: document.getElementById('caBranch').value,
             notes: document.getElementById('caNotes').value.trim(),
         };
         if (!payload.computerName) { errEl.textContent = 'יש למלא שם מחשב'; errEl.style.display = 'block'; return; }
@@ -1182,6 +1278,141 @@
     });
     document.getElementById('computerHistoryBackdrop').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('visible'); });
 
+    // ── ADMIN: BRANCHES ───────────────────────────────────────
+    var editingBranchNumber = null;
+
+    async function loadBranchesAdminPage() {
+        showLoading(true);
+        branchesCache = null; // admin screen is the source of truth for this list — force a refetch
+        await ensureBranchesLoaded();
+        showLoading(false);
+        renderBranchesTable(branchesCache);
+    }
+
+    function renderBranchesTable(list) {
+        var body = document.getElementById('branchesTableBody');
+        body.innerHTML = '';
+        list.forEach(function (b) {
+            var tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td dir="ltr">' + escapeHtml(b.number) + '</td>' +
+                '<td>' + escapeHtml(b.name) + '</td>' +
+                '<td class="admin-row-actions">' +
+                '<button type="button" class="icon-button" data-edit title="עריכה">✏️</button>' +
+                '<button type="button" class="icon-button" data-delete title="מחיקה">🗑️</button></td>';
+            tr.querySelector('[data-edit]').addEventListener('click', function () { openBranchAdminModal(b); });
+            tr.querySelector('[data-delete]').addEventListener('click', function () { deleteAdminBranch(b); });
+            body.appendChild(tr);
+        });
+    }
+
+    function openBranchAdminModal(b) {
+        editingBranchNumber = b ? b.number : null;
+        document.getElementById('branchAdminModalTitle').textContent = b ? 'עריכת סניף' : 'סניף חדש';
+        document.getElementById('baNumber').value = b ? b.number : '';
+        document.getElementById('baNumber').disabled = !!b;
+        document.getElementById('baName').value = b ? b.name : '';
+        document.getElementById('branchAdminModalError').style.display = 'none';
+        document.getElementById('branchAdminModalBackdrop').classList.add('visible');
+    }
+
+    function closeBranchAdminModal() { document.getElementById('branchAdminModalBackdrop').classList.remove('visible'); }
+
+    document.getElementById('branchAdminAddBtn').addEventListener('click', function () { openBranchAdminModal(null); });
+    document.getElementById('branchAdminCancelBtn').addEventListener('click', closeBranchAdminModal);
+    document.getElementById('branchAdminModalBackdrop').addEventListener('click', function (e) { if (e.target === this) closeBranchAdminModal(); });
+
+    document.getElementById('branchAdminSaveBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('branchAdminModalError');
+        var payload = {
+            number: document.getElementById('baNumber').value,
+            name: document.getElementById('baName').value.trim(),
+        };
+        if (payload.number === '' || !payload.name) { errEl.textContent = 'יש למלא מספר ושם סניף'; errEl.style.display = 'block'; return; }
+
+        showLoading(true);
+        var res = await apiPost('branches', editingBranchNumber !== null ? 'update' : 'create', payload);
+        showLoading(false);
+        if (res.ok) { closeBranchAdminModal(); loadBranchesAdminPage(); }
+        else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
+    });
+
+    async function deleteAdminBranch(b) {
+        if (!confirm('למחוק את הסניף "' + b.name + '"?')) return;
+        showLoading(true);
+        var res = await apiPost('branches', 'delete', { number: b.number });
+        showLoading(false);
+        if (res.ok) loadBranchesAdminPage(); else alert(res.error || 'שגיאה במחיקה');
+    }
+
+    // ── ADMIN: SHARED FOLDERS ─────────────────────────────────
+    var sharedFoldersCache = [];
+    var editingSharedFolderId = null;
+
+    async function loadSharedFoldersAdminPage() {
+        showLoading(true);
+        var res = await apiGet('sharedFolders', 'list', {});
+        showLoading(false);
+        sharedFoldersCache = res.ok ? res.data : [];
+        renderSharedFoldersTable(sharedFoldersCache);
+    }
+
+    function renderSharedFoldersTable(list) {
+        var body = document.getElementById('sharedFoldersTableBody');
+        body.innerHTML = '';
+        list.forEach(function (f) {
+            var tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td>' + escapeHtml(f.name) + '</td>' +
+                '<td dir="ltr">' + (f.entraGroupObjectId ? escapeHtml(f.entraGroupObjectId) : '<span style="color:var(--danger)">חסר</span>') + '</td>' +
+                '<td class="admin-row-actions">' +
+                '<button type="button" class="icon-button" data-edit title="עריכה">✏️</button>' +
+                '<button type="button" class="icon-button" data-delete title="מחיקה">🗑️</button></td>';
+            tr.querySelector('[data-edit]').addEventListener('click', function () { openSharedFolderAdminModal(f); });
+            tr.querySelector('[data-delete]').addEventListener('click', function () { deleteAdminSharedFolder(f); });
+            body.appendChild(tr);
+        });
+    }
+
+    function openSharedFolderAdminModal(f) {
+        editingSharedFolderId = f ? f.id : null;
+        document.getElementById('sharedFolderAdminModalTitle').textContent = f ? 'עריכת תיקייה' : 'תיקייה חדשה';
+        document.getElementById('sfName').value = f ? f.name : '';
+        document.getElementById('sfObjectId').value = f ? f.entraGroupObjectId : '';
+        document.getElementById('sharedFolderAdminModalError').style.display = 'none';
+        document.getElementById('sharedFolderAdminModalBackdrop').classList.add('visible');
+    }
+
+    function closeSharedFolderAdminModal() { document.getElementById('sharedFolderAdminModalBackdrop').classList.remove('visible'); }
+
+    document.getElementById('sharedFolderAdminAddBtn').addEventListener('click', function () { openSharedFolderAdminModal(null); });
+    document.getElementById('sharedFolderAdminCancelBtn').addEventListener('click', closeSharedFolderAdminModal);
+    document.getElementById('sharedFolderAdminModalBackdrop').addEventListener('click', function (e) { if (e.target === this) closeSharedFolderAdminModal(); });
+
+    document.getElementById('sharedFolderAdminSaveBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('sharedFolderAdminModalError');
+        var payload = {
+            name: document.getElementById('sfName').value.trim(),
+            entraGroupObjectId: document.getElementById('sfObjectId').value.trim(),
+        };
+        if (!payload.name) { errEl.textContent = 'יש למלא שם תיקייה'; errEl.style.display = 'block'; return; }
+        if (editingSharedFolderId) payload.id = editingSharedFolderId;
+
+        showLoading(true);
+        var res = await apiPost('sharedFolders', editingSharedFolderId ? 'update' : 'create', payload);
+        showLoading(false);
+        if (res.ok) { closeSharedFolderAdminModal(); loadSharedFoldersAdminPage(); }
+        else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
+    });
+
+    async function deleteAdminSharedFolder(f) {
+        if (!confirm('למחוק את התיקייה "' + f.name + '"?')) return;
+        showLoading(true);
+        var res = await apiPost('sharedFolders', 'delete', { id: f.id });
+        showLoading(false);
+        if (res.ok) loadSharedFoldersAdminPage(); else alert(res.error || 'שגיאה במחיקה');
+    }
+
     // ── INIT ──────────────────────────────────────────────────
     (async function init() {
         showLoading(true);
@@ -1192,6 +1423,9 @@
             showView('notfound');
             return;
         }
+        showLoading(true);
+        await ensureBranchesLoaded();
+        showLoading(false);
         renderHubGreeting();
         renderHubActions();
         showView('hub');
