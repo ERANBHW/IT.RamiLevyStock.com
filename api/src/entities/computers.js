@@ -26,9 +26,13 @@ function parseBranchNumber(v) {
   return Number.isInteger(n) ? n : null;
 }
 
-async function getAssigned(_payload, caller) {
+// "View as" support (IT Admin/SuperAdmin only) — viewAsEmail is ignored for anyone else,
+// so a regular user can never see another user's assigned computer this way.
+async function getAssigned(payload, caller) {
+  const targetEmail = (payload.viewAsEmail && caller.isITAdmin)
+    ? String(payload.viewAsEmail).trim().toLowerCase() : caller.email;
   const pool = await getPool();
-  const result = await pool.request().input('email', sql.NVarChar, caller.email)
+  const result = await pool.request().input('email', sql.NVarChar, targetEmail)
     .query('SELECT * FROM Computers WHERE AssignedUserEmail = @email');
   return { ok: true, data: rowToComputer(result.recordset[0]) };
 }

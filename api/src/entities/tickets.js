@@ -97,9 +97,13 @@ async function create(payload, caller) {
   return { ok: true, data: { ticketNumber: ticket.TicketNumber } };
 }
 
-async function listMine(_payload, caller) {
+// "View as" support (IT Admin/SuperAdmin only) — viewAsEmail is ignored for anyone else,
+// so a regular user can never see another user's tickets this way.
+async function listMine(payload, caller) {
+  const targetEmail = (payload.viewAsEmail && caller.isITAdmin)
+    ? String(payload.viewAsEmail).trim().toLowerCase() : caller.email;
   const pool = await getPool();
-  const result = await pool.request().input('email', sql.NVarChar, caller.email)
+  const result = await pool.request().input('email', sql.NVarChar, targetEmail)
     .query('SELECT * FROM Tickets WHERE UserEmail = @email ORDER BY Timestamp DESC');
   return { ok: true, data: result.recordset.map(rowToTicket) };
 }

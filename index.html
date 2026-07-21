@@ -451,6 +451,33 @@
         </div>
     </main>
 
+    <!-- VIEW: admin view-as user -->
+    <main class="app" id="view-admin-view-as">
+        <div class="content">
+            <h1 class="page-title">צפייה כמשתמש</h1>
+            <p class="page-subtitle">תצוגה בלבד — לא ניתן לפתוח קריאה, לערוך פרופיל, או לבצע כל פעולה בשם המשתמש הנבחר.</p>
+            <div class="field"><label for="viewAsUserSelect">בחר משתמש</label><select id="viewAsUserSelect"></select></div>
+            <div id="viewAsResult" style="display:none">
+                <section class="section">
+                    <h2 class="section-title">דף הבית שלו</h2>
+                    <p id="viewAsGreeting" style="font-size:16px;font-weight:700;margin:0 0 4px"></p>
+                    <p id="viewAsInfo" style="color:var(--muted);font-size:13px;margin:0 0 10px"></p>
+                    <div id="viewAsBadges" style="margin-bottom:12px"></div>
+                    <p style="font-size:13px;font-weight:700;margin:10px 0 6px">כפתורים שהוא רואה:</p>
+                    <div id="viewAsHubButtons" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+                </section>
+                <section class="section">
+                    <h2 class="section-title">מחשב משוייך</h2>
+                    <div id="viewAsComputer" style="font-size:14px"></div>
+                </section>
+                <section class="section">
+                    <h2 class="section-title">קריאות שירות</h2>
+                    <div id="viewAsTicketsList" style="display:flex;flex-direction:column;gap:8px"></div>
+                </section>
+            </div>
+        </div>
+    </main>
+
     <!-- VIEW: admin printers -->
     <main class="app" id="view-admin-printers">
         <div class="content">
@@ -697,6 +724,7 @@
         if (id === 'user-request') loadUserRequestFormPage();
         if (id === 'admin-user-requests') loadUserRequestsAdminPage();
         if (id === 'admin-printers') loadPrintersAdminPage();
+        if (id === 'admin-view-as') loadViewAsPage();
 
         if (id === 'hub') { loadHubDashboard(); startDashboardAutoRefresh(); }
         else { stopDashboardAutoRefresh(); }
@@ -786,6 +814,7 @@
         { id: 'admin-sharedfolders', icon: '📁', label: 'תיקיות משותפות', check: function () { return Portal.isSuperAdmin(); } },
         { id: 'admin-user-requests', icon: '🧑‍💼', label: 'בקשות הקמת משתמש', check: function () { return Portal.isITAdmin(); } },
         { id: 'admin-printers', icon: '🖨️', label: 'קטלוג מדפסות', check: function () { return Portal.isITAdmin(); } },
+        { id: 'admin-view-as', icon: '👁️', label: 'צפייה כמשתמש', check: function () { return Portal.isITAdmin(); } },
     ];
 
     function renderHubButtons(container, buttons) {
@@ -2258,6 +2287,94 @@
         showLoading(false);
         if (res.ok) loadPrintersAdminPage(); else alert(res.error || 'שגיאה במחיקה');
     }
+
+    // ── ADMIN: VIEW AS USER (read-only — never submits/edits anything as them) ──
+    var viewAsUsersCache = [];
+
+    function userIsSuperAdmin(u) { return !!(u && u.isSuperAdmin); }
+    function userIsITAdmin(u) { return !!(u && (u.isITAdmin || u.isSuperAdmin)); }
+    function userIsProceduresAdmin(u) { return !!(u && (u.isProceduresAdmin || u.isSuperAdmin)); }
+    function userIsUserRequestSubmitter(u) { return !!(u && (u.isUserRequestSubmitter || u.isITAdmin || u.isSuperAdmin)); }
+
+    // Mirrors HUB_BUTTONS/HUB_ADMIN_BUTTONS, but evaluated against an arbitrary user
+    // object instead of the live Portal singleton (which always reflects the real,
+    // logged-in admin — never the person being previewed).
+    var VIEW_AS_BUTTON_DEFS = [
+        { label: 'פתיחת קריאה', show: function () { return true; } },
+        { label: 'יצירת חתימה', show: function () { return true; } },
+        { label: 'נהלי עבודה', show: function () { return true; } },
+        { label: 'בקשת הקמת משתמש', show: userIsUserRequestSubmitter },
+        { label: 'ניהול משתמשים', show: function (u) { return userIsSuperAdmin(u) || userIsITAdmin(u) || userIsProceduresAdmin(u); } },
+        { label: 'ניהול מחשבים', show: userIsITAdmin },
+        { label: 'תור קריאות', show: userIsITAdmin },
+        { label: 'ניהול סניפים', show: userIsSuperAdmin },
+        { label: 'תיקיות משותפות', show: userIsSuperAdmin },
+        { label: 'בקשות הקמת משתמש', show: userIsITAdmin },
+        { label: 'קטלוג מדפסות', show: userIsITAdmin },
+        { label: 'צפייה כמשתמש', show: userIsITAdmin },
+    ];
+
+    async function loadViewAsPage() {
+        document.getElementById('viewAsResult').style.display = 'none';
+        document.getElementById('viewAsUserSelect').value = '';
+        showLoading(true);
+        var res = await apiGet('users', 'list', {});
+        await ensureBranchesLoaded();
+        showLoading(false);
+        viewAsUsersCache = res.ok ? res.data : [];
+        var sel = document.getElementById('viewAsUserSelect');
+        sel.innerHTML = '<option value="">בחר משתמש...</option>' +
+            viewAsUsersCache.map(function (u) {
+                var name = [u.firstName, u.lastName].filter(Boolean).join(' ');
+                return '<option value="' + escapeHtml(u.email) + '">' + escapeHtml(name ? (name + ' — ' + u.email) : u.email) + '</option>';
+            }).join('');
+    }
+
+    document.getElementById('viewAsUserSelect').addEventListener('change', async function () {
+        var email = this.value;
+        if (!email) { document.getElementById('viewAsResult').style.display = 'none'; return; }
+        var user = viewAsUsersCache.find(function (u) { return u.email === email; });
+        if (!user) return;
+
+        showLoading(true);
+        var compRes = await apiGet('computers', 'getAssigned', { viewAsEmail: email });
+        var ticketsRes = await apiGet('tickets', 'listMine', { viewAsEmail: email });
+        showLoading(false);
+
+        var name = [user.firstName, user.lastName].filter(Boolean).join(' ');
+        document.getElementById('viewAsGreeting').textContent = 'שלום' + (name ? ', ' + name : '') + '!';
+        document.getElementById('viewAsInfo').textContent =
+            [user.role, branchName(user.branchNumber)].filter(Boolean).join(' | ') || 'ללא תפקיד/סניף מוגדר';
+
+        var badges = '';
+        if (user.isSuperAdmin) badges += '<span class="role-badge">מנהל-על</span>';
+        if (user.isITAdmin) badges += '<span class="role-badge">IT</span>';
+        if (user.isProceduresAdmin) badges += '<span class="role-badge">נהלים</span>';
+        if (user.isUserRequestSubmitter) badges += '<span class="role-badge">מורשה הקמת משתמשים</span>';
+        document.getElementById('viewAsBadges').innerHTML = badges || '<span style="color:var(--muted);font-size:13px">ללא הרשאות מיוחדות</span>';
+
+        var buttonLabels = VIEW_AS_BUTTON_DEFS.filter(function (b) { return b.show(user); }).map(function (b) { return b.label; });
+        document.getElementById('viewAsHubButtons').innerHTML = buttonLabels.length
+            ? buttonLabels.map(function (label) { return '<span class="dashboard-branch-chip">' + escapeHtml(label) + '</span>'; }).join('')
+            : '<span style="color:var(--muted);font-size:13px">אין כפתורים</span>';
+
+        var comp = compRes.ok ? compRes.data : null;
+        document.getElementById('viewAsComputer').innerHTML = comp
+            ? ('<strong dir="ltr" style="unicode-bidi:embed">' + escapeHtml(comp.computerName) + '</strong> | מדפסת: ' +
+                escapeHtml(comp.defaultPrinterName || '-') + ' | AnyDesk: ' + escapeHtml(comp.anyDeskId || '-'))
+            : '<span style="color:var(--muted);font-size:13px">אין מחשב משוייך.</span>';
+
+        var tickets = ticketsRes.ok ? ticketsRes.data : [];
+        var ticketsList = document.getElementById('viewAsTicketsList');
+        ticketsList.innerHTML = '';
+        if (!tickets.length) {
+            ticketsList.innerHTML = '<p style="color:var(--muted);font-size:13px">אין קריאות.</p>';
+        } else {
+            tickets.forEach(function (t) { ticketsList.appendChild(buildTicketCard(t)); });
+        }
+
+        document.getElementById('viewAsResult').style.display = 'block';
+    });
 
     // ── INIT ──────────────────────────────────────────────────
     (async function init() {
