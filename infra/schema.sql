@@ -158,8 +158,17 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Users_Branch')
 ALTER TABLE Users ADD CONSTRAINT FK_Users_Branch FOREIGN KEY (BranchNumber) REFERENCES Branches(Number);
 GO
+-- SQL Server auto-names a DEFAULT constraint for every "DEFAULT ''" column from the
+-- original CREATE TABLE — DROP COLUMN fails until that constraint is dropped first.
 IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'Branch')
-ALTER TABLE Users DROP COLUMN Branch;
+BEGIN
+    DECLARE @dfc NVARCHAR(200);
+    SELECT @dfc = dc.name FROM sys.default_constraints dc
+      JOIN sys.columns c ON c.object_id = dc.parent_object_id AND c.column_id = dc.parent_column_id
+      WHERE dc.parent_object_id = OBJECT_ID('Users') AND c.name = 'Branch';
+    IF @dfc IS NOT NULL EXEC('ALTER TABLE Users DROP CONSTRAINT [' + @dfc + ']');
+    ALTER TABLE Users DROP COLUMN Branch;
+END
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'IsUserRequestSubmitter')
 ALTER TABLE Users ADD IsUserRequestSubmitter BIT NOT NULL DEFAULT 0;
@@ -176,7 +185,14 @@ IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Computers_Branch'
 ALTER TABLE Computers ADD CONSTRAINT FK_Computers_Branch FOREIGN KEY (BranchNumber) REFERENCES Branches(Number);
 GO
 IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Computers') AND name = 'Branch')
-ALTER TABLE Computers DROP COLUMN Branch;
+BEGIN
+    DECLARE @dfc NVARCHAR(200);
+    SELECT @dfc = dc.name FROM sys.default_constraints dc
+      JOIN sys.columns c ON c.object_id = dc.parent_object_id AND c.column_id = dc.parent_column_id
+      WHERE dc.parent_object_id = OBJECT_ID('Computers') AND c.name = 'Branch';
+    IF @dfc IS NOT NULL EXEC('ALTER TABLE Computers DROP CONSTRAINT [' + @dfc + ']');
+    ALTER TABLE Computers DROP COLUMN Branch;
+END
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Computers') AND name = 'DefaultPrinterName')
 ALTER TABLE Computers ADD DefaultPrinterName NVARCHAR(100) NULL;
@@ -187,10 +203,24 @@ GO
 -- IP dropped entirely (v2.1, section 7 — no longer relevant, superseded by AnyDesk).
 -- Printer (free text) dropped now too — replaced by DefaultPrinterName above (section 8).
 IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Computers') AND name = 'IP')
-ALTER TABLE Computers DROP COLUMN IP;
+BEGIN
+    DECLARE @dfc2 NVARCHAR(200);
+    SELECT @dfc2 = dc.name FROM sys.default_constraints dc
+      JOIN sys.columns c ON c.object_id = dc.parent_object_id AND c.column_id = dc.parent_column_id
+      WHERE dc.parent_object_id = OBJECT_ID('Computers') AND c.name = 'IP';
+    IF @dfc2 IS NOT NULL EXEC('ALTER TABLE Computers DROP CONSTRAINT [' + @dfc2 + ']');
+    ALTER TABLE Computers DROP COLUMN IP;
+END
 GO
 IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Computers') AND name = 'Printer')
-ALTER TABLE Computers DROP COLUMN Printer;
+BEGIN
+    DECLARE @dfc3 NVARCHAR(200);
+    SELECT @dfc3 = dc.name FROM sys.default_constraints dc
+      JOIN sys.columns c ON c.object_id = dc.parent_object_id AND c.column_id = dc.parent_column_id
+      WHERE dc.parent_object_id = OBJECT_ID('Computers') AND c.name = 'Printer';
+    IF @dfc3 IS NOT NULL EXEC('ALTER TABLE Computers DROP CONSTRAINT [' + @dfc3 + ']');
+    ALTER TABLE Computers DROP COLUMN Printer;
+END
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Computers_BranchNumber')
 CREATE INDEX IX_Computers_BranchNumber ON Computers(BranchNumber);
