@@ -175,13 +175,18 @@
         .dash-ticket-meta-top { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
         .dash-ticket-detail { border: 1px solid var(--border); border-top: none; border-radius: 0 0 12px 12px; padding: 14px; background: var(--white); }
         .dash-elapsed-row { font-size: 11px; color: var(--muted); margin-top: 3px; }
-        .status-action-btn { border: none; cursor: pointer; font-family: inherit; }
+        .dash-urgency-chip { padding: 1px 8px; border-radius: 10px; }
+        .dash-header-right-group { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+        .status-select { border: none; cursor: pointer; font-family: inherit; -webkit-appearance: auto; appearance: auto; }
+        .dash-anydesk-btn { text-decoration: none; font-size: 15px; padding: 2px 6px; border-radius: 8px; background: var(--background); }
+        .dash-link-field { color: var(--brand-pink); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+        .dash-detail-fields { font-size: 12px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 3px; }
         .dash-timeline { position: relative; padding-right: 18px; margin: 10px 0; }
         .dash-timeline::before { content: ''; position: absolute; right: 4px; top: 4px; bottom: 4px; width: 2px; background: var(--border); }
         .dash-timeline-item { position: relative; padding-bottom: 12px; }
         .dash-timeline-item:last-child { padding-bottom: 0; }
         .dash-timeline-dot { position: absolute; right: -14px; top: 3px; width: 8px; height: 8px; border-radius: 50%; background: var(--brand-pink); display: block; }
-        .dash-timeline-dot.editable { cursor: pointer; width: 12px; height: 12px; right: -16px; top: 1px; box-shadow: 0 0 0 2px var(--white); }
+        .dash-timeline-dot.editable { cursor: pointer; width: 12px; height: 12px; right: -16px; top: 1px; box-shadow: 0 0 0 2px var(--white); background: #3b82f6; }
         .dash-timeline-time { font-size: 11px; color: var(--muted); }
         .dash-timeline-text { font-size: 12px; margin-top: 2px; }
         .dash-note-edit-row { display: flex; gap: 6px; align-items: center; }
@@ -279,7 +284,7 @@
                     <div class="dashboard-charts" id="dashboardCharts"></div>
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin:14px 0 8px;flex-wrap:wrap">
                         <div class="dash-toolbar-group">
-                            <span class="dash-toolbar-icon" title="סינון">🔽</span>
+                            <span class="dash-toolbar-icon" title="סינון">▼</span>
                             <div style="position:relative">
                                 <button type="button" class="sort-btn" id="dashUserFilterBtn">משתמש</button>
                                 <div id="dashUserFilterPopover" class="filter-popover" style="display:none"></div>
@@ -290,7 +295,7 @@
                             </div>
                         </div>
                         <div class="dash-toolbar-group sort-buttons">
-                            <span class="dash-toolbar-icon" title="מיון">↕️</span>
+                            <span class="dash-toolbar-icon" title="מיון">⇅</span>
                             <button type="button" class="sort-btn active" id="dashSortUrgency" data-sort="urgency">דרגה</button>
                             <button type="button" class="sort-btn" id="dashSortDate" data-sort="date">תאריך</button>
                             <button type="button" class="sort-btn" id="dashSortBranch" data-sort="branch">סניף</button>
@@ -1658,10 +1663,14 @@
             byBranch[br] = (byBranch[br] || 0) + 1;
         });
         var html = buildBarChart('קריאות לפי קטגוריה', byCategory) + buildBarChart('קריאות לפי סניף', byBranch);
-        var avg = computeAvgHandlingTime();
-        if (avg != null) {
-            html += '<div class="dash-chart dash-stat-tile"><div class="dash-chart-title">זמן טיפול ממוצע (קריאות סגורות)</div>' +
-                '<div class="dash-stat-value">' + escapeHtml(formatDuration(avg)) + '</div></div>';
+        // Only relevant when actually looking at closed tickets (item 4) — not a
+        // general workload metric.
+        if (dashStatusFilter === 'סגורה') {
+            var avg = computeAvgHandlingTime();
+            if (avg != null) {
+                html += '<div class="dash-chart dash-stat-tile"><div class="dash-chart-title">זמן טיפול ממוצע (קריאות סגורות)</div>' +
+                    '<div class="dash-stat-value">' + escapeHtml(formatDuration(avg)) + '</div></div>';
+            }
         }
         document.getElementById('dashboardCharts').innerHTML = html;
     }
@@ -1785,24 +1794,35 @@
     }
 
     // Header shows category | subcategory (if any) | ticket number, employee/branch
-    // above, and date/urgency/elapsed-time below. The status badge doubles as a quick-
-    // action button (item 3) — "קח קריאה"/"סגור קריאה" sit exactly where the plain
-    // status tag used to, so a click there acts immediately without expanding the row.
+    // above (employee name is a link — item 7), and date/urgency (colored by urgency —
+    // item 5)/elapsed-time below. The plain status tag was replaced by a real dropdown
+    // (item 1) showing the current status, changeable to any of the three; an in-
+    // progress ticket with an AnyDesk ID also gets a quick-connect button (item 9),
+    // grouped with the dropdown so both sit on the row's left side.
+    var DASHBOARD_STATUS_OPTIONS = ['פתוחה', 'בטיפול', 'סגורה'];
+    var DASHBOARD_STATUS_CLASS = { 'פתוחה': 'status-open', 'בטיפול': 'status-progress', 'סגורה': 'status-closed' };
+
     function dashboardCardInnerHtml(t) {
         var titleParts = [escapeHtml(t.category)];
         if (t.subcategory) titleParts.push(escapeHtml(t.subcategory));
         titleParts.push(escapeHtml(t.ticketNumber));
-        var badgeHtml;
-        if (t.status === 'פתוחה') {
-            badgeHtml = '<button type="button" class="status-badge status-open status-action-btn" data-quick-action="take">קח קריאה</button>';
-        } else if (t.status === 'בטיפול') {
-            badgeHtml = '<button type="button" class="status-badge status-progress status-action-btn" data-quick-action="close">סגור קריאה</button>';
-        } else {
-            badgeHtml = '<span class="status-badge status-closed">סגורה</span>';
-        }
-        return '<div class="dash-ticket-meta-top">' + escapeHtml(t.userName || t.userEmail) + (t.branch ? ' | ' + escapeHtml(t.branch) : '') + '</div>' +
-            '<div class="ticket-card-header"><strong>' + titleParts.join(' | ') + '</strong>' + badgeHtml + '</div>' +
-            '<div class="ticket-meta">' + formatDateTime(t.timestamp) + ' | ' + escapeHtml(t.urgency) + '</div>' +
+
+        var statusSelectHtml = '<select class="status-badge status-select ' + DASHBOARD_STATUS_CLASS[t.status] + '" data-status-select>' +
+            DASHBOARD_STATUS_OPTIONS.map(function (s) {
+                return '<option value="' + s + '"' + (s === t.status ? ' selected' : '') + '>' + s + '</option>';
+            }).join('') + '</select>';
+        var anydeskHtml = (t.status === 'בטיפול' && t.anyDeskId)
+            ? '<a class="dash-anydesk-btn" href="anydesk:' + encodeURIComponent(t.anyDeskId) + '" title="התחברות למחשב דרך AnyDesk" data-anydesk-btn>🖥️</a>'
+            : '';
+
+        var rgb = hexToRgb(URGENCY_COLOR[t.urgency] || '#cccccc');
+        var urgencyBg = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.2)';
+
+        return '<div class="dash-ticket-meta-top"><span class="dash-link-field" data-open-user>' + escapeHtml(t.userName || t.userEmail) + '</span>' +
+            (t.branch ? ' | ' + escapeHtml(t.branch) : '') + '</div>' +
+            '<div class="ticket-card-header"><strong>' + titleParts.join(' | ') + '</strong>' +
+            '<span class="dash-header-right-group">' + anydeskHtml + statusSelectHtml + '</span></div>' +
+            '<div class="ticket-meta">' + formatDateTime(t.timestamp) + ' | <span class="dash-urgency-chip" style="background:' + urgencyBg + '">' + escapeHtml(t.urgency) + '</span></div>' +
             '<div class="dash-elapsed-row">' + escapeHtml(dashboardElapsedHtml(t)) + '</div>';
     }
 
@@ -1816,14 +1836,22 @@
     }
 
     function wireDashboardCardActions(card, t) {
-        var quickBtn = card.querySelector('[data-quick-action]');
-        if (!quickBtn) return;
-        quickBtn.addEventListener('click', function (e) {
-            e.stopPropagation();
-            var latest = dashTicketsByNumber[t.ticketNumber] || t;
-            if (quickBtn.getAttribute('data-quick-action') === 'take') dashboardTakeTicket(latest);
-            else dashboardCloseTicket(latest);
-        });
+        var select = card.querySelector('[data-status-select]');
+        if (select) {
+            select.addEventListener('click', function (e) { e.stopPropagation(); });
+            select.addEventListener('change', function () {
+                dashboardChangeStatus(dashTicketsByNumber[t.ticketNumber] || t, select.value);
+            });
+        }
+        var anydeskBtn = card.querySelector('[data-anydesk-btn]');
+        if (anydeskBtn) anydeskBtn.addEventListener('click', function (e) { e.stopPropagation(); });
+        var userLink = card.querySelector('[data-open-user]');
+        if (userLink) {
+            userLink.addEventListener('click', function (e) {
+                e.stopPropagation();
+                openTicketUserDetail((dashTicketsByNumber[t.ticketNumber] || t).userEmail);
+            });
+        }
     }
 
     // Refreshes an already-built row's header in place — never touches `.detail`, so an
@@ -1899,16 +1927,24 @@
         renderDashboardTicketDetail(detailEl, res.data.ticket, res.data.log);
     }
 
+    // Extra ticket fields (computer/phone/printer — item 6) shown above the description;
+    // the computer name is a link that opens the Computers admin modal (item 8).
+    function dashboardDetailFieldsHtml(t) {
+        var rows = [];
+        if (t.computerName) rows.push('<div><strong>מחשב:</strong> <span class="dash-link-field" data-open-computer>' + escapeHtml(t.computerName) + '</span></div>');
+        if (t.phone) rows.push('<div><strong>טלפון:</strong> ' + escapeHtml(t.phone) + '</div>');
+        if (t.printer) rows.push('<div><strong>מדפסת:</strong> ' + escapeHtml(t.printer) + '</div>');
+        if (t.anyDeskId) rows.push('<div><strong>AnyDesk:</strong> ' + escapeHtml(t.anyDeskId) + '</div>');
+        return rows.length ? '<div class="dash-detail-fields">' + rows.join('') + '</div>' : '';
+    }
+
     function renderDashboardTicketDetail(el, t, log) {
         var isIT = Portal.isITAdmin();
-        var actionsHtml = '';
-        if (isIT && t.status === 'פתוחה') actionsHtml += '<button type="button" class="primary-button" data-dd-take>קח קריאה</button>';
-        if (isIT && t.status === 'בטיפול') actionsHtml += '<button type="button" class="secondary-button" data-dd-close>סגור קריאה</button>';
 
         el.innerHTML =
+            dashboardDetailFieldsHtml(t) +
             '<div style="font-size:14px;white-space:pre-wrap;margin-bottom:10px">' + escapeHtml(t.description) + '</div>' +
             (t.assignedToName ? '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">מטופל ע"י ' + escapeHtml(t.assignedToName) + '</div>' : '') +
-            (actionsHtml ? '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">' + actionsHtml + '</div>' : '') +
             '<div class="dash-timeline">' +
             (log.length ? log.map(renderTimelineEntry).join('') : '<span style="color:var(--muted);font-size:12px">אין רשומות</span>') +
             '</div>' +
@@ -1916,10 +1952,8 @@
                 '<input data-dd-note-input type="text" style="flex:1" placeholder="הוסף הערה (Enter לשליחה)">' +
                 '<button type="button" class="secondary-button" data-dd-add-note>הוסף</button></div></div>' : '');
 
-        var takeBtn = el.querySelector('[data-dd-take]');
-        if (takeBtn) takeBtn.addEventListener('click', function () { dashboardTakeTicket(t); });
-        var closeBtn = el.querySelector('[data-dd-close]');
-        if (closeBtn) closeBtn.addEventListener('click', function () { dashboardCloseTicket(t); });
+        var computerLink = el.querySelector('[data-open-computer]');
+        if (computerLink) computerLink.addEventListener('click', function () { openTicketComputerDetail(t.computerName); });
 
         var noteInput = el.querySelector('[data-dd-note-input]');
         var addNoteBtn = el.querySelector('[data-dd-add-note]');
@@ -1997,6 +2031,45 @@
         var res = await apiPost('tickets', 'updateStatus', { ticketNumber: t.ticketNumber, status: t.status, message: note });
         showLoading(false);
         if (res.ok) refreshOpenDashboardDetail(); else alert(res.error || 'שגיאה');
+    }
+
+    // The header status <select> (item 1) drives all three transitions: פתוחה→בטיפול
+    // reuses the real "take" flow (assigns the ticket + sets TakenAt), →סגורה reuses the
+    // close flow (optional note, ClosedAt), any other change is a plain status update.
+    async function dashboardChangeStatus(t, newStatus) {
+        if (newStatus === t.status) return;
+        if (t.status === 'פתוחה' && newStatus === 'בטיפול') { await dashboardTakeTicket(t); return; }
+        if (newStatus === 'סגורה') { await dashboardCloseTicket(t); return; }
+        showLoading(true);
+        var res = await apiPost('tickets', 'updateStatus', { ticketNumber: t.ticketNumber, status: newStatus });
+        showLoading(false);
+        if (!res.ok) { alert(res.error || 'שגיאה'); return; }
+        await loadHubDashboard();
+        refreshOpenDashboardDetail();
+    }
+
+    // Reuses the existing Users/Computers admin modals (item 7+8) — same edit UI IT
+    // already knows, just triggered from inside a ticket instead of the admin tables.
+    async function openTicketUserDetail(email) {
+        showLoading(true);
+        var usersRes = await apiGet('users', 'list', {});
+        var compRes = await apiGet('computers', 'list', {});
+        showLoading(false);
+        if (compRes.ok) computersCache = compRes.data;
+        var user = usersRes.ok ? usersRes.data.filter(function (u) { return String(u.email).toLowerCase() === String(email).toLowerCase(); })[0] : null;
+        if (!user) { alert('המשתמש לא נמצא'); return; }
+        await ensureBranchesLoaded();
+        openUserAdminModal(user);
+    }
+
+    async function openTicketComputerDetail(computerName) {
+        showLoading(true);
+        var res = await apiGet('computers', 'list', {});
+        showLoading(false);
+        var comp = res.ok ? res.data.filter(function (c) { return c.computerName === computerName; })[0] : null;
+        if (!comp) { alert('המחשב לא נמצא'); return; }
+        await ensureBranchesLoaded();
+        openComputerAdminModal(comp);
     }
 
     function toggleFilterPopover(popoverId, otherPopoverId) {
