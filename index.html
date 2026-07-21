@@ -179,10 +179,12 @@
         .dash-elapsed-row { font-size: 11px; color: var(--muted); margin-top: 3px; }
         .dash-urgency-chip { padding: 1px 8px; border-radius: 10px; }
         .dash-header-right-group { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
-        .status-select { border: none; cursor: pointer; font-family: inherit; -webkit-appearance: auto; appearance: auto; }
+        .status-select { border: none; cursor: pointer; font-family: inherit; -webkit-appearance: auto; appearance: auto; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 700; }
         .dash-anydesk-btn, .dash-quick-tag { text-decoration: none; font-size: 12px; padding: 2px 8px; border-radius: 10px; background: var(--background); color: var(--text); cursor: pointer; border: none; font-family: inherit; }
         .dash-link-field { color: var(--brand-pink); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
-        .dash-whatsapp-link { text-decoration: none; margin-right: 4px; }
+        .dash-whatsapp-link { text-decoration: none; margin-right: 4px; display: inline-flex; align-items: center; vertical-align: middle; }
+        .dash-assigned-tag { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 10px; background: rgba(222, 57, 149, 0.12); color: var(--brand-pink); font-size: 11px; font-weight: 700; }
+        .dash-it-actor { color: var(--brand-pink); font-weight: 700; }
         .dash-section-divider { display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px; }
         .dash-section-divider::before, .dash-section-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
         .dash-timeline { position: relative; padding-right: 18px; margin: 10px 0; }
@@ -1428,7 +1430,10 @@
     }
 
     // Timeline-style rendering used by the dashboard's inline ticket expansion (section 7 follow-up).
-    function renderTimelineEntry(entry) {
+    // `ticket` (optional) lets us tell an IT admin's action apart from the requester's
+    // own — anyone other than the ticket's original owner acting on it is IT staff
+    // (only IT-only endpoints write these entries), so their name gets colored (item 2).
+    function renderTimelineEntry(entry, ticket) {
         var text = describeLogEntry(entry);
         var user = Portal.getUser();
         var isNoteLike = entry.action === 'note' || entry.action === 'internal_note';
@@ -1437,9 +1442,12 @@
         var idAttr = isMine ? ' data-log-id="' + entry.id + '"' : '';
         var dotClass = 'dash-timeline-dot' + (isMine ? ' editable' : '');
         var internalTag = entry.action === 'internal_note' ? '<span class="dash-timeline-internal-tag">פנימי</span>' : '';
+        var actorName = escapeHtml(entry.actorName || entry.actorEmail);
+        var isItActor = ticket && entry.actorEmail && String(entry.actorEmail).toLowerCase() !== String(ticket.userEmail || '').toLowerCase();
+        var actorHtml = isItActor ? '<span class="dash-it-actor">' + actorName + '</span>' : actorName;
         return '<div class="dash-timeline-item"' + idAttr + '>' +
             '<span class="' + dotClass + '"' + (isMine ? ' title="לחץ לעריכת ההערה"' : '') + '></span>' +
-            '<div class="dash-timeline-time">' + formatDateTime(entry.timestamp) + ' · ' + escapeHtml(entry.actorName || entry.actorEmail) + '</div>' +
+            '<div class="dash-timeline-time">' + formatDateTime(entry.timestamp) + ' · ' + actorHtml + '</div>' +
             '<div class="dash-timeline-text">' + internalTag + '<span data-log-text>' + escapeHtml(text) + '</span></div></div>';
     }
 
@@ -1611,9 +1619,14 @@
     // Whichever status-cube is active (or none = open+in-progress) — the base array
     // everything else (charts, popover counts, the table) is derived from.
     function getStatusFilteredSource() {
-        return dashStatusFilter === 'סגורה'
-            ? (dashboardClosedTickets || [])
-            : dashboardOpenTickets.filter(function (t) { return dashStatusFilter === null || t.status === dashStatusFilter; });
+        if (dashStatusFilter === 'סגורה') return dashboardClosedTickets || [];
+        // dashboardOpenTickets is the server's non-closed set at last fetch, but an
+        // optimistic status patch (item 4/5) can flip one of its own tickets to סגורה
+        // in place — always exclude those from the open/in-progress view regardless.
+        return dashboardOpenTickets.filter(function (t) {
+            if (t.status === 'סגורה') return false;
+            return dashStatusFilter === null || t.status === dashStatusFilter;
+        });
     }
 
     function msBetween(a, b) { return new Date(b) - new Date(a); }
@@ -1747,7 +1760,12 @@
         document.getElementById(btnId).textContent = base + (count ? ' (' + count + ')' : '');
     }
 
+    // Item 5: while the popover is open the user may be mid-click on a checkbox — a
+    // background refresh (auto-refresh timer or any other reload) must never rebuild
+    // its contents out from under them. It picks up fresh data next time it's reopened.
     function renderDashboardUserFilter() {
+        var popover = document.getElementById('dashUserFilterPopover');
+        if (popover.style.display !== 'none') return;
         var counts = {};
         getStatusFilteredSource().forEach(function (t) {
             var u = t.userName || t.userEmail;
@@ -1755,7 +1773,6 @@
         });
         var users = Object.keys(counts).sort();
         dashUserFilterSelection = dashUserFilterSelection.filter(function (u) { return users.indexOf(u) !== -1; });
-        var popover = document.getElementById('dashUserFilterPopover');
         popover.innerHTML = users.length
             ? users.map(function (v) {
                 var checked = dashUserFilterSelection.indexOf(v) !== -1 ? ' checked' : '';
@@ -1766,6 +1783,8 @@
     }
 
     function renderDashboardBranchFilter() {
+        var popover = document.getElementById('dashBranchFilterPopover');
+        if (popover.style.display !== 'none') return;
         var counts = {};
         getStatusFilteredSource().forEach(function (t) {
             var b = t.branch || 'ללא סניף';
@@ -1773,7 +1792,6 @@
         });
         var branches = Object.keys(counts).sort();
         dashBranchFilterSelection = dashBranchFilterSelection.filter(function (b) { return branches.indexOf(b) !== -1; });
-        var popover = document.getElementById('dashBranchFilterPopover');
         popover.innerHTML = branches.length
             ? branches.map(function (b) {
                 var checked = dashBranchFilterSelection.indexOf(b) !== -1 ? ' checked' : '';
@@ -1863,6 +1881,8 @@
     // grouped with the dropdown so both sit on the row's left side.
     var DASHBOARD_STATUS_OPTIONS = ['פתוחה', 'בטיפול', 'סגורה'];
     var DASHBOARD_STATUS_CLASS = { 'פתוחה': 'status-open', 'בטיפול': 'status-progress', 'סגורה': 'status-closed' };
+    var WHATSAPP_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="#25D366">' +
+        '<path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.35 5.09L2 22l4.91-1.35C8.42 21.5 10.15 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm5.2 14.3c-.2.6-1.2 1.15-1.7 1.2-.44.05-1 .07-1.6-.1-.37-.1-.85-.28-1.46-.55-2.58-1.12-4.26-3.75-4.4-3.93-.13-.18-1.05-1.4-1.05-2.67 0-1.26.66-1.88.9-2.14.23-.25.5-.32.67-.32h.48c.15 0 .36-.03.55.42.2.48.68 1.65.74 1.77.06.13.1.28.02.45-.08.17-.13.28-.25.43-.13.15-.27.34-.38.46-.13.13-.26.27-.11.53.15.27.66 1.1 1.42 1.78.98.87 1.8 1.14 2.07 1.27.27.13.42.11.58-.07.16-.18.68-.79.86-1.06.18-.27.36-.22.6-.13.25.09 1.56.74 1.83.87.27.13.45.2.52.32.07.11.07.63-.13 1.23z"/></svg>';
 
     function normalizePhoneForWhatsapp(phone) {
         var digits = String(phone || '').replace(/\D/g, '');
@@ -1897,15 +1917,23 @@
 
         var phoneHtml = t.phone
             ? ' | <a href="tel:' + escapeHtml(t.phone) + '" class="dash-link-field" data-stop>' + escapeHtml(t.phone) + '</a>' +
-              '<a href="https://wa.me/' + normalizePhoneForWhatsapp(t.phone) + '" target="_blank" rel="noopener" class="dash-whatsapp-link" data-stop title="הודעת וואטסאפ">💬</a>'
+              ' | <a href="https://wa.me/' + normalizePhoneForWhatsapp(t.phone) + '" target="_blank" rel="noopener" class="dash-whatsapp-link" data-stop title="הודעת וואטסאפ">' + WHATSAPP_ICON_SVG + '</a>'
             : '';
+
+        // "Handled by" tag (item 1): nothing on a fresh open ticket, "מטפל/ת" while in
+        // progress, "טופל ע"י" once closed — reopening a ticket clears the assignment
+        // server-side (and via the optimistic patch), so this naturally disappears again.
+        var assignedTagHtml = '';
+        if (t.status === 'בטיפול' && t.assignedToName) assignedTagHtml = '<div class="dash-assigned-tag">מטפל/ת: ' + escapeHtml(t.assignedToName) + '</div>';
+        else if (t.status === 'סגורה' && t.assignedToName) assignedTagHtml = '<div class="dash-assigned-tag">טופל ע"י ' + escapeHtml(t.assignedToName) + '</div>';
 
         return '<div class="dash-ticket-meta-top"><span class="dash-link-field" data-open-user>' + escapeHtml(t.userName || t.userEmail) + '</span>' +
             (t.branch ? ' | ' + escapeHtml(t.branch) : '') + phoneHtml + '</div>' +
             '<div class="ticket-card-header"><strong>' + titleParts.join(' | ') + '</strong>' +
             '<span class="dash-header-right-group">' + computerTagHtml + printerTagHtml + anydeskHtml + statusSelectHtml + '</span></div>' +
             '<div class="ticket-meta">' + formatDateTime(t.timestamp) + ' | <span class="dash-urgency-chip" style="background:' + urgencyBg + '">' + escapeHtml(t.urgency) + '</span></div>' +
-            '<div class="dash-elapsed-row">' + escapeHtml(dashboardElapsedHtml(t)) + '</div>';
+            '<div class="dash-elapsed-row">' + escapeHtml(dashboardElapsedHtml(t)) + '</div>' +
+            assignedTagHtml;
     }
 
     function applyDashboardCardStyle(card, t) {
@@ -2012,6 +2040,35 @@
         if (latest) loadDashboardTicketDetail(latest, openDashboardRow.cardEl, openDashboardRow.detailEl);
     }
 
+    // Items 4+5: a status change used to trigger a full loadHubDashboard() — four
+    // sequential network round-trips plus a full list rebuild, which felt like the
+    // whole dashboard reloading. Since dashTicketsByNumber/dashboardOpenTickets hold the
+    // very same object references (renderDashboardTicketsList populates the map by
+    // reference, never by copy), patching the ticket in place is enough to update
+    // everything derived from it — no server round-trip beyond the one action itself.
+    function patchDashboardTicket(ticketNumber, patch) {
+        var t = dashTicketsByNumber[ticketNumber];
+        if (!t) return;
+        Object.assign(t, patch);
+        renderDashboardCounts(document.getElementById('dashClosedCount').textContent);
+        renderDashboardCharts();
+        var row = dashRowElements[ticketNumber];
+        if (!row) return;
+        var stillVisible = getFilteredSortedTickets().indexOf(t) !== -1;
+        if (stillVisible) updateDashboardTicketRow(row, t);
+        else renderDashboardTicketsList();
+    }
+
+    // Aggregates the server computes (closed count, follow-up count) that a client-side
+    // patch can't derive — refreshed quietly in the background, without touching the
+    // ticket list/rows or any open popover.
+    async function refreshDashboardAggregatesOnly() {
+        var countRes = await apiGet('tickets', 'closedCount', {});
+        if (countRes.ok) document.getElementById('dashClosedCount').textContent = countRes.data.count;
+        var followUpRes = await apiGet('tickets', 'followUpCount', {});
+        if (followUpRes.ok) document.getElementById('dashFollowupsCount').textContent = followUpRes.data.count;
+    }
+
     async function loadDashboardTicketDetail(t, cardEl, detailEl) {
         cardEl.classList.add('expanded');
         detailEl.style.display = 'block';
@@ -2032,10 +2089,9 @@
         el.innerHTML =
             '<div class="dash-section-divider">תיאור הקריאה</div>' +
             '<div style="font-size:14px;white-space:pre-wrap;margin-bottom:10px">' + escapeHtml(t.description) + '</div>' +
-            (t.assignedToName ? '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">מטופל ע"י ' + escapeHtml(t.assignedToName) + '</div>' : '') +
             '<div class="dash-section-divider">היסטוריית הקריאה</div>' +
             '<div class="dash-timeline">' +
-            (log.length ? log.map(renderTimelineEntry).join('') : '<span style="color:var(--muted);font-size:12px">אין רשומות</span>') +
+            (log.length ? log.map(function (entry) { return renderTimelineEntry(entry, t); }).join('') : '<span style="color:var(--muted);font-size:12px">אין רשומות</span>') +
             '</div>' +
             (isIT ? '<div class="field" style="margin:10px 0 0"><div style="display:flex;gap:8px">' +
                 '<input data-dd-note-input type="text" style="flex:1" placeholder="הוסף הערה (Enter לשליחה)">' +
@@ -2098,7 +2154,13 @@
         var res = await apiPost('tickets', 'take', { ticketNumber: t.ticketNumber });
         showLoading(false);
         if (!res.ok) { alert(res.error || 'שגיאה'); return; }
-        await loadHubDashboard();
+        var user = Portal.getUser();
+        patchDashboardTicket(t.ticketNumber, {
+            status: 'בטיפול',
+            assignedToEmail: user.email,
+            assignedToName: [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email,
+            takenAt: new Date().toISOString(),
+        });
         refreshOpenDashboardDetail();
     }
 
@@ -2149,7 +2211,10 @@
         if (!res.ok) { errEl.textContent = res.error || 'שגיאה'; errEl.style.display = 'block'; return; }
         ticketCloseTracker.reset();
         closeTicketCloseModal();
-        await loadHubDashboard();
+        patchDashboardTicket(closingTicket.ticketNumber, {
+            status: 'סגורה', flagged: payload.flagged, closedAt: new Date().toISOString(),
+        });
+        refreshDashboardAggregatesOnly();
         refreshOpenDashboardDetail();
     });
 
@@ -2166,12 +2231,15 @@
     async function dashboardChangeStatus(t, newStatus) {
         if (newStatus === t.status) return;
         if (t.status === 'פתוחה' && newStatus === 'בטיפול') { await dashboardTakeTicket(t); return; }
-        if (newStatus === 'סגורה') { await dashboardCloseTicket(t); return; }
+        if (newStatus === 'סגורה') { dashboardCloseTicket(t); return; }
         showLoading(true);
         var res = await apiPost('tickets', 'updateStatus', { ticketNumber: t.ticketNumber, status: newStatus });
         showLoading(false);
         if (!res.ok) { alert(res.error || 'שגיאה'); return; }
-        await loadHubDashboard();
+        var patch = { status: newStatus };
+        // Reopening (→ פתוחה) clears the assignment server-side — mirror it locally too (item 1).
+        if (newStatus === 'פתוחה') { patch.assignedToEmail = null; patch.assignedToName = null; patch.takenAt = null; }
+        patchDashboardTicket(t.ticketNumber, patch);
         refreshOpenDashboardDetail();
     }
 

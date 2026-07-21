@@ -258,10 +258,13 @@ async function updateStatus(payload, caller) {
   if (!VALID_STATUSES.includes(newStatus)) return { ok: false, error: 'סטטוס לא תקין' };
 
   const closedAtSet = newStatus === STATUS_CLOSED ? ', ClosedAt = SYSUTCDATETIME()' : '';
+  // Reopening a ticket (→ פתוחה) clears its assignment — "בטיפול/סגורה" own the
+  // AssignedTo/TakenAt fields, a fresh "פתוחה" ticket shouldn't still show "מטופל ע"י".
+  const reopenSet = newStatus === STATUS_OPEN ? ', AssignedToEmail = NULL, AssignedToName = NULL, TakenAt = NULL' : '';
   await pool.request()
     .input('num', sql.NVarChar, ticketNumber)
     .input('status', sql.NVarChar, newStatus)
-    .query(`UPDATE Tickets SET Status = @status, UpdatedAt = SYSUTCDATETIME()${closedAtSet} WHERE TicketNumber = @num`);
+    .query(`UPDATE Tickets SET Status = @status, UpdatedAt = SYSUTCDATETIME()${closedAtSet}${reopenSet} WHERE TicketNumber = @num`);
 
   if (newStatus !== ticket.Status) {
     await writeLog(pool, ticketNumber, caller, 'status_changed', {
