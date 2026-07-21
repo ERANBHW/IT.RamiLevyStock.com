@@ -84,6 +84,18 @@
         .ticket-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 10px; }
         .ticket-meta { font-size: 12px; color: var(--muted); }
 
+        .ticket-card.urgency-card-normal { border-right: 4px solid #edd76f; }
+        .ticket-card.urgency-card-high { border-right: 4px solid #e99b36; }
+        .ticket-card.urgency-card-down { border-right: 4px solid #d94e4e; animation: blink-border-urgent 1.4s ease-in-out infinite; }
+        @keyframes blink-border-urgent {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(217, 78, 78, 0.35); }
+            50% { box-shadow: 0 0 0 5px rgba(217, 78, 78, 0); }
+        }
+        .ticket-card.request-card { background: #f4f0ff; }
+        .ticket-card.request-card.urgency-card-normal,
+        .ticket-card.request-card.urgency-card-high,
+        .ticket-card.request-card.urgency-card-down { border-right-color: #8b5cf6; animation: none; box-shadow: none; }
+
         .urgency-options-row { display: flex; gap: 8px; }
         .urgency-pill { flex: 1; display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 10px; cursor: pointer; border: 1px solid transparent; }
         .urgency-pill input { margin: 0; flex: 0 0 auto; }
@@ -132,6 +144,14 @@
         .dashboard-counter.dc-closed { background: #f0fdf6; }
         .dashboard-branch-breakdown { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
         .dashboard-branch-chip { padding: 4px 10px; border-radius: 20px; background: var(--background); font-size: 12px; border: 1px solid var(--border); }
+
+        .filter-popover {
+            position: absolute; top: calc(100% + 6px); right: 0; z-index: 60; min-width: 200px; max-height: 240px;
+            overflow-y: auto; background: var(--white); border: 1px solid var(--border); border-radius: 10px;
+            box-shadow: 0 10px 28px rgba(0,0,0,0.16); padding: 10px;
+        }
+        .filter-popover label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 400; padding: 4px 2px; cursor: pointer; }
+        .filter-popover input { width: auto; margin: 0; }
 
         .ticket-summary-line { font-size: 17px; margin: 0; line-height: 2; }
         .ticket-summary-line .icon-button { padding: 2px 6px; font-size: 13px; margin: 0 2px; vertical-align: middle; }
@@ -202,7 +222,16 @@
                     </div>
                     <div id="dashBranchBreakdown" class="dashboard-branch-breakdown"></div>
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin:14px 0 8px;flex-wrap:wrap">
-                        <select id="dashUserFilter" style="max-width:220px"></select>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap">
+                            <div style="position:relative">
+                                <button type="button" class="secondary-button" id="dashUserFilterBtn">לפי משתמש</button>
+                                <div id="dashUserFilterPopover" class="filter-popover" style="display:none"></div>
+                            </div>
+                            <div style="position:relative">
+                                <button type="button" class="secondary-button" id="dashBranchFilterBtn">לפי סניף</button>
+                                <div id="dashBranchFilterPopover" class="filter-popover" style="display:none"></div>
+                            </div>
+                        </div>
                         <div style="display:flex;gap:8px">
                             <button type="button" class="secondary-button" id="dashClosedToggleBtn">קריאות סגורות</button>
                             <button type="button" class="secondary-button" id="dashViewAllBtn">לכל הקריאות</button>
@@ -822,7 +851,6 @@
             return Portal.isSuperAdmin() || Portal.isITAdmin() || Portal.isProceduresAdmin();
         } },
         { id: 'admin-computers', icon: '💻', label: 'ניהול מחשבים', check: function () { return Portal.isITAdmin(); } },
-        { id: 'admin-tickets', icon: '🎫', label: 'תור קריאות', check: function () { return Portal.isITAdmin(); } },
         { id: 'admin-branches', icon: '🏢', label: 'ניהול סניפים', check: function () { return Portal.isSuperAdmin(); } },
         { id: 'admin-sharedfolders', icon: '📁', label: 'תיקיות משותפות', check: function () { return Portal.isSuperAdmin(); } },
         { id: 'admin-user-requests', icon: '🧑‍💼', label: 'בקשות הקמת משתמש', check: function () { return Portal.isITAdmin(); } },
@@ -1053,9 +1081,13 @@
         renderClosedTickets();
     }
 
+    var URGENCY_SEVERITY = { 'משבית': 3, 'גבוהה': 2, 'רגילה': 1 };
+    var URGENCY_CARD_CLASS = { 'משבית': 'urgency-card-down', 'גבוהה': 'urgency-card-high', 'רגילה': 'urgency-card-normal' };
+
     function buildTicketCard(t) {
         var card = document.createElement('div');
         card.className = 'ticket-card';
+        if (t.status !== 'סגורה' && URGENCY_CARD_CLASS[t.urgency]) card.classList.add(URGENCY_CARD_CLASS[t.urgency]);
         var statusClass = t.status === 'סגורה' ? 'status-closed' : (t.status === 'בטיפול' ? 'status-progress' : 'status-open');
         card.innerHTML =
             '<div class="ticket-card-header"><strong>' + escapeHtml(t.ticketNumber) + '</strong>' +
@@ -1289,6 +1321,7 @@
         renderDashboardCounts(closedCount);
         renderDashboardBranchBreakdown();
         renderDashboardUserFilter();
+        renderDashboardBranchFilter();
         renderDashboardTicketsList();
     }
 
@@ -1313,19 +1346,50 @@
             : '<span style="color:var(--muted);font-size:12px">אין קריאות פתוחות/בטיפול כרגע.</span>';
     }
 
+    // v2.1, follow-up: "לפי משתמש"/"לפי סניף" are pill buttons that open a multi-select
+    // checkbox popover (like the folder pickers elsewhere), replacing the old single-select.
+    var dashUserFilterSelection = [];
+    var dashBranchFilterSelection = [];
+
+    function updateDashFilterButtonLabel(btnId, base, count) {
+        document.getElementById(btnId).textContent = base + (count ? ' (' + count + ')' : '');
+    }
+
+    function renderFilterPopoverOptions(popoverId, values, selection, onChangeLabel) {
+        var popover = document.getElementById(popoverId);
+        popover.innerHTML = values.length
+            ? values.map(function (v) {
+                var checked = selection.indexOf(v) !== -1 ? ' checked' : '';
+                return '<label><input type="checkbox" value="' + escapeHtml(v) + '"' + checked + '>' + escapeHtml(v) + '</label>';
+            }).join('')
+            : '<span style="color:var(--muted);font-size:12px">אין נתונים</span>';
+        onChangeLabel();
+    }
+
     function renderDashboardUserFilter() {
-        var sel = document.getElementById('dashUserFilter');
-        var current = sel.value;
         var users = Array.from(new Set(dashboardOpenTickets.map(function (t) { return t.userName || t.userEmail; }))).sort();
-        sel.innerHTML = '<option value="">כל המשתמשים</option>' +
-            users.map(function (u) { return '<option' + (u === current ? ' selected' : '') + '>' + escapeHtml(u) + '</option>'; }).join('');
+        dashUserFilterSelection = dashUserFilterSelection.filter(function (u) { return users.indexOf(u) !== -1; });
+        renderFilterPopoverOptions('dashUserFilterPopover', users, dashUserFilterSelection,
+            function () { updateDashFilterButtonLabel('dashUserFilterBtn', 'לפי משתמש', dashUserFilterSelection.length); });
+    }
+
+    function renderDashboardBranchFilter() {
+        var branches = Array.from(new Set(dashboardOpenTickets.map(function (t) { return t.branch || 'ללא סניף'; }))).sort();
+        dashBranchFilterSelection = dashBranchFilterSelection.filter(function (b) { return branches.indexOf(b) !== -1; });
+        renderFilterPopoverOptions('dashBranchFilterPopover', branches, dashBranchFilterSelection,
+            function () { updateDashFilterButtonLabel('dashBranchFilterBtn', 'לפי סניף', dashBranchFilterSelection.length); });
     }
 
     function renderDashboardTicketsList() {
-        var filterUser = document.getElementById('dashUserFilter').value;
-        var list = filterUser
-            ? dashboardOpenTickets.filter(function (t) { return (t.userName || t.userEmail) === filterUser; })
-            : dashboardOpenTickets;
+        var list = dashboardOpenTickets.filter(function (t) {
+            var userOk = !dashUserFilterSelection.length || dashUserFilterSelection.indexOf(t.userName || t.userEmail) !== -1;
+            var branchOk = !dashBranchFilterSelection.length || dashBranchFilterSelection.indexOf(t.branch || 'ללא סניף') !== -1;
+            return userOk && branchOk;
+        });
+        list = list.slice().sort(function (a, b) {
+            var diff = (URGENCY_SEVERITY[b.urgency] || 0) - (URGENCY_SEVERITY[a.urgency] || 0);
+            return diff !== 0 ? diff : new Date(a.timestamp) - new Date(b.timestamp);
+        });
 
         var container = document.getElementById('dashTicketsList');
         container.innerHTML = '';
@@ -1343,7 +1407,45 @@
         });
     }
 
-    document.getElementById('dashUserFilter').addEventListener('change', renderDashboardTicketsList);
+    function toggleFilterPopover(popoverId, otherPopoverId) {
+        document.getElementById(otherPopoverId).style.display = 'none';
+        var pop = document.getElementById(popoverId);
+        pop.style.display = pop.style.display === 'none' ? 'block' : 'none';
+    }
+    document.getElementById('dashUserFilterBtn').addEventListener('click', function (e) {
+        e.stopPropagation();
+        toggleFilterPopover('dashUserFilterPopover', 'dashBranchFilterPopover');
+    });
+    document.getElementById('dashBranchFilterBtn').addEventListener('click', function (e) {
+        e.stopPropagation();
+        toggleFilterPopover('dashBranchFilterPopover', 'dashUserFilterPopover');
+    });
+    document.addEventListener('click', function () {
+        document.getElementById('dashUserFilterPopover').style.display = 'none';
+        document.getElementById('dashBranchFilterPopover').style.display = 'none';
+    });
+    document.getElementById('dashUserFilterPopover').addEventListener('click', function (e) { e.stopPropagation(); });
+    document.getElementById('dashBranchFilterPopover').addEventListener('click', function (e) { e.stopPropagation(); });
+
+    document.getElementById('dashUserFilterPopover').addEventListener('change', function (e) {
+        if (e.target.type !== 'checkbox') return;
+        var v = e.target.value;
+        dashUserFilterSelection = e.target.checked
+            ? dashUserFilterSelection.concat([v])
+            : dashUserFilterSelection.filter(function (x) { return x !== v; });
+        updateDashFilterButtonLabel('dashUserFilterBtn', 'לפי משתמש', dashUserFilterSelection.length);
+        renderDashboardTicketsList();
+    });
+    document.getElementById('dashBranchFilterPopover').addEventListener('change', function (e) {
+        if (e.target.type !== 'checkbox') return;
+        var v = e.target.value;
+        dashBranchFilterSelection = e.target.checked
+            ? dashBranchFilterSelection.concat([v])
+            : dashBranchFilterSelection.filter(function (x) { return x !== v; });
+        updateDashFilterButtonLabel('dashBranchFilterBtn', 'לפי סניף', dashBranchFilterSelection.length);
+        renderDashboardTicketsList();
+    });
+
     document.getElementById('dashViewAllBtn').addEventListener('click', function () { showView('admin-tickets'); });
 
     document.getElementById('dashClosedToggleBtn').addEventListener('click', async function () {
@@ -2352,7 +2454,6 @@
         { label: 'בקשת הקמת משתמש', show: userIsUserRequestSubmitter },
         { label: 'ניהול משתמשים', show: function (u) { return userIsSuperAdmin(u) || userIsITAdmin(u) || userIsProceduresAdmin(u); } },
         { label: 'ניהול מחשבים', show: userIsITAdmin },
-        { label: 'תור קריאות', show: userIsITAdmin },
         { label: 'ניהול סניפים', show: userIsSuperAdmin },
         { label: 'תיקיות משותפות', show: userIsSuperAdmin },
         { label: 'בקשות הקמת משתמש', show: userIsITAdmin },
