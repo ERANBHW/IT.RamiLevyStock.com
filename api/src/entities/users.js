@@ -12,6 +12,7 @@ function rowToUser(r) {
     isSuperAdmin: !!r.IsSuperAdmin,
     isITAdmin: !!r.IsITAdmin,
     isProceduresAdmin: !!r.IsProceduresAdmin,
+    isUserRequestSubmitter: !!r.IsUserRequestSubmitter,
     createdAt: r.CreatedAt,
     updatedAt: r.UpdatedAt,
   };
@@ -72,10 +73,15 @@ async function setAssignment(pool, computerName, email) {
     .query('UPDATE Computers SET AssignedUserEmail = @email, UpdatedAt = SYSUTCDATETIME() WHERE ComputerName = @name');
 }
 
+// The "add user" form only takes a username (section 11) — the server owns composing the
+// real address, same rule as SuggestedEmail in userRequests.js.
+const USER_EMAIL_DOMAIN = 'rami-levy-stock.co.il';
+
 async function create(payload, caller) {
   if (!isAnyAdmin(caller)) return { ok: false, error: 'אין הרשאה' };
-  const email = String(payload.email || '').trim().toLowerCase();
-  if (!email) return { ok: false, error: 'חסר מייל' };
+  const username = String(payload.username || '').trim().toLowerCase().replace(/@.*$/, '');
+  if (!username) return { ok: false, error: 'חסר שם משתמש' };
+  const email = `${username}@${USER_EMAIL_DOMAIN}`;
 
   const pool = await getPool();
   const existing = await pool.request().input('email', sql.NVarChar, email)
@@ -85,6 +91,7 @@ async function create(payload, caller) {
   // Only a SuperAdmin may grant admin flags — an IT/Procedures admin always creates a plain user.
   const isITAdmin = caller.isSuperAdmin ? !!payload.isITAdmin : false;
   const isProceduresAdmin = caller.isSuperAdmin ? !!payload.isProceduresAdmin : false;
+  const isUserRequestSubmitter = caller.isSuperAdmin ? !!payload.isUserRequestSubmitter : false;
 
   await pool.request()
     .input('email', sql.NVarChar, email)
@@ -95,8 +102,9 @@ async function create(payload, caller) {
     .input('role', sql.NVarChar, String(payload.role || ''))
     .input('isITAdmin', sql.Bit, isITAdmin)
     .input('isProceduresAdmin', sql.Bit, isProceduresAdmin)
-    .query(`INSERT INTO Users (Email, FirstName, LastName, Phone, BranchNumber, Role, IsSuperAdmin, IsITAdmin, IsProceduresAdmin)
-      VALUES (@email, @firstName, @lastName, @phone, @branchNumber, @role, 0, @isITAdmin, @isProceduresAdmin)`);
+    .input('isUserRequestSubmitter', sql.Bit, isUserRequestSubmitter)
+    .query(`INSERT INTO Users (Email, FirstName, LastName, Phone, BranchNumber, Role, IsSuperAdmin, IsITAdmin, IsProceduresAdmin, IsUserRequestSubmitter)
+      VALUES (@email, @firstName, @lastName, @phone, @branchNumber, @role, 0, @isITAdmin, @isProceduresAdmin, @isUserRequestSubmitter)`);
 
   if (payload.assignedComputerName) await setAssignment(pool, payload.assignedComputerName, email);
   return { ok: true };
@@ -140,6 +148,10 @@ async function adminUpdate(payload, caller) {
     if (Object.prototype.hasOwnProperty.call(payload, 'isProceduresAdmin')) {
       req.input('IsProceduresAdmin', sql.Bit, !!payload.isProceduresAdmin);
       sets.push('IsProceduresAdmin = @IsProceduresAdmin');
+    }
+    if (Object.prototype.hasOwnProperty.call(payload, 'isUserRequestSubmitter')) {
+      req.input('IsUserRequestSubmitter', sql.Bit, !!payload.isUserRequestSubmitter);
+      sets.push('IsUserRequestSubmitter = @IsUserRequestSubmitter');
     }
   }
   await req.query(`UPDATE Users SET ${sets.join(', ')} WHERE Email = @email`);

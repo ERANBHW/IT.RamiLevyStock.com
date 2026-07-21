@@ -109,6 +109,14 @@
         .role-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; background: var(--brand-pink-soft); color: var(--brand-pink-dark); margin-inline-end: 4px; }
         .admin-row-actions { display: flex; gap: 4px; }
         .anydesk-link { color: var(--brand-pink-dark); text-decoration: none; font-weight: 700; }
+
+        .folder-checkbox-list { display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; padding: 8px 10px; border: 1px solid #cfd1d6; border-radius: 9px; }
+        .folder-checkbox-list label { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 400; cursor: pointer; }
+        .folder-checkbox-list input { width: auto; margin: 0; }
+        .script-box { width: 100%; font-family: Consolas, Menlo, monospace; font-size: 12px; direction: ltr; text-align: left; resize: vertical; }
+        .email-suffix-row { display: flex; align-items: center; gap: 8px; }
+        .email-suffix-row input { flex: 1; }
+        .email-suffix { color: var(--muted); font-size: 13px; white-space: nowrap; }
     </style>
 </head>
 
@@ -270,6 +278,57 @@
         </div>
     </main>
 
+    <!-- VIEW: user request form -->
+    <main class="app" id="view-user-request">
+        <div class="content">
+            <div id="userRequestFormContainer">
+                <h1 class="page-title">בקשת הקמת משתמש</h1>
+                <p class="page-subtitle">הפרטים יישלחו לצוות ה-IT להקמה ב-365. הכתובת מחושבת אוטומטית משם באנגלית.</p>
+
+                <section class="section">
+                    <h2 class="section-title">שם</h2>
+                    <div class="grid-2">
+                        <div class="field"><label for="urFirstNameHe">שם פרטי (עברית)</label><input id="urFirstNameHe" type="text"></div>
+                        <div class="field"><label for="urLastNameHe">שם משפחה (עברית)</label><input id="urLastNameHe" type="text"></div>
+                        <div class="field"><label for="urFirstNameEn">שם פרטי (אנגלית)</label><input id="urFirstNameEn" type="text" dir="ltr"></div>
+                        <div class="field"><label for="urLastNameEn">שם משפחה (אנגלית)</label><input id="urLastNameEn" type="text" dir="ltr"></div>
+                    </div>
+                </section>
+
+                <section class="section">
+                    <h2 class="section-title">פרטים נוספים</h2>
+                    <div class="field"><label for="urBranch">סניף</label><select id="urBranch"></select></div>
+                    <div class="field"><label for="urRole">תפקיד</label><input id="urRole" type="text"></div>
+                    <div class="field"><label>תיקיות משותפות</label><div id="urFolders" class="folder-checkbox-list"></div></div>
+                </section>
+
+                <div id="userRequestSubmitError" style="display:none;color:var(--danger);font-size:13px;margin-bottom:12px"></div>
+                <button type="button" class="primary-button" style="width:100%" id="userRequestSubmitBtn">שלח בקשה</button>
+            </div>
+
+            <div id="userRequestConfirmation" style="display:none;text-align:center;padding:40px 20px">
+                <div style="font-size:44px">✅</div>
+                <h2 style="color:var(--success);margin:10px 0 6px">הבקשה נשלחה בהצלחה!</h2>
+                <div style="display:inline-block;padding:8px 20px;border-radius:30px;background:var(--success-bg);color:var(--success);font-weight:700;margin:6px 0 14px" id="confirmUserRequestNumber"></div>
+                <p style="color:var(--muted)">צוות ה-IT יקים את המשתמש בהקדם.</p>
+                <button type="button" class="secondary-button" id="userRequestHomeBtn">חזור לדף הבית</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- VIEW: admin user requests queue -->
+    <main class="app" id="view-admin-user-requests">
+        <div class="content">
+            <h1 class="page-title">בקשות הקמת משתמש</h1>
+            <p class="page-subtitle">בקשות ממתינות; לחיצה פותחת עריכה + סקריפט הקמה</p>
+            <div id="userRequestsQueueList" style="display:flex;flex-direction:column;gap:10px"></div>
+            <div class="closed-tickets-toggle">
+                <button type="button" class="secondary-button" id="userRequestsCompletedToggleBtn">בקשות שהוקמו</button>
+            </div>
+            <div id="userRequestsCompletedList" style="display:none"></div>
+        </div>
+    </main>
+
     <!-- VIEW: admin users -->
     <main class="app" id="view-admin-users">
         <div class="content">
@@ -354,7 +413,9 @@
     <div class="profile-modal" style="max-width:480px">
         <div class="profile-modal-header"><h2 id="userAdminModalTitle">משתמש חדש</h2></div>
         <div class="profile-modal-body">
-            <div class="field"><label for="uaEmail">מייל (ה-UPN)</label><input id="uaEmail" type="email" dir="ltr"></div>
+            <div class="field"><label for="uaUsername">מייל</label>
+                <div class="email-suffix-row"><input id="uaUsername" type="text" dir="ltr"><span class="email-suffix" dir="ltr">@rami-levy-stock.co.il</span></div>
+            </div>
             <div class="grid-2">
                 <div class="field"><label for="uaFirstName">שם פרטי</label><input id="uaFirstName" type="text"></div>
                 <div class="field"><label for="uaLastName">שם משפחה</label><input id="uaLastName" type="text"></div>
@@ -370,8 +431,28 @@
                 <div class="field" style="flex-direction:row;align-items:center;gap:8px">
                     <input id="uaIsProceduresAdmin" type="checkbox" style="width:auto"><label for="uaIsProceduresAdmin" style="margin:0">הרשאת ניהול נהלים</label>
                 </div>
+                <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+                    <input id="uaIsUserRequestSubmitter" type="checkbox" style="width:auto"><label for="uaIsUserRequestSubmitter" style="margin:0">מורשה להקמת משתמשים</label>
+                </div>
             </div>
             <div id="userAdminModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+
+            <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+                <p class="page-subtitle" style="margin:0 0 10px">הכנת סקריפט הקמה ב-365 (לשם באנגלית ותיקיות משותפות)</p>
+                <div class="grid-2">
+                    <div class="field"><label for="uaFirstNameEn">שם פרטי (אנגלית)</label><input id="uaFirstNameEn" type="text" dir="ltr"></div>
+                    <div class="field"><label for="uaLastNameEn">שם משפחה (אנגלית)</label><input id="uaLastNameEn" type="text" dir="ltr"></div>
+                </div>
+                <div class="field"><label>תיקיות משותפות</label><div id="uaFolders" class="folder-checkbox-list"></div></div>
+                <button type="button" class="secondary-button" id="uaGenerateScriptBtn">הכן סקריפט הקמה</button>
+                <div id="uaScriptResult" style="display:none;margin-top:10px">
+                    <div class="field"><label>מייל מחושב</label><input id="uaScriptEmail" readonly dir="ltr"></div>
+                    <div class="field"><label>סקריפט</label>
+                        <textarea id="uaScriptBox" class="script-box" rows="8" readonly></textarea>
+                        <button type="button" class="secondary-button" id="uaCopyScriptBtn" style="margin-top:6px">העתק סקריפט</button>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="profile-modal-actions">
             <button type="button" class="primary-button" style="flex:1" id="userAdminSaveBtn">שמור</button>
@@ -446,6 +527,42 @@
     </div>
 </div>
 
+<!-- User request detail modal (review + script) -->
+<div class="profile-modal-backdrop" id="userRequestDetailBackdrop">
+    <div class="profile-modal" style="max-width:560px">
+        <div class="profile-modal-header"><h2 id="userRequestDetailTitle"></h2></div>
+        <div class="profile-modal-body">
+            <div class="grid-2">
+                <div class="field"><label for="urdFirstNameHe">שם פרטי (עברית)</label><input id="urdFirstNameHe" type="text"></div>
+                <div class="field"><label for="urdLastNameHe">שם משפחה (עברית)</label><input id="urdLastNameHe" type="text"></div>
+                <div class="field"><label for="urdFirstNameEn">שם פרטי (אנגלית)</label><input id="urdFirstNameEn" type="text" dir="ltr"></div>
+                <div class="field"><label for="urdLastNameEn">שם משפחה (אנגלית)</label><input id="urdLastNameEn" type="text" dir="ltr"></div>
+            </div>
+            <div class="field"><label for="urdBranch">סניף</label><select id="urdBranch"></select></div>
+            <div class="field"><label for="urdRole">תפקיד</label><input id="urdRole" type="text"></div>
+            <div class="field"><label>תיקיות משותפות</label><div id="urdFolders" class="folder-checkbox-list"></div></div>
+            <div class="field"><label>מייל מחושב</label><input id="urdSuggestedEmail" readonly dir="ltr"></div>
+            <div class="field"><label>סקריפט הקמה (Cloud Shell / PowerShell)</label>
+                <textarea id="urdScript" class="script-box" rows="10" readonly></textarea>
+                <button type="button" class="secondary-button" id="urdCopyScriptBtn" style="margin-top:6px">העתק סקריפט</button>
+            </div>
+            <div id="userRequestDetailError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+
+            <div id="urdWelcomeSection" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+                <div class="field"><label>הודעת ברוכים-הבאים למשתמש</label>
+                    <textarea id="urdWelcomeMessage" class="script-box" rows="5" readonly></textarea>
+                    <button type="button" class="secondary-button" id="urdCopyWelcomeBtn" style="margin-top:6px">העתק הודעה</button>
+                </div>
+            </div>
+        </div>
+        <div class="profile-modal-actions" style="flex-wrap:wrap">
+            <button type="button" class="primary-button" id="urdSaveBtn">שמור שינויים</button>
+            <button type="button" class="primary-button" id="urdMarkCompletedBtn" style="display:none">סימון כהוקם</button>
+            <button type="button" class="secondary-button" id="urdCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
 <!-- Procedure edit modal -->
 <div class="profile-modal-backdrop" id="procedureModalBackdrop">
     <div class="profile-modal" style="max-width:520px">
@@ -485,6 +602,8 @@
         if (id === 'admin-tickets') loadTicketsAdminPage();
         if (id === 'admin-branches') loadBranchesAdminPage();
         if (id === 'admin-sharedfolders') loadSharedFoldersAdminPage();
+        if (id === 'user-request') loadUserRequestFormPage();
+        if (id === 'admin-user-requests') loadUserRequestsAdminPage();
     }
 
     // ── BRANCHES: shared cache used by profile/ticket/admin screens ───
@@ -510,11 +629,34 @@
         selectEl.innerHTML = '<option value="">בחר סניף</option>' + options;
     }
 
+    // ── SHARED FOLDERS: shared cache used by the user-request form + admin screens ───
+    var allSharedFoldersCache = null;
+
+    async function ensureSharedFoldersLoaded() {
+        if (allSharedFoldersCache) return allSharedFoldersCache;
+        var res = await apiGet('sharedFolders', 'list', {});
+        allSharedFoldersCache = res.ok ? res.data : [];
+        return allSharedFoldersCache;
+    }
+
+    function renderFolderCheckboxes(containerEl, selectedIds) {
+        selectedIds = selectedIds || [];
+        containerEl.innerHTML = (allSharedFoldersCache || []).map(function (f) {
+            var checked = selectedIds.indexOf(f.id) !== -1 ? ' checked' : '';
+            return '<label><input type="checkbox" value="' + f.id + '"' + checked + '>' + escapeHtml(f.name) + '</label>';
+        }).join('') || '<p style="color:var(--muted);font-size:13px;margin:0">אין תיקיות מוגדרות עדיין.</p>';
+    }
+
+    function getSelectedFolderIds(containerEl) {
+        return Array.from(containerEl.querySelectorAll('input[type="checkbox"]:checked')).map(function (el) { return el.value; });
+    }
+
     // ── HUB VIEW ──────────────────────────────────────────────
     var HUB_BUTTONS = [
         { id: 'ticket', icon: '📋', label: 'פתיחת קריאה' },
         { id: 'signature', icon: '✍️', label: 'יצירת חתימה' },
         { id: 'procedures', icon: '📖', label: 'נהלי עבודה' },
+        { id: 'user-request', icon: '🧑‍💼', label: 'בקשת הקמת משתמש', check: function () { return Portal.isUserRequestSubmitter(); } },
     ];
 
     var HUB_ADMIN_BUTTONS = [
@@ -525,6 +667,7 @@
         { id: 'admin-tickets', icon: '🎫', label: 'תור קריאות', check: function () { return Portal.isITAdmin(); } },
         { id: 'admin-branches', icon: '🏢', label: 'ניהול סניפים', check: function () { return Portal.isSuperAdmin(); } },
         { id: 'admin-sharedfolders', icon: '📁', label: 'תיקיות משותפות', check: function () { return Portal.isSuperAdmin(); } },
+        { id: 'admin-user-requests', icon: '🧑‍💼', label: 'בקשות הקמת משתמש', check: function () { return Portal.isITAdmin(); } },
     ];
 
     function renderHubButtons(container, buttons) {
@@ -540,7 +683,8 @@
     }
 
     function renderHubActions() {
-        renderHubButtons(document.getElementById('hubActions'), HUB_BUTTONS);
+        var mainButtons = HUB_BUTTONS.filter(function (b) { return !b.check || b.check(); });
+        renderHubButtons(document.getElementById('hubActions'), mainButtons);
 
         var adminButtons = HUB_ADMIN_BUTTONS.filter(function (b) { return b.check(); });
         document.getElementById('hubAdminSection').style.display = adminButtons.length ? 'block' : 'none';
@@ -1056,6 +1200,227 @@
         else alert(res.error || 'שגיאה במחיקה');
     }
 
+    // ── USER REQUEST FORM (v2.1, section 4ב) ───────────────────
+    async function loadUserRequestFormPage() {
+        document.getElementById('userRequestFormContainer').style.display = 'block';
+        document.getElementById('userRequestConfirmation').style.display = 'none';
+        document.getElementById('userRequestSubmitError').style.display = 'none';
+        ['urFirstNameHe', 'urLastNameHe', 'urFirstNameEn', 'urLastNameEn', 'urRole'].forEach(function (id) {
+            document.getElementById(id).value = '';
+        });
+        showLoading(true);
+        await ensureBranchesLoaded();
+        populateBranchSelect(document.getElementById('urBranch'), '');
+        await ensureSharedFoldersLoaded();
+        renderFolderCheckboxes(document.getElementById('urFolders'), []);
+        showLoading(false);
+    }
+
+    document.getElementById('userRequestSubmitBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('userRequestSubmitError');
+        var payload = {
+            firstNameHe: document.getElementById('urFirstNameHe').value.trim(),
+            lastNameHe: document.getElementById('urLastNameHe').value.trim(),
+            firstNameEn: document.getElementById('urFirstNameEn').value.trim(),
+            lastNameEn: document.getElementById('urLastNameEn').value.trim(),
+            branchNumber: document.getElementById('urBranch').value,
+            role: document.getElementById('urRole').value.trim(),
+            folderIds: getSelectedFolderIds(document.getElementById('urFolders')),
+        };
+        if (!payload.firstNameHe || !payload.lastNameHe || !payload.firstNameEn || !payload.lastNameEn) {
+            errEl.textContent = 'יש למלא שם פרטי ומשפחה בעברית ובאנגלית';
+            errEl.style.display = 'block';
+            return;
+        }
+        showLoading(true);
+        var res = await apiPost('userRequests', 'create', payload);
+        showLoading(false);
+        if (res.ok) {
+            document.getElementById('confirmUserRequestNumber').textContent = res.data.requestNumber;
+            document.getElementById('userRequestFormContainer').style.display = 'none';
+            document.getElementById('userRequestConfirmation').style.display = 'block';
+        } else {
+            errEl.textContent = res.error || 'שגיאה בשליחת הבקשה';
+            errEl.style.display = 'block';
+        }
+    });
+
+    document.getElementById('userRequestHomeBtn').addEventListener('click', function () { showView('hub'); });
+
+    // ── ADMIN: USER REQUESTS QUEUE (v2.1, section 4ב) ───────────
+    var userRequestsCache = [];
+    var openUserRequestId = null;
+
+    async function loadUserRequestsAdminPage() {
+        showLoading(true);
+        var res = await apiGet('userRequests', 'list', {});
+        showLoading(false);
+        userRequestsCache = res.ok ? res.data : [];
+        renderUserRequestsQueue();
+    }
+
+    function buildUserRequestCard(r) {
+        var card = document.createElement('div');
+        card.className = 'ticket-card';
+        var statusClass = r.status === 'הוקם' ? 'status-closed' : 'status-open';
+        card.innerHTML =
+            '<div class="ticket-card-header"><strong>' + escapeHtml(r.requestNumber) + '</strong>' +
+            '<span class="status-badge ' + statusClass + '">' + escapeHtml(r.status) + '</span></div>' +
+            '<div class="ticket-meta">' + formatDateTime(r.timestamp) + ' | ' + escapeHtml(r.firstNameHe + ' ' + r.lastNameHe) +
+            ' | ' + escapeHtml(r.suggestedEmail) + '</div>';
+        card.addEventListener('click', function () { openUserRequestDetail(r); });
+        return card;
+    }
+
+    function renderUserRequestsQueue() {
+        var pending = userRequestsCache.filter(function (r) { return r.status !== 'הוקם'; });
+        var completed = userRequestsCache.filter(function (r) { return r.status === 'הוקם'; });
+
+        var pendingEl = document.getElementById('userRequestsQueueList');
+        pendingEl.innerHTML = pending.length ? '' : '<p style="color:var(--muted);font-size:13px">אין בקשות ממתינות.</p>';
+        pending.forEach(function (r) { pendingEl.appendChild(buildUserRequestCard(r)); });
+
+        var completedEl = document.getElementById('userRequestsCompletedList');
+        completedEl.innerHTML = completed.length ? '' : '<p style="color:var(--muted);font-size:13px">אין בקשות שהוקמו עדיין.</p>';
+        completed.forEach(function (r) { completedEl.appendChild(buildUserRequestCard(r)); });
+    }
+
+    document.getElementById('userRequestsCompletedToggleBtn').addEventListener('click', function () {
+        var el = document.getElementById('userRequestsCompletedList');
+        el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+    });
+
+    var userRequestDetailTracker = makeDirtyTracker(document.getElementById('userRequestDetailBackdrop'));
+    var currentUserRequestFull = null;
+
+    function currentUserRequestFieldPayload() {
+        return {
+            requestId: openUserRequestId,
+            firstNameHe: document.getElementById('urdFirstNameHe').value.trim(),
+            lastNameHe: document.getElementById('urdLastNameHe').value.trim(),
+            firstNameEn: document.getElementById('urdFirstNameEn').value.trim(),
+            lastNameEn: document.getElementById('urdLastNameEn').value.trim(),
+            branchNumber: document.getElementById('urdBranch').value,
+            role: document.getElementById('urdRole').value.trim(),
+            folderIds: getSelectedFolderIds(document.getElementById('urdFolders')),
+        };
+    }
+
+    async function refreshUserRequestScriptPreview() {
+        var res = await apiPost('userRequests', 'previewScript', currentUserRequestFieldPayload());
+        if (res.ok) {
+            document.getElementById('urdSuggestedEmail').value = res.data.suggestedEmail;
+            document.getElementById('urdScript').value = res.data.script;
+        }
+    }
+
+    async function openUserRequestDetail(r) {
+        openUserRequestId = r.requestId;
+        document.getElementById('userRequestDetailTitle').textContent = r.requestNumber;
+        document.getElementById('userRequestDetailError').style.display = 'none';
+        document.getElementById('urdWelcomeSection').style.display = 'none';
+        document.getElementById('userRequestDetailBackdrop').classList.add('visible');
+
+        showLoading(true);
+        var res = await apiGet('userRequests', 'get', { requestId: r.requestId });
+        showLoading(false);
+        if (!res.ok) {
+            document.getElementById('userRequestDetailError').textContent = res.error || 'שגיאה בטעינה';
+            document.getElementById('userRequestDetailError').style.display = 'block';
+            return;
+        }
+        var req = res.data.request;
+        currentUserRequestFull = req;
+        document.getElementById('urdFirstNameHe').value = req.firstNameHe;
+        document.getElementById('urdLastNameHe').value = req.lastNameHe;
+        document.getElementById('urdFirstNameEn').value = req.firstNameEn;
+        document.getElementById('urdLastNameEn').value = req.lastNameEn;
+        await ensureBranchesLoaded();
+        populateBranchSelect(document.getElementById('urdBranch'), req.branchNumber);
+        document.getElementById('urdRole').value = req.role;
+        renderFolderCheckboxes(document.getElementById('urdFolders'), res.data.folders.map(function (f) { return f.id; }));
+        document.getElementById('urdSuggestedEmail').value = req.suggestedEmail;
+
+        var isCompleted = req.status === 'הוקם';
+        document.getElementById('urdMarkCompletedBtn').style.display = isCompleted ? 'none' : 'inline-block';
+        if (isCompleted) {
+            document.getElementById('urdWelcomeSection').style.display = 'block';
+            document.getElementById('urdWelcomeMessage').value = buildWelcomeMessage(req);
+        }
+
+        await refreshUserRequestScriptPreview();
+        userRequestDetailTracker.reset();
+    }
+
+    function buildWelcomeMessage(req) {
+        return 'שלום ' + req.firstNameHe + ',\n\n' +
+            'המשתמש שלך במערכות החברה הוקם.\n' +
+            'שם משתמש: ' + req.suggestedEmail + '\n' +
+            'סיסמה זמנית: ' + req.tempPassword + '\n\n' +
+            'בכניסה הראשונה תתבקש/י לבחור סיסמה חדשה.';
+    }
+
+    document.getElementById('userRequestDetailBackdrop').addEventListener('input', function (e) {
+        if (e.target.closest('#urdFirstNameHe,#urdLastNameHe,#urdFirstNameEn,#urdLastNameEn,#urdRole,#urdFolders')) refreshUserRequestScriptPreview();
+    });
+    document.getElementById('userRequestDetailBackdrop').addEventListener('change', function (e) {
+        if (e.target.closest('#urdFolders,#urdBranch')) refreshUserRequestScriptPreview();
+    });
+
+    function closeUserRequestDetail() { document.getElementById('userRequestDetailBackdrop').classList.remove('visible'); }
+
+    document.getElementById('urdCancelBtn').addEventListener('click', function () {
+        if (userRequestDetailTracker.confirmDiscard()) closeUserRequestDetail();
+    });
+    document.getElementById('urdCopyScriptBtn').addEventListener('click', function () {
+        copyToClipboard(document.getElementById('urdScript').value, this);
+    });
+    document.getElementById('urdCopyWelcomeBtn').addEventListener('click', function () {
+        copyToClipboard(document.getElementById('urdWelcomeMessage').value, this);
+    });
+
+    document.getElementById('urdSaveBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('userRequestDetailError');
+        var payload = currentUserRequestFieldPayload();
+        if (!payload.firstNameHe || !payload.lastNameHe || !payload.firstNameEn || !payload.lastNameEn) {
+            errEl.textContent = 'יש למלא שם פרטי ומשפחה בעברית ובאנגלית';
+            errEl.style.display = 'block';
+            return;
+        }
+        showLoading(true);
+        var res = await apiPost('userRequests', 'update', payload);
+        showLoading(false);
+        if (res.ok) {
+            userRequestDetailTracker.reset();
+            await refreshUserRequestScriptPreview();
+            loadUserRequestsAdminPage();
+        } else {
+            errEl.textContent = res.error || 'שגיאה בשמירה';
+            errEl.style.display = 'block';
+        }
+    });
+
+    document.getElementById('urdMarkCompletedBtn').addEventListener('click', async function () {
+        if (!confirm('לסמן את הבקשה כהוקמה? ודא/י שהרצת את הסקריפט בפועל קודם.')) return;
+        showLoading(true);
+        var res = await apiPost('userRequests', 'markCompleted', { requestId: openUserRequestId });
+        showLoading(false);
+        if (res.ok) {
+            document.getElementById('urdMarkCompletedBtn').style.display = 'none';
+            document.getElementById('urdWelcomeSection').style.display = 'block';
+            document.getElementById('urdWelcomeMessage').value = buildWelcomeMessage({
+                firstNameHe: document.getElementById('urdFirstNameHe').value.trim(),
+                suggestedEmail: document.getElementById('urdSuggestedEmail').value,
+                tempPassword: currentUserRequestFull ? currentUserRequestFull.tempPassword : '',
+            });
+            userRequestDetailTracker.reset();
+            loadUserRequestsAdminPage();
+        } else {
+            document.getElementById('userRequestDetailError').textContent = res.error || 'שגיאה';
+            document.getElementById('userRequestDetailError').style.display = 'block';
+        }
+    });
+
     // ── ADMIN: USERS ──────────────────────────────────────────
     var editingUserEmail = null;
     var computersCache = [];
@@ -1121,16 +1486,22 @@
     async function openUserAdminModal(user) {
         editingUserEmail = user ? user.email : null;
         document.getElementById('userAdminModalTitle').textContent = user ? 'עריכת משתמש' : 'משתמש חדש';
-        document.getElementById('uaEmail').value = user ? user.email : '';
-        document.getElementById('uaEmail').disabled = !!user;
+        document.getElementById('uaUsername').value = user ? user.email.split('@')[0] : '';
+        document.getElementById('uaUsername').disabled = !!user;
         document.getElementById('uaFirstName').value = user ? user.firstName : '';
         document.getElementById('uaLastName').value = user ? user.lastName : '';
+        document.getElementById('uaFirstNameEn').value = '';
+        document.getElementById('uaLastNameEn').value = '';
         document.getElementById('uaPhone').value = user ? user.phone : '';
         await ensureBranchesLoaded();
         populateBranchSelect(document.getElementById('uaBranch'), user ? user.branchNumber : '');
+        await ensureSharedFoldersLoaded();
+        renderFolderCheckboxes(document.getElementById('uaFolders'), []);
+        document.getElementById('uaScriptResult').style.display = 'none';
         document.getElementById('uaRole').value = user ? user.role : '';
         document.getElementById('uaIsITAdmin').checked = !!(user && user.isITAdmin);
         document.getElementById('uaIsProceduresAdmin').checked = !!(user && user.isProceduresAdmin);
+        document.getElementById('uaIsUserRequestSubmitter').checked = !!(user && user.isUserRequestSubmitter);
         // Only a SuperAdmin may grant admin flags — a plain IT/Procedures admin creating
         // a user never sees this section (matches server-side enforcement).
         document.getElementById('uaAdminFlagsSection').style.display = Portal.isSuperAdmin() ? 'block' : 'none';
@@ -1151,7 +1522,6 @@
     document.getElementById('userAdminSaveBtn').addEventListener('click', async function () {
         var errEl = document.getElementById('userAdminModalError');
         var payload = {
-            email: document.getElementById('uaEmail').value.trim().toLowerCase(),
             firstName: document.getElementById('uaFirstName').value.trim(),
             lastName: document.getElementById('uaLastName').value.trim(),
             phone: document.getElementById('uaPhone').value.trim(),
@@ -1159,15 +1529,54 @@
             role: document.getElementById('uaRole').value.trim(),
             isITAdmin: document.getElementById('uaIsITAdmin').checked,
             isProceduresAdmin: document.getElementById('uaIsProceduresAdmin').checked,
+            isUserRequestSubmitter: document.getElementById('uaIsUserRequestSubmitter').checked,
             assignedComputerName: document.getElementById('uaComputer').value,
         };
-        if (!payload.email) { errEl.textContent = 'יש למלא מייל'; errEl.style.display = 'block'; return; }
+        if (editingUserEmail) {
+            payload.email = editingUserEmail;
+        } else {
+            payload.username = document.getElementById('uaUsername').value.trim().toLowerCase();
+            if (!payload.username) { errEl.textContent = 'יש למלא מייל'; errEl.style.display = 'block'; return; }
+        }
 
         showLoading(true);
         var res = await apiPost('users', editingUserEmail ? 'adminUpdate' : 'create', payload);
         showLoading(false);
         if (res.ok) { userAdminTracker.reset(); closeUserAdminModal(); loadUsersAdminPage(); }
         else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
+    });
+
+    document.getElementById('uaGenerateScriptBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('userAdminModalError');
+        var scriptPayload = {
+            firstNameHe: document.getElementById('uaFirstName').value.trim(),
+            lastNameHe: document.getElementById('uaLastName').value.trim(),
+            firstNameEn: document.getElementById('uaFirstNameEn').value.trim(),
+            lastNameEn: document.getElementById('uaLastNameEn').value.trim(),
+            role: document.getElementById('uaRole').value.trim(),
+            branchNumber: document.getElementById('uaBranch').value,
+            folderIds: getSelectedFolderIds(document.getElementById('uaFolders')),
+        };
+        if (!scriptPayload.firstNameHe || !scriptPayload.lastNameHe || !scriptPayload.firstNameEn || !scriptPayload.lastNameEn) {
+            errEl.textContent = 'יש למלא שם פרטי ומשפחה בעברית ובאנגלית כדי להכין סקריפט';
+            errEl.style.display = 'block';
+            return;
+        }
+        showLoading(true);
+        var res = await apiPost('userRequests', 'previewScript', scriptPayload);
+        showLoading(false);
+        if (res.ok) {
+            document.getElementById('uaScriptEmail').value = res.data.suggestedEmail;
+            document.getElementById('uaScriptBox').value = res.data.script;
+            document.getElementById('uaScriptResult').style.display = 'block';
+        } else {
+            errEl.textContent = res.error || 'שגיאה בהכנת הסקריפט';
+            errEl.style.display = 'block';
+        }
+    });
+
+    document.getElementById('uaCopyScriptBtn').addEventListener('click', function () {
+        copyToClipboard(document.getElementById('uaScriptBox').value, this);
     });
 
     async function deleteAdminUser(user) {

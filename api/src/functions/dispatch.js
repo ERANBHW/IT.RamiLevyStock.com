@@ -19,6 +19,7 @@ const tickets = require('../entities/tickets');
 const procedures = require('../entities/procedures');
 const branches = require('../entities/branches');
 const sharedFolders = require('../entities/sharedFolders');
+const userRequests = require('../entities/userRequests');
 
 const ROUTES = {
   users: {
@@ -65,6 +66,14 @@ const ROUTES = {
     update: sharedFolders.update,
     delete: sharedFolders.remove,
   },
+  userRequests: {
+    create: userRequests.create,
+    list: userRequests.list,
+    get: userRequests.get,
+    update: userRequests.update,
+    previewScript: userRequests.previewScript,
+    markCompleted: userRequests.markCompleted,
+  },
 };
 
 async function loadCaller(identity) {
@@ -79,6 +88,7 @@ async function loadCaller(identity) {
     isSuperAdmin: !!(row && row.IsSuperAdmin),
     isITAdmin: !!(row && (row.IsITAdmin || row.IsSuperAdmin)),
     isProceduresAdmin: !!(row && (row.IsProceduresAdmin || row.IsSuperAdmin)),
+    isUserRequestSubmitter: !!(row && (row.IsUserRequestSubmitter || row.IsITAdmin || row.IsSuperAdmin)),
   };
 }
 

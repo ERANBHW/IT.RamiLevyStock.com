@@ -77,4 +77,26 @@ async function sendTicketEmails(ticket) {
   }
 }
 
-module.exports = { sendTicketEmails };
+async function sendUserRequestEmail(request) {
+  const itEmail = process.env.IT_COMPANY_EMAIL;
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const staffRecipients = [itEmail, adminEmail].filter(Boolean);
+  if (!staffRecipients.length) return;
+
+  const subject = `בקשת הקמת משתמש חדש ${request.RequestNumber}`;
+  const body = [
+    `בקשה: ${request.RequestNumber}`,
+    `הוגשה ע"י: ${request.RequesterName} (${request.RequesterEmail})`,
+    `שם: ${request.FirstNameHe} ${request.LastNameHe} / ${request.FirstNameEn} ${request.LastNameEn}`,
+    `תפקיד: ${request.Role}`,
+    `מייל מוצע: ${request.SuggestedEmail}`,
+    '',
+    'פרטים מלאים, סקריפט ההקמה וסיסמה זמנית נמצאים בתור "בקשות הקמת משתמש" בפורטל.',
+    '',
+    `נשלח מטעם ${MAIL_SENDER_NAME}`,
+  ].join('\n');
+
+  await graphSendMail({ to: staffRecipients, subject, body });
+}
+
+module.exports = { sendTicketEmails, sendUserRequestEmail };
