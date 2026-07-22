@@ -5,43 +5,49 @@ function rowToProcedure(r) {
     id: r.Id,
     title: r.Title,
     content: r.Content,
-    category: r.Category,
-    order: r.Order,
+    categoryId: r.CategoryId,
+    isDraft: !!r.IsDraft,
     updatedAt: r.UpdatedAt,
     updatedBy: r.UpdatedBy,
   };
 }
 
-async function list() {
+// A draft is only visible to Procedures Admins (follow-up, item 3) — a regular employee
+// must never see unfinished/unpublished content, even by guessing an id.
+async function list(_payload, caller) {
   const pool = await getPool();
-  const result = await pool.request().query('SELECT * FROM Procedures ORDER BY Category, [Order]');
-  return { ok: true, data: result.recordset.map(rowToProcedure) };
+  const result = await pool.request().query('SELECT * FROM Procedures ORDER BY Title');
+  const rows = caller.isProceduresAdmin ? result.recordset : result.recordset.filter((r) => !r.IsDraft);
+  return { ok: true, data: rows.map(rowToProcedure) };
 }
 
 async function create(payload, caller) {
   if (!caller.isProceduresAdmin) return { ok: false, error: 'אין הרשאה' };
+  if (!payload.categoryId) return { ok: false, error: 'יש לבחור קטגוריה' };
   const pool = await getPool();
-  await pool.request()
+  const result = await pool.request()
     .input('title', sql.NVarChar, String(payload.title || ''))
     .input('content', sql.NVarChar, String(payload.content || ''))
-    .input('category', sql.NVarChar, String(payload.category || ''))
-    .input('order', sql.Int, Number(payload.order) || 0)
+    .input('categoryId', sql.UniqueIdentifier, payload.categoryId)
+    .input('isDraft', sql.Bit, !!payload.isDraft)
     .input('updatedBy', sql.NVarChar, caller.email)
-    .query('INSERT INTO Procedures (Title, Content, Category, [Order], UpdatedBy) VALUES (@title, @content, @category, @order, @updatedBy)');
-  return { ok: true };
+    .query(`INSERT INTO Procedures (Title, Content, CategoryId, IsDraft, UpdatedBy)
+      OUTPUT INSERTED.Id VALUES (@title, @content, @categoryId, @isDraft, @updatedBy)`);
+  return { ok: true, data: { id: result.recordset[0].Id } };
 }
 
 async function update(payload, caller) {
   if (!caller.isProceduresAdmin) return { ok: false, error: 'אין הרשאה' };
+  if (!payload.categoryId) return { ok: false, error: 'יש לבחור קטגוריה' };
   const pool = await getPool();
   const result = await pool.request()
     .input('id', sql.UniqueIdentifier, payload.id)
     .input('title', sql.NVarChar, String(payload.title || ''))
     .input('content', sql.NVarChar, String(payload.content || ''))
-    .input('category', sql.NVarChar, String(payload.category || ''))
-    .input('order', sql.Int, Number(payload.order) || 0)
+    .input('categoryId', sql.UniqueIdentifier, payload.categoryId)
+    .input('isDraft', sql.Bit, !!payload.isDraft)
     .input('updatedBy', sql.NVarChar, caller.email)
-    .query(`UPDATE Procedures SET Title=@title, Content=@content, Category=@category, [Order]=@order,
+    .query(`UPDATE Procedures SET Title=@title, Content=@content, CategoryId=@categoryId, IsDraft=@isDraft,
       UpdatedAt=SYSUTCDATETIME(), UpdatedBy=@updatedBy WHERE Id=@id`);
   if (!result.rowsAffected[0]) return { ok: false, error: 'הנוהל לא נמצא' };
   return { ok: true };

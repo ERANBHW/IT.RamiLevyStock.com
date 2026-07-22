@@ -17,6 +17,7 @@ const users = require('../entities/users');
 const computers = require('../entities/computers');
 const tickets = require('../entities/tickets');
 const procedures = require('../entities/procedures');
+const procedureConfig = require('../entities/procedureConfig');
 const branches = require('../entities/branches');
 const sharedFolders = require('../entities/sharedFolders');
 const userRequests = require('../entities/userRequests');
@@ -67,6 +68,13 @@ const ROUTES = {
     create: procedures.create,
     update: procedures.update,
     delete: procedures.remove,
+  },
+  procedureConfig: {
+    list: procedureConfig.list,
+    saveCategory: procedureConfig.saveCategory,
+    deleteCategory: procedureConfig.deleteCategory,
+    saveSubcategory: procedureConfig.saveSubcategory,
+    deleteSubcategory: procedureConfig.deleteSubcategory,
   },
   branches: {
     list: branches.list,

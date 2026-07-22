@@ -435,3 +435,44 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'LastNameEn')
 ALTER TABLE Users ADD LastNameEn NVARCHAR(100) NULL;
 GO
+
+-- Procedures category system (follow-up) — same categories/subcategories + drag-drop
+-- ordering pattern as TicketCategories/TicketSubcategories, but with a color per category
+-- (tickets have no category color today; only urgency levels do — this is a new axis).
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ProcedureCategories')
+CREATE TABLE ProcedureCategories (
+    Id       UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+    Name     NVARCHAR(200)    NOT NULL DEFAULT '',
+    ColorHex NVARCHAR(10)     NOT NULL DEFAULT '#8b5cf6',
+    [Order]  INT              NOT NULL DEFAULT 0
+);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ProcedureSubcategories')
+CREATE TABLE ProcedureSubcategories (
+    Id         UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+    CategoryId UNIQUEIDENTIFIER NOT NULL,
+    Name       NVARCHAR(200)    NOT NULL DEFAULT '',
+    [Order]    INT              NOT NULL DEFAULT 0,
+    CONSTRAINT FK_ProcedureSubcategories_Category FOREIGN KEY (CategoryId) REFERENCES ProcedureCategories(Id) ON DELETE CASCADE
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ProcedureSubcategories_CategoryId')
+CREATE INDEX IX_ProcedureSubcategories_CategoryId ON ProcedureSubcategories(CategoryId);
+GO
+
+-- A procedure links to its category by Id now (not free text) and can be saved as a draft
+-- — hidden from regular employees until a procedures admin publishes it (see procedures.js
+-- list()). Existing rows keep their old free-text Category column (untouched, unused by
+-- new code) and simply have no CategoryId until re-saved through the new editing screen —
+-- they show up grouped under "ללא קטגוריה" in the main view until then.
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Procedures') AND name = 'CategoryId')
+ALTER TABLE Procedures ADD CategoryId UNIQUEIDENTIFIER NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Procedures_Category')
+ALTER TABLE Procedures ADD CONSTRAINT FK_Procedures_Category
+    FOREIGN KEY (CategoryId) REFERENCES ProcedureCategories(Id) ON DELETE SET NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Procedures') AND name = 'IsDraft')
+ALTER TABLE Procedures ADD IsDraft BIT NOT NULL DEFAULT 0;
+GO

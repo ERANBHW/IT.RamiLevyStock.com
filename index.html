@@ -139,15 +139,16 @@
         .closed-tickets-toggle { margin-bottom: 16px; }
         #closedTicketsList { display: flex; flex-direction: column; gap: 10px; }
 
-        .procedure-category-title { margin: 22px 0 10px; font-size: 15px; color: var(--brand-pink-dark); }
+        .procedure-category-title { margin: 22px 0 10px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
         .procedure-category-title:first-child { margin-top: 0; }
-        .procedure-card { border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
+        .procedure-card { border: 1px solid var(--border); border-right-width: 4px; border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
         .procedure-card-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; cursor: pointer; background: var(--white); }
         .procedure-card-header:hover { background: var(--background); }
-        .procedure-card-title { font-weight: 700; font-size: 14px; }
+        .procedure-card-title { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; }
         .procedure-actions { display: flex; gap: 6px; }
         .procedure-card-content { display: none; padding: 0 14px 14px; font-size: 13px; color: #333; white-space: pre-wrap; line-height: 1.6; }
         .procedure-card.expanded .procedure-card-content { display: block; }
+        .procedure-draft-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; background: #fdecec; color: var(--danger); }
 
         .admin-table-scroll { max-height: 65vh; overflow: auto; border: 1px solid var(--border); border-radius: 10px; }
         .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -417,6 +418,10 @@
                                 <button type="button" class="sort-btn" id="dashBranchFilterBtn">סניף</button>
                                 <div id="dashBranchFilterPopover" class="filter-popover" style="display:none"></div>
                             </div>
+                            <div style="position:relative" id="dashUrgencyFilterWrap">
+                                <button type="button" class="sort-btn" id="dashUrgencyFilterBtn">דרגה</button>
+                                <div id="dashUrgencyFilterPopover" class="filter-popover" style="display:none"></div>
+                            </div>
                             <div style="position:relative;display:none" id="dashTaskTypeFilterWrap">
                                 <button type="button" class="sort-btn" id="dashTaskTypeFilterBtn">סוג משימה</button>
                                 <div id="dashTaskTypeFilterPopover" class="filter-popover" style="display:none"></div>
@@ -592,11 +597,7 @@
     <!-- VIEW: procedures -->
     <main class="app" id="view-procedures">
         <div class="content">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-                <h1 class="page-title" style="margin:0">נהלי עבודה</h1>
-                <button type="button" class="primary-button" id="procedureAddBtn" style="display:none">+ הוסף נוהל</button>
-            </div>
-            <p class="page-subtitle">נהלי בטיחות, אבטחת מידע ומחשוב</p>
+            <h1 class="page-title" style="margin:0 0 16px">נהלי עבודה</h1>
             <div id="proceduresList"></div>
         </div>
     </main>
@@ -801,6 +802,61 @@
         </div>
     </main>
 
+    <!-- VIEW: admin procedure config (categories/subcategories/procedures) — follow-up -->
+    <main class="app" id="view-admin-procedure-config">
+        <div class="content">
+            <h1 class="page-title">עריכת נהלי עבודה</h1>
+            <p class="page-subtitle">קטגוריות, תת-קטגוריות וצבעים לתצוגת הנהלים בדף הראשי, וניהול הנהלים עצמם.</p>
+
+            <section class="section">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                    <h2 class="section-title" style="margin:0">קטגוריות ותתי-קטגוריות</h2>
+                    <button type="button" class="primary-button" id="pcCategoryAddBtn">+ קטגוריה חדשה</button>
+                </div>
+                <div id="pcCategoriesList" style="display:flex;flex-direction:column;gap:10px"></div>
+            </section>
+
+            <section class="section">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                    <h2 class="section-title" style="margin:0">נהלים</h2>
+                    <button type="button" class="primary-button" id="pcProcedureAddBtn">+ נוהל חדש</button>
+                </div>
+                <div id="pcProceduresList" style="display:flex;flex-direction:column;gap:8px"></div>
+            </section>
+        </div>
+    </main>
+
+</div>
+
+<!-- Procedure category modal -->
+<div class="profile-modal-backdrop" id="pcCategoryModalBackdrop">
+    <div class="profile-modal" style="max-width:420px">
+        <div class="profile-modal-header"><h2 id="pcCategoryModalTitle">קטגוריה חדשה</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="pcCategoryName">שם קטגוריה</label><input id="pcCategoryName" type="text"></div>
+            <div class="field"><label for="pcCategoryColor">צבע</label><input id="pcCategoryColor" type="color"></div>
+            <div id="pcCategoryModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="pcCategorySaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="pcCategoryCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<!-- Procedure subcategory modal -->
+<div class="profile-modal-backdrop" id="pcSubcategoryModalBackdrop">
+    <div class="profile-modal" style="max-width:420px">
+        <div class="profile-modal-header"><h2 id="pcSubcategoryModalTitle">תת-קטגוריה חדשה</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="pcSubcategoryName">שם</label><input id="pcSubcategoryName" type="text"></div>
+            <div id="pcSubcategoryModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="pcSubcategorySaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="pcSubcategoryCancelBtn">ביטול</button>
+        </div>
+    </div>
 </div>
 
 <!-- User admin modal — same wizard as the user-request form/review (item 5, follow-up),
@@ -1151,10 +1207,13 @@
     <div class="profile-modal" style="max-width:520px">
         <div class="profile-modal-header"><h2 id="procedureModalTitle">נוהל חדש</h2></div>
         <div class="profile-modal-body">
-            <div class="field"><label for="prCategory">קטגוריה</label><input id="prCategory" type="text" placeholder="לדוגמה: בטיחות"></div>
+            <div class="field"><label for="prCategory">קטגוריה</label><select id="prCategory"></select></div>
             <div class="field"><label for="prTitle">כותרת</label><input id="prTitle" type="text"></div>
-            <div class="field"><label for="prOrder">סדר הצגה (מספר)</label><input id="prOrder" type="number" value="1"></div>
             <div class="field"><label for="prContent">תוכן הנוהל</label><textarea id="prContent" rows="6"></textarea></div>
+            <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+                <input id="prIsDraft" type="checkbox" style="width:auto">
+                <label for="prIsDraft" style="margin:0;color:var(--danger);font-weight:700">טיוטה - עדיין לא פורסם לעובדים</label>
+            </div>
             <div id="procedureModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
         </div>
         <div class="profile-modal-actions">
@@ -1188,6 +1247,7 @@
         if (id === 'user-request') loadUserRequestFormPage();
         if (id === 'admin-printers') loadPrintersAdminPage();
         if (id === 'admin-ticket-config') loadTicketConfigAdminPage();
+        if (id === 'admin-procedure-config') loadProcedureConfigAdminPage();
         if (id === 'admin-view-as') loadViewAsPage();
 
         if (id === 'hub') {
@@ -1359,6 +1419,7 @@
     // submitters aren't necessarily IT/Procedures/SuperAdmins.
     var HUB_GENERAL_BUTTONS = [
         { id: 'user-request', icon: '🧑‍💼', label: 'בקשת הקמת משתמש', check: function () { return Portal.isUserRequestSubmitter(); } },
+        { id: 'admin-procedure-config', icon: '📖', label: 'עריכת נהלי עבודה', check: function () { return Portal.isProceduresAdmin(); } },
     ];
 
     var HUB_ADMIN_BUTTONS = [
@@ -2232,6 +2293,7 @@
         renderDashboardCounts(closedCount);
         renderDashboardUserFilter();
         renderDashboardBranchFilter();
+        renderDashboardUrgencyFilter();
         if (dashViewMode === 'tasks') renderDashboardTaskTypeFilter();
         renderDashboardCharts();
         updateDashCubeActiveClasses();
@@ -2309,6 +2371,7 @@
     // scoped to whichever status-cube is currently active (item 5).
     var dashUserFilterSelection = [];
     var dashBranchFilterSelection = [];
+    var dashUrgencyFilterSelection = []; // urgency-level ("דרגה") names — same popover pattern as user/branch
     var dashTaskTypeFilterSelection = []; // 'request' | 'followup' — tasks-mode filter (item 5)
 
     function updateDashFilterButtonLabel(btnId, base, count) {
@@ -2356,6 +2419,26 @@
         updateDashFilterButtonLabel('dashBranchFilterBtn', 'סניף', dashBranchFilterSelection.length);
     }
 
+    // Item 1 (follow-up): same multi-select popover as user/branch, one entry per urgency
+    // ("דרגה") level actually present in the current status-scoped source, most urgent first.
+    function renderDashboardUrgencyFilter() {
+        var popover = document.getElementById('dashUrgencyFilterPopover');
+        if (popover.style.display !== 'none') return;
+        var counts = {};
+        getStatusFilteredSource().forEach(function (t) {
+            counts[t.urgency] = (counts[t.urgency] || 0) + 1;
+        });
+        var urgencies = Object.keys(counts).sort(function (a, b) { return (URGENCY_SEVERITY[b] || 0) - (URGENCY_SEVERITY[a] || 0); });
+        dashUrgencyFilterSelection = dashUrgencyFilterSelection.filter(function (u) { return urgencies.indexOf(u) !== -1; });
+        popover.innerHTML = urgencies.length
+            ? urgencies.map(function (u) {
+                var checked = dashUrgencyFilterSelection.indexOf(u) !== -1 ? ' checked' : '';
+                return '<label><input type="checkbox" value="' + escapeHtml(u) + '"' + checked + '>' + escapeHtml(u) + ' (' + counts[u] + ')</label>';
+            }).join('')
+            : '<span style="color:var(--muted);font-size:12px">אין נתונים</span>';
+        updateDashFilterButtonLabel('dashUrgencyFilterBtn', 'דרגה', dashUrgencyFilterSelection.length);
+    }
+
     var TASK_KIND_LABELS = { request: 'הקמת משתמש', followup: 'משימת המשך', procurement: 'רכש' };
     var TASK_KIND_COLOR = { request: '#4f46e5', followup: '#0aa1a3', procurement: '#f59e0b' };
 
@@ -2399,7 +2482,8 @@
         var list = getStatusFilteredSource().filter(function (t) {
             var userOk = !dashUserFilterSelection.length || dashUserFilterSelection.indexOf(t.userName || t.userEmail) !== -1;
             var branchOk = !dashBranchFilterSelection.length || dashBranchFilterSelection.indexOf(t.branch || 'ללא סניף') !== -1;
-            return userOk && branchOk;
+            var urgencyOk = !dashUrgencyFilterSelection.length || dashUrgencyFilterSelection.indexOf(t.urgency) !== -1;
+            return userOk && branchOk && urgencyOk;
         });
 
         return list.slice().sort(function (a, b) {
@@ -3052,26 +3136,32 @@
         openQuickView('פרטי מדפסת', fieldsHtml, function () { openPrinterAdminModal(p); });
     }
 
-    function toggleFilterPopover(popoverId, otherPopoverId) {
-        document.getElementById(otherPopoverId).style.display = 'none';
+    var DASH_FILTER_POPOVER_IDS = ['dashUserFilterPopover', 'dashBranchFilterPopover', 'dashUrgencyFilterPopover', 'dashTaskTypeFilterPopover'];
+
+    function toggleFilterPopover(popoverId) {
         var pop = document.getElementById(popoverId);
-        pop.style.display = pop.style.display === 'none' ? 'block' : 'none';
+        var wasOpen = pop.style.display !== 'none';
+        DASH_FILTER_POPOVER_IDS.forEach(function (id) { document.getElementById(id).style.display = 'none'; });
+        pop.style.display = wasOpen ? 'none' : 'block';
     }
     document.getElementById('dashUserFilterBtn').addEventListener('click', function (e) {
         e.stopPropagation();
-        toggleFilterPopover('dashUserFilterPopover', 'dashBranchFilterPopover');
+        toggleFilterPopover('dashUserFilterPopover');
     });
     document.getElementById('dashBranchFilterBtn').addEventListener('click', function (e) {
         e.stopPropagation();
-        toggleFilterPopover('dashBranchFilterPopover', 'dashUserFilterPopover');
+        toggleFilterPopover('dashBranchFilterPopover');
+    });
+    document.getElementById('dashUrgencyFilterBtn').addEventListener('click', function (e) {
+        e.stopPropagation();
+        toggleFilterPopover('dashUrgencyFilterPopover');
     });
     document.addEventListener('click', function () {
-        document.getElementById('dashUserFilterPopover').style.display = 'none';
-        document.getElementById('dashBranchFilterPopover').style.display = 'none';
-        document.getElementById('dashTaskTypeFilterPopover').style.display = 'none';
+        DASH_FILTER_POPOVER_IDS.forEach(function (id) { document.getElementById(id).style.display = 'none'; });
     });
     document.getElementById('dashUserFilterPopover').addEventListener('click', function (e) { e.stopPropagation(); });
     document.getElementById('dashBranchFilterPopover').addEventListener('click', function (e) { e.stopPropagation(); });
+    document.getElementById('dashUrgencyFilterPopover').addEventListener('click', function (e) { e.stopPropagation(); });
 
     document.getElementById('dashUserFilterPopover').addEventListener('change', function (e) {
         if (e.target.type !== 'checkbox') return;
@@ -3091,6 +3181,17 @@
             ? dashBranchFilterSelection.concat([v])
             : dashBranchFilterSelection.filter(function (x) { return x !== v; });
         updateDashFilterButtonLabel('dashBranchFilterBtn', 'סניף', dashBranchFilterSelection.length);
+        dashDisplayLimit = 30;
+        renderDashboardCharts();
+        renderDashboardCurrentList();
+    });
+    document.getElementById('dashUrgencyFilterPopover').addEventListener('change', function (e) {
+        if (e.target.type !== 'checkbox') return;
+        var v = e.target.value;
+        dashUrgencyFilterSelection = e.target.checked
+            ? dashUrgencyFilterSelection.concat([v])
+            : dashUrgencyFilterSelection.filter(function (x) { return x !== v; });
+        updateDashFilterButtonLabel('dashUrgencyFilterBtn', 'דרגה', dashUrgencyFilterSelection.length);
         dashDisplayLimit = 30;
         renderDashboardCharts();
         renderDashboardCurrentList();
@@ -3118,6 +3219,7 @@
         var tasksMode = mode === 'tasks';
         document.getElementById('dashUserFilterWrap').style.display = tasksMode ? 'none' : '';
         document.getElementById('dashBranchFilterWrap').style.display = tasksMode ? 'none' : '';
+        document.getElementById('dashUrgencyFilterWrap').style.display = tasksMode ? 'none' : '';
         document.getElementById('dashTaskTypeFilterWrap').style.display = tasksMode ? '' : 'none';
         document.getElementById('dashSortGroup').style.display = tasksMode ? 'none' : 'flex';
         document.getElementById('dashTaskStatusRow').style.display = tasksMode ? 'flex' : 'none';
@@ -3133,6 +3235,7 @@
         updateDashCubeActiveClasses();
         renderDashboardUserFilter();
         renderDashboardBranchFilter();
+        renderDashboardUrgencyFilter();
         renderDashboardCharts();
         renderDashboardTicketsList();
     }
@@ -3187,8 +3290,7 @@
 
     document.getElementById('dashTaskTypeFilterBtn').addEventListener('click', function (e) {
         e.stopPropagation();
-        toggleFilterPopover('dashTaskTypeFilterPopover', 'dashUserFilterPopover');
-        document.getElementById('dashBranchFilterPopover').style.display = 'none';
+        toggleFilterPopover('dashTaskTypeFilterPopover');
     });
     document.getElementById('dashTaskTypeFilterPopover').addEventListener('click', function (e) { e.stopPropagation(); });
     document.getElementById('dashTaskTypeFilterPopover').addEventListener('change', function (e) {
@@ -3449,14 +3551,52 @@
     });
 
     // ── PROCEDURES VIEW ───────────────────────────────────────
-    var editingProcedureId = null;
+    // ── PROCEDURES: category config, shared by the main (read-only) view and the
+    // "עריכת נהלי עבודה" admin screen — same cache pattern as ensureTicketConfigLoaded.
+    var procedureConfigCache = null;
 
+    async function ensureProcedureConfigLoaded() {
+        if (procedureConfigCache) return procedureConfigCache;
+        var res = await apiGet('procedureConfig', 'list', {});
+        procedureConfigCache = res.ok ? res.data : { categories: [] };
+        return procedureConfigCache;
+    }
+
+    function procedureCategoryById(id) {
+        return (procedureConfigCache && procedureConfigCache.categories || []).filter(function (c) { return c.id === id; })[0];
+    }
+
+    // Item 7 (follow-up): the main screen is now pure read-only — grouped and colored by
+    // category (right-border chip, like the dashboard task cards), no add/edit affordances
+    // (those moved to "עריכת נהלי עבודה"). A draft procedure only ever reaches this list for
+    // a procedures admin (see procedures.js list()), so the red badge is always safe to show.
     async function loadProceduresPage() {
-        document.getElementById('procedureAddBtn').style.display = Portal.isProceduresAdmin() ? 'inline-block' : 'none';
         showLoading(true);
+        await ensureProcedureConfigLoaded();
         var res = await apiGet('procedures', 'list', {});
         showLoading(false);
         renderProcedures(res.ok ? res.data : []);
+    }
+
+    function buildProcedureCard(proc, color) {
+        var card = document.createElement('div');
+        card.className = 'procedure-card';
+        card.style.borderRightColor = color;
+
+        var draftBadge = proc.isDraft ? ' <span class="procedure-draft-badge">טיוטה - טרם פורסם</span>' : '';
+        var header = document.createElement('div');
+        header.className = 'procedure-card-header';
+        header.innerHTML = '<span class="procedure-card-title">' + escapeHtml(proc.title) + draftBadge + '</span>';
+
+        var content = document.createElement('div');
+        content.className = 'procedure-card-content';
+        content.textContent = proc.content;
+
+        header.addEventListener('click', function () { card.classList.toggle('expanded'); });
+
+        card.appendChild(header);
+        card.appendChild(content);
+        return card;
     }
 
     function renderProcedures(list) {
@@ -3466,61 +3606,282 @@
             container.innerHTML = '<p style="color:var(--muted);font-size:13px">אין נהלים עדיין.</p>';
             return;
         }
-        var lastCategory = null;
-        var isAdmin = Portal.isProceduresAdmin();
-        list.forEach(function (proc) {
-            if (proc.category !== lastCategory) {
-                lastCategory = proc.category;
-                var heading = document.createElement('h3');
-                heading.className = 'procedure-category-title';
-                heading.textContent = proc.category || 'כללי';
-                container.appendChild(heading);
-            }
+        var groups = (procedureConfigCache.categories || []).map(function (c) {
+            return { category: c, procedures: list.filter(function (p) { return p.categoryId === c.id; }) };
+        });
+        var uncategorized = list.filter(function (p) { return !procedureCategoryById(p.categoryId); });
+        if (uncategorized.length) groups.push({ category: null, procedures: uncategorized });
 
+        groups.forEach(function (group) {
+            if (!group.procedures.length) return;
+            var color = group.category ? group.category.colorHex : '#9ca3af';
+            var heading = document.createElement('h3');
+            heading.className = 'procedure-category-title';
+            heading.innerHTML = '<span class="tc-color-dot" style="background:' + escapeHtml(color) + '"></span>' +
+                escapeHtml(group.category ? group.category.name : 'ללא קטגוריה');
+            container.appendChild(heading);
+            group.procedures.forEach(function (proc) { container.appendChild(buildProcedureCard(proc, color)); });
+        });
+    }
+
+    // ── ADMIN: עריכת נהלי עבודה (categories/subcategories + full procedure CRUD) ──
+    var draggedProcedureCategoryId = null;
+    var draggedProcedureSubcategoryId = null;
+    var proceduresAdminCache = [];
+
+    async function loadProcedureConfigAdminPage() {
+        showLoading(true);
+        procedureConfigCache = null; // this screen is the source of truth — force a refetch
+        await ensureProcedureConfigLoaded();
+        var res = await apiGet('procedures', 'list', {});
+        showLoading(false);
+        proceduresAdminCache = res.ok ? res.data : [];
+        renderProcedureConfigCategories();
+        renderProceduresAdminList();
+    }
+
+    function renderProcedureConfigCategories() {
+        var container = document.getElementById('pcCategoriesList');
+        container.innerHTML = '';
+        var categories = procedureConfigCache.categories;
+        if (!categories.length) { container.innerHTML = '<p style="color:var(--muted);font-size:13px">אין קטגוריות עדיין.</p>'; return; }
+        categories.forEach(function (c) {
             var card = document.createElement('div');
-            card.className = 'procedure-card';
+            card.className = 'tc-category-card';
+            card.draggable = true;
+            var subsHtml = c.subcategories.map(function (s) {
+                return '<div class="tc-sub-row" data-sub-id="' + s.id + '" draggable="true">' +
+                    '<span class="tc-sub-row-left"><span class="tc-drag-handle" title="גרירה לסידור מחדש">⠿</span>' + escapeHtml(s.name) + '</span>' +
+                    '<span class="admin-row-actions">' +
+                    '<button type="button" class="icon-button" data-edit-sub title="עריכה">✏️</button>' +
+                    '<button type="button" class="icon-button" data-delete-sub title="מחיקה">🗑️</button></span></div>';
+            }).join('');
+            card.innerHTML =
+                '<div class="tc-category-header"><span class="tc-category-header-left">' +
+                '<span class="tc-drag-handle" title="גרירה לסידור מחדש">⠿</span>' +
+                '<span class="tc-color-dot" style="background:' + escapeHtml(c.colorHex) + '"></span>' +
+                '<strong>' + escapeHtml(c.name) + '</strong></span>' +
+                '<span class="admin-row-actions">' +
+                '<button type="button" class="icon-button" data-add-sub title="הוסף תת-קטגוריה">➕</button>' +
+                '<button type="button" class="icon-button" data-edit title="עריכה">✏️</button>' +
+                '<button type="button" class="icon-button" data-delete title="מחיקה">🗑️</button></span></div>' +
+                subsHtml;
+            card.querySelector('[data-edit]').addEventListener('click', function () { openProcedureCategoryModal(c); });
+            card.querySelector('[data-delete]').addEventListener('click', function () { deleteProcedureCategory(c); });
+            card.querySelector('[data-add-sub]').addEventListener('click', function () { openProcedureSubcategoryModal(null, c.id); });
 
-            var actionsHtml = '';
-            if (isAdmin) {
-                actionsHtml =
-                    '<div class="procedure-actions">' +
-                    '<button type="button" class="icon-button" data-edit title="עריכה">✏️</button>' +
-                    '<button type="button" class="icon-button" data-delete title="מחיקה">🗑️</button>' +
-                    '</div>';
-            }
-
-            var header = document.createElement('div');
-            header.className = 'procedure-card-header';
-            header.innerHTML = '<span class="procedure-card-title">' + escapeHtml(proc.title) + '</span>' + actionsHtml;
-
-            var content = document.createElement('div');
-            content.className = 'procedure-card-content';
-            content.textContent = proc.content;
-
-            header.addEventListener('click', function (e) {
-                if (e.target.closest('[data-edit],[data-delete]')) return;
-                card.classList.toggle('expanded');
+            card.addEventListener('dragstart', function (e) { draggedProcedureCategoryId = c.id; e.stopPropagation(); });
+            card.addEventListener('dragover', function (e) { e.preventDefault(); e.stopPropagation(); card.classList.add('tc-drag-over'); });
+            card.addEventListener('dragleave', function () { card.classList.remove('tc-drag-over'); });
+            card.addEventListener('drop', function (e) {
+                e.preventDefault(); e.stopPropagation();
+                card.classList.remove('tc-drag-over');
+                reorderProcedureCategories(draggedProcedureCategoryId, c.id);
             });
-            if (isAdmin) {
-                header.querySelector('[data-edit]').addEventListener('click', function () { openProcedureModal(proc); });
-                header.querySelector('[data-delete]').addEventListener('click', function () { deleteProcedure(proc); });
-            }
 
-            card.appendChild(header);
-            card.appendChild(content);
+            c.subcategories.forEach(function (s) {
+                var row = card.querySelector('[data-sub-id="' + s.id + '"]');
+                row.querySelector('[data-edit-sub]').addEventListener('click', function () { openProcedureSubcategoryModal(s, c.id); });
+                row.querySelector('[data-delete-sub]').addEventListener('click', function () { deleteProcedureSubcategory(s); });
+                row.addEventListener('dragstart', function (e) { draggedProcedureSubcategoryId = s.id; e.stopPropagation(); });
+                row.addEventListener('dragover', function (e) { e.preventDefault(); e.stopPropagation(); row.classList.add('tc-drag-over'); });
+                row.addEventListener('dragleave', function () { row.classList.remove('tc-drag-over'); });
+                row.addEventListener('drop', function (e) {
+                    e.preventDefault(); e.stopPropagation();
+                    row.classList.remove('tc-drag-over');
+                    reorderProcedureSubcategories(draggedProcedureSubcategoryId, s.id);
+                });
+            });
             container.appendChild(card);
         });
     }
 
+    function reorderProcedureCategories(draggedId, targetId) {
+        if (!draggedId || draggedId === targetId) return;
+        var list = procedureConfigCache.categories;
+        var fromIdx = list.findIndex(function (x) { return x.id === draggedId; });
+        var toIdx = list.findIndex(function (x) { return x.id === targetId; });
+        if (fromIdx < 0 || toIdx < 0) return;
+        list.splice(toIdx, 0, list.splice(fromIdx, 1)[0]);
+        renderProcedureConfigCategories();
+        persistProcedureCategoryOrder();
+    }
+
+    async function persistProcedureCategoryOrder() {
+        showLoading(true);
+        for (var i = 0; i < procedureConfigCache.categories.length; i++) {
+            var c = procedureConfigCache.categories[i];
+            var newOrder = (i + 1) * 10;
+            if (c.order !== newOrder) {
+                c.order = newOrder;
+                await apiPost('procedureConfig', 'saveCategory', { id: c.id, name: c.name, colorHex: c.colorHex, order: newOrder });
+            }
+        }
+        showLoading(false);
+    }
+
+    function reorderProcedureSubcategories(draggedId, targetId) {
+        if (!draggedId || draggedId === targetId) return;
+        var category = procedureConfigCache.categories.filter(function (c) {
+            return c.subcategories.some(function (s) { return s.id === draggedId; });
+        })[0];
+        if (!category) return;
+        var list = category.subcategories;
+        var fromIdx = list.findIndex(function (x) { return x.id === draggedId; });
+        var toIdx = list.findIndex(function (x) { return x.id === targetId; });
+        if (fromIdx < 0 || toIdx < 0) return;
+        list.splice(toIdx, 0, list.splice(fromIdx, 1)[0]);
+        renderProcedureConfigCategories();
+        persistProcedureSubcategoryOrder(category);
+    }
+
+    async function persistProcedureSubcategoryOrder(category) {
+        showLoading(true);
+        for (var i = 0; i < category.subcategories.length; i++) {
+            var s = category.subcategories[i];
+            var newOrder = (i + 1) * 10;
+            if (s.order !== newOrder) {
+                s.order = newOrder;
+                await apiPost('procedureConfig', 'saveSubcategory', { id: s.id, categoryId: category.id, name: s.name, order: newOrder });
+            }
+        }
+        showLoading(false);
+    }
+
+    var editingProcedureCategoryId = null;
+    var pcCategoryTracker = makeDirtyTracker(document.getElementById('pcCategoryModalBackdrop'));
+
+    function openProcedureCategoryModal(c) {
+        editingProcedureCategoryId = c ? c.id : null;
+        document.getElementById('pcCategoryModalTitle').textContent = c ? 'עריכת קטגוריה' : 'קטגוריה חדשה';
+        document.getElementById('pcCategoryName').value = c ? c.name : '';
+        document.getElementById('pcCategoryColor').value = c ? c.colorHex : '#8b5cf6';
+        document.getElementById('pcCategoryModalError').style.display = 'none';
+        document.getElementById('pcCategoryModalBackdrop').classList.add('visible');
+        pcCategoryTracker.reset();
+    }
+    function closeProcedureCategoryModal() { document.getElementById('pcCategoryModalBackdrop').classList.remove('visible'); }
+
+    document.getElementById('pcCategoryAddBtn').addEventListener('click', function () { openProcedureCategoryModal(null); });
+    document.getElementById('pcCategoryCancelBtn').addEventListener('click', function () {
+        if (pcCategoryTracker.confirmDiscard()) closeProcedureCategoryModal();
+    });
+    document.getElementById('pcCategorySaveBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('pcCategoryModalError');
+        var name = document.getElementById('pcCategoryName').value.trim();
+        if (!name) { errEl.textContent = 'יש למלא שם קטגוריה'; errEl.style.display = 'block'; return; }
+        var existing = editingProcedureCategoryId ? procedureConfigCache.categories.filter(function (c) { return c.id === editingProcedureCategoryId; })[0] : null;
+        var payload = {
+            name: name,
+            colorHex: document.getElementById('pcCategoryColor').value,
+            order: existing ? existing.order : (procedureConfigCache.categories.length + 1) * 10,
+        };
+        if (editingProcedureCategoryId) payload.id = editingProcedureCategoryId;
+        showLoading(true);
+        var res = await apiPost('procedureConfig', 'saveCategory', payload);
+        showLoading(false);
+        if (res.ok) { pcCategoryTracker.reset(); closeProcedureCategoryModal(); loadProcedureConfigAdminPage(); }
+        else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
+    });
+
+    async function deleteProcedureCategory(c) {
+        if (!confirm('למחוק את הקטגוריה "' + c.name + '"? כל תתי-הקטגוריות שלה יימחקו גם כן, ונהלים המשוייכים אליה יעברו ל"ללא קטגוריה".')) return;
+        showLoading(true);
+        var res = await apiPost('procedureConfig', 'deleteCategory', { id: c.id });
+        showLoading(false);
+        if (res.ok) loadProcedureConfigAdminPage(); else alert(res.error || 'שגיאה במחיקה');
+    }
+
+    var editingProcedureSubcategoryId = null;
+    var editingProcedureSubcategoryCategoryId = null;
+    var pcSubcategoryTracker = makeDirtyTracker(document.getElementById('pcSubcategoryModalBackdrop'));
+
+    function openProcedureSubcategoryModal(s, categoryId) {
+        editingProcedureSubcategoryId = s ? s.id : null;
+        editingProcedureSubcategoryCategoryId = categoryId;
+        document.getElementById('pcSubcategoryModalTitle').textContent = s ? 'עריכת תת-קטגוריה' : 'תת-קטגוריה חדשה';
+        document.getElementById('pcSubcategoryName').value = s ? s.name : '';
+        document.getElementById('pcSubcategoryModalError').style.display = 'none';
+        document.getElementById('pcSubcategoryModalBackdrop').classList.add('visible');
+        pcSubcategoryTracker.reset();
+    }
+    function closeProcedureSubcategoryModal() { document.getElementById('pcSubcategoryModalBackdrop').classList.remove('visible'); }
+
+    document.getElementById('pcSubcategoryCancelBtn').addEventListener('click', function () {
+        if (pcSubcategoryTracker.confirmDiscard()) closeProcedureSubcategoryModal();
+    });
+    document.getElementById('pcSubcategorySaveBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('pcSubcategoryModalError');
+        var name = document.getElementById('pcSubcategoryName').value.trim();
+        if (!name) { errEl.textContent = 'יש למלא שם'; errEl.style.display = 'block'; return; }
+        var category = procedureConfigCache.categories.filter(function (c) { return c.id === editingProcedureSubcategoryCategoryId; })[0];
+        var existing = (editingProcedureSubcategoryId && category)
+            ? category.subcategories.filter(function (s) { return s.id === editingProcedureSubcategoryId; })[0] : null;
+        var payload = {
+            categoryId: editingProcedureSubcategoryCategoryId,
+            name: name,
+            order: existing ? existing.order : ((category ? category.subcategories.length : 0) + 1) * 10,
+        };
+        if (editingProcedureSubcategoryId) payload.id = editingProcedureSubcategoryId;
+        showLoading(true);
+        var res = await apiPost('procedureConfig', 'saveSubcategory', payload);
+        showLoading(false);
+        if (res.ok) { pcSubcategoryTracker.reset(); closeProcedureSubcategoryModal(); loadProcedureConfigAdminPage(); }
+        else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
+    });
+
+    async function deleteProcedureSubcategory(s) {
+        if (!confirm('למחוק את "' + s.name + '"?')) return;
+        showLoading(true);
+        var res = await apiPost('procedureConfig', 'deleteSubcategory', { id: s.id });
+        showLoading(false);
+        if (res.ok) loadProcedureConfigAdminPage(); else alert(res.error || 'שגיאה במחיקה');
+    }
+
+    function populateProcedureCategorySelect(selectedId) {
+        var select = document.getElementById('prCategory');
+        var options = (procedureConfigCache.categories || []).map(function (c) {
+            return '<option value="' + c.id + '"' + (c.id === selectedId ? ' selected' : '') + '>' + escapeHtml(c.name) + '</option>';
+        }).join('');
+        select.innerHTML = '<option value="">בחר קטגוריה</option>' + options;
+    }
+
+    function renderProceduresAdminList() {
+        var container = document.getElementById('pcProceduresList');
+        container.innerHTML = '';
+        if (!proceduresAdminCache.length) {
+            container.innerHTML = '<p style="color:var(--muted);font-size:13px">אין נהלים עדיין.</p>';
+            return;
+        }
+        proceduresAdminCache.forEach(function (proc) {
+            var category = procedureCategoryById(proc.categoryId);
+            var row = document.createElement('div');
+            row.className = 'tc-sub-row';
+            row.innerHTML =
+                '<span class="tc-sub-row-left">' +
+                '<span class="tc-color-dot" style="background:' + escapeHtml(category ? category.colorHex : '#9ca3af') + '"></span>' +
+                escapeHtml(proc.title) + ' <span style="color:var(--muted);font-size:12px">(' + escapeHtml(category ? category.name : 'ללא קטגוריה') + ')</span>' +
+                (proc.isDraft ? ' <span class="procedure-draft-badge">טיוטה</span>' : '') +
+                '</span>' +
+                '<span class="admin-row-actions">' +
+                '<button type="button" class="icon-button" data-edit title="עריכה">✏️</button>' +
+                '<button type="button" class="icon-button" data-delete title="מחיקה">🗑️</button></span>';
+            row.querySelector('[data-edit]').addEventListener('click', function () { openProcedureModal(proc); });
+            row.querySelector('[data-delete]').addEventListener('click', function () { deleteProcedure(proc); });
+            container.appendChild(row);
+        });
+    }
+
+    var editingProcedureId = null;
     var procedureTracker = makeDirtyTracker(document.getElementById('procedureModalBackdrop'));
 
     function openProcedureModal(proc) {
         editingProcedureId = proc ? proc.id : null;
         document.getElementById('procedureModalTitle').textContent = proc ? 'עריכת נוהל' : 'נוהל חדש';
-        document.getElementById('prCategory').value = proc ? proc.category : '';
+        populateProcedureCategorySelect(proc ? proc.categoryId : '');
         document.getElementById('prTitle').value = proc ? proc.title : '';
-        document.getElementById('prOrder').value = proc ? proc.order : 1;
         document.getElementById('prContent').value = proc ? proc.content : '';
+        document.getElementById('prIsDraft').checked = proc ? proc.isDraft : false;
         document.getElementById('procedureModalError').style.display = 'none';
         document.getElementById('procedureModalBackdrop').classList.add('visible');
         procedureTracker.reset();
@@ -3528,7 +3889,7 @@
 
     function closeProcedureModal() { document.getElementById('procedureModalBackdrop').classList.remove('visible'); }
 
-    document.getElementById('procedureAddBtn').addEventListener('click', function () { openProcedureModal(null); });
+    document.getElementById('pcProcedureAddBtn').addEventListener('click', function () { openProcedureModal(null); });
     document.getElementById('procedureCancelBtn').addEventListener('click', function () {
         if (procedureTracker.confirmDiscard()) closeProcedureModal();
     });
@@ -3536,12 +3897,12 @@
     document.getElementById('procedureSaveBtn').addEventListener('click', async function () {
         var errEl = document.getElementById('procedureModalError');
         var payload = {
-            category: document.getElementById('prCategory').value.trim(),
+            categoryId: document.getElementById('prCategory').value,
             title: document.getElementById('prTitle').value.trim(),
-            order: Number(document.getElementById('prOrder').value) || 1,
             content: document.getElementById('prContent').value.trim(),
+            isDraft: document.getElementById('prIsDraft').checked,
         };
-        if (!payload.category || !payload.title || !payload.content) {
+        if (!payload.categoryId || !payload.title || !payload.content) {
             errEl.textContent = 'יש למלא קטגוריה, כותרת ותוכן.';
             errEl.style.display = 'block';
             return;
@@ -3554,7 +3915,7 @@
         if (res.ok) {
             procedureTracker.reset();
             closeProcedureModal();
-            loadProceduresPage();
+            loadProcedureConfigAdminPage();
         } else {
             errEl.textContent = res.error || 'שגיאה בשמירה';
             errEl.style.display = 'block';
@@ -3566,7 +3927,7 @@
         showLoading(true);
         var res = await apiPost('procedures', 'delete', { id: proc.id });
         showLoading(false);
-        if (res.ok) loadProceduresPage();
+        if (res.ok) loadProcedureConfigAdminPage();
         else alert(res.error || 'שגיאה במחיקה');
     }
 
