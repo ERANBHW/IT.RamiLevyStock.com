@@ -2318,17 +2318,26 @@
                 DASHBOARD_STATUS_OPTIONS.map(function (s) {
                     return '<option value="' + s + '"' + (s === t.status ? ' selected' : '') + '>' + s + '</option>';
                 }).join('') + '</select>';
-        var anydeskHtml = (t.status === 'בטיפול' && t.anyDeskId)
-            ? '<a class="dash-anydesk-btn" href="anydesk:' + encodeURIComponent(t.anyDeskId) + '" title="התחברות למחשב דרך AnyDesk" data-stop>🖥️</a>'
+        // AnyDesk quick-connect (computer tickets only, once taken): if the ticket's own
+        // AnyDeskId snapshot is missing, still show the tag — clicking it opens the
+        // computer's record to set one, instead of just disappearing with no way to fix it.
+        var anydeskHtml = (t.status === 'בטיפול' && !t.isPrinterTicket && t.computerName)
+            ? (t.anyDeskId
+                ? '<a class="dash-anydesk-btn" href="anydesk:' + encodeURIComponent(t.anyDeskId) + '" title="התחברות למחשב דרך AnyDesk" data-stop>🖥️</a>'
+                : '<button type="button" class="dash-anydesk-btn" data-assign-anydesk title="אין AnyDesk מוגדר - לחץ להוספה" data-stop>🖥️ אין AnyDesk</button>')
             : '';
         // Printer only shows up as its own tag when the ticket actually WAS a printer
         // ticket (item 4) — Tickets.Printer alone is ambiguous (a regular computer
-        // ticket also records the computer's default printer there for context).
+        // ticket also records the computer's default printer there for context). Even
+        // without a printer name set yet, the tag still shows so it can be assigned —
+        // same "always there, click to fix" behavior as the computer tag below.
         var computerTagHtml = t.computerName
             ? '<button type="button" class="dash-quick-tag" data-open-computer title="פרטי המחשב">💻 ' + escapeHtml(t.computerName) + '</button>'
             : '';
-        var printerTagHtml = (t.isPrinterTicket && t.printer)
-            ? '<button type="button" class="dash-quick-tag" data-open-printer title="פרטי המדפסת">🖨️ ' + escapeHtml(t.printer) + '</button>'
+        var printerTagHtml = t.isPrinterTicket
+            ? (t.printer
+                ? '<button type="button" class="dash-quick-tag" data-open-printer title="פרטי המדפסת">🖨️ ' + escapeHtml(t.printer) + '</button>'
+                : '<button type="button" class="dash-quick-tag" data-assign-printer title="לא נבחרה מדפסת - לחץ לעריכה">🖨️ לא נבחרה מדפסת</button>')
             : '';
 
         var rgb = hexToRgb(URGENCY_COLOR[t.urgency] || '#cccccc');
@@ -2408,6 +2417,22 @@
             printerTag.addEventListener('click', function (e) {
                 e.stopPropagation();
                 openTicketPrinterDetail((dashTicketsByNumber[t.ticketNumber] || t).printer);
+            });
+        }
+        // No printer/AnyDesk assigned yet — jump straight to the ticket's own field-edit
+        // modal (item 5) / the computer's record, since there's nothing to look up yet.
+        var assignPrinterTag = card.querySelector('[data-assign-printer]');
+        if (assignPrinterTag) {
+            assignPrinterTag.addEventListener('click', function (e) {
+                e.stopPropagation();
+                openTicketEditFieldsModal(dashTicketsByNumber[t.ticketNumber] || t);
+            });
+        }
+        var assignAnydeskTag = card.querySelector('[data-assign-anydesk]');
+        if (assignAnydeskTag) {
+            assignAnydeskTag.addEventListener('click', function (e) {
+                e.stopPropagation();
+                openTicketComputerDetail((dashTicketsByNumber[t.ticketNumber] || t).computerName);
             });
         }
     }
