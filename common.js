@@ -1,7 +1,7 @@
 // Shared infrastructure for every page of the IT Portal SPA.
 // Keep this file dependency-free beyond msal-browser (plain script tags, no build step).
 
-var APP_VERSION = '2.0.0'; // keep in sync with /VERSION - bumped every shipped change
+var APP_VERSION = '2.5.0'; // keep in sync with /VERSION - bumped every shipped change
 var LOGO_URL = 'https://rami-levy-stock.co.il/sing.png';
 
 // ── AZURE / ENTRA CONFIG ───────────────────────────────────────
