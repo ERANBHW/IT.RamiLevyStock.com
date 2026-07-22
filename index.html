@@ -213,9 +213,16 @@
         .dash-take-btn { background: #fff; color: var(--brand-pink); border: 1.5px solid var(--brand-pink); font-weight: 700; padding: 2px 10px; border-radius: 10px; }
         .dash-take-btn:hover { background: var(--brand-pink-soft); }
         .dash-link-field { color: var(--brand-pink); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+        .dash-title-link { color: var(--text); cursor: pointer; }
+        .icon-button-plain {
+            border: none; background: none; padding: 0 3px; font-size: 12px; cursor: pointer;
+            line-height: 1; vertical-align: middle; opacity: 0.7;
+        }
+        .icon-button-plain:hover { opacity: 1; }
         .dash-whatsapp-link { text-decoration: none; margin-right: 4px; display: inline-flex; align-items: center; vertical-align: middle; }
         .dash-assigned-tag { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 10px; background: rgba(222, 57, 149, 0.12); color: var(--brand-pink); font-size: 11px; font-weight: 700; }
         .dash-it-actor { color: var(--brand-pink); font-weight: 700; }
+        .dash-user-actor { color: #3b82f6; font-weight: 700; }
         .dash-focus-tag { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; border-radius: 20px; background: var(--brand-pink); color: #fff; font-size: 12px; font-weight: 700; }
         .dash-focus-tag button { border: none; background: rgba(255,255,255,0.25); color: #fff; border-radius: 50%; width: 18px; height: 18px; cursor: pointer; font-size: 11px; line-height: 1; }
         .dash-task-card { border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--white); }
@@ -226,8 +233,8 @@
         .dash-timeline::before { content: ''; position: absolute; right: 4px; top: 4px; bottom: 4px; width: 2px; background: var(--border); }
         .dash-timeline-item { position: relative; padding-bottom: 12px; }
         .dash-timeline-item:last-child { padding-bottom: 0; }
-        .dash-timeline-dot { position: absolute; right: -14px; top: 3px; width: 8px; height: 8px; border-radius: 50%; background: var(--brand-pink); display: block; box-shadow: 0 0 0 2px var(--white); }
-        .dash-timeline-dot.editable { cursor: pointer; width: 12px; height: 12px; right: -16px; top: 1px; background: #3b82f6; }
+        .dash-timeline-dot { position: absolute; right: -14px; top: 3px; width: 8px; height: 8px; border-radius: 50%; background: #3b82f6; display: block; box-shadow: 0 0 0 2px var(--white); }
+        .dash-timeline-dot.editable { cursor: pointer; width: 12px; height: 12px; right: -16px; top: 1px; }
         .dash-timeline-time { font-size: 11px; color: var(--muted); }
         .dash-timeline-internal-tag { font-size: 10px; color: #3b82f6; font-weight: 700; margin-right: 4px; }
         .dash-timeline-text { font-size: 12px; margin-top: 2px; }
@@ -1497,7 +1504,7 @@
         if (!open.length) { banner.style.display = 'none'; list.classList.remove('expanded'); return; }
 
         banner.style.display = 'block';
-        title.textContent = 'יש לך ' + open.length + ' קריאות פתוחות: ' + open.map(function (t) { return t.ticketNumber; }).join(', ') + ' (לחצו להצגה)';
+        title.textContent = 'יש לך ' + open.length + ' קריאות פתוחות (לחצו להצגה)';
         list.innerHTML = '';
         // Item 2 (ticket-page follow-up): open tickets expand inline (same accordion as
         // "קריאות שטופלו"), not the old read-only popup — buildTicketCard/openTicketDetail
@@ -1527,23 +1534,23 @@
     var openEmployeeTicketNumber = null;
     var openEmployeeRow = null;
 
-    // Item 2 (ticket-page follow-up): an open ("פתוחה") ticket's title gets two pencils —
-    // one to correct the category/subcategory ("סוג קריאה"), one to correct the
-    // description ("תוכן הקריאה") — both call the same requester-edit endpoint the
-    // backend already restricts to status === STATUS_OPEN, so they naturally disappear
-    // (along with every other affordance to change facts) the moment IT takes the ticket.
+    // Item (ticket-page follow-up): an open ("פתוחה") ticket gets two small, borderless
+    // pencils — one next to the title to correct the category/subcategory ("סוג קריאה"),
+    // one next to the "תיאור הקריאה" divider (inside the expanded detail) to correct the
+    // description. Both call the same requester-edit endpoint the backend already
+    // restricts to status === STATUS_OPEN, so they naturally disappear the moment IT
+    // takes the ticket.
     function employeeTicketRowInnerHtml(t) {
         var titleParts = [escapeHtml(t.category)];
         if (t.subcategory) titleParts.push(escapeHtml(t.subcategory));
         titleParts.push(escapeHtml(t.ticketNumber));
-        var pencilsHtml = t.status === 'פתוחה'
-            ? '<button type="button" class="icon-button" data-edit-type title="שינוי סוג קריאה" data-stop>✏️</button>' +
-              '<button type="button" class="icon-button" data-edit-content title="שינוי תוכן הקריאה" data-stop>✏️</button>'
+        var pencilHtml = t.status === 'פתוחה'
+            ? '<button type="button" class="icon-button-plain" data-edit-type title="שינוי סוג קריאה" data-stop>✏️</button>'
             : '';
         var statusClass = t.status === 'סגורה' ? 'status-closed' : (t.status === 'בטיפול' ? 'status-progress' : 'status-open');
         var rgb = hexToRgb(URGENCY_COLOR[t.urgency] || '#cccccc');
         var urgencyBg = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.2)';
-        return '<div class="ticket-card-header"><span><strong>' + titleParts.join(' | ') + '</strong>' + pencilsHtml + '</span>' +
+        return '<div class="ticket-card-header"><span><strong>' + titleParts.join(' | ') + '</strong>' + pencilHtml + '</span>' +
             '<span class="status-badge ' + statusClass + '">' + escapeHtml(t.status) + '</span></div>' +
             '<div class="ticket-meta">' + formatDateTime(t.timestamp) + ' | <span class="dash-urgency-chip" style="background:' + urgencyBg + '">' + escapeHtml(t.urgency) + '</span></div>';
     }
@@ -1553,20 +1560,21 @@
             openEmployeeRow.detailEl.style.display = 'none';
             openEmployeeRow.detailEl.innerHTML = '';
             openEmployeeRow.cardEl.classList.remove('expanded');
+            closeEmployeeEditForm(openEmployeeRow.editForm);
         }
         openEmployeeTicketNumber = null;
         openEmployeeRow = null;
     }
 
-    function toggleEmployeeTicketDetail(t, cardEl, detailEl) {
+    function toggleEmployeeTicketDetail(t, cardEl, detailEl, editForm) {
         if (openEmployeeTicketNumber === t.ticketNumber) { closeEmployeeTicketDetail(); return; }
         if (openEmployeeRow) closeEmployeeTicketDetail();
         openEmployeeTicketNumber = t.ticketNumber;
-        openEmployeeRow = { cardEl: cardEl, detailEl: detailEl };
-        loadEmployeeTicketDetail(t, cardEl, detailEl);
+        openEmployeeRow = { cardEl: cardEl, detailEl: detailEl, editForm: editForm };
+        loadEmployeeTicketDetail(t, cardEl, detailEl, editForm);
     }
 
-    async function loadEmployeeTicketDetail(t, cardEl, detailEl) {
+    async function loadEmployeeTicketDetail(t, cardEl, detailEl, editForm) {
         cardEl.classList.add('expanded');
         detailEl.style.display = 'block';
         detailEl.innerHTML = '<p style="color:var(--muted);font-size:13px">טוען...</p>';
@@ -1575,32 +1583,43 @@
             detailEl.innerHTML = '<p style="color:var(--danger);font-size:13px">' + escapeHtml(res.error || 'שגיאה בטעינה') + '</p>';
             return;
         }
-        renderEmployeeTicketDetail(detailEl, res.data.ticket, res.data.log);
+        renderEmployeeTicketDetail(detailEl, res.data.ticket, res.data.log, editForm);
     }
 
-    function renderEmployeeTicketDetail(el, t, log) {
+    function renderEmployeeTicketDetail(el, t, log, editForm) {
         var resolutionNote = null;
         if (t.status === 'סגורה') {
             for (var i = log.length - 1; i >= 0; i--) {
                 if (log[i].action === 'note') { resolutionNote = log[i]; break; }
             }
         }
+        var descPencilHtml = t.status === 'פתוחה'
+            ? '<button type="button" class="icon-button-plain" data-edit-content title="שינוי תוכן הקריאה">✏️</button>'
+            : '';
         el.innerHTML =
-            '<div class="dash-section-divider">תיאור הקריאה</div>' +
+            '<div class="dash-section-divider">תיאור הקריאה' + descPencilHtml + '</div>' +
             '<div style="font-size:14px;white-space:pre-wrap;margin-bottom:10px">' + escapeHtml(t.description) + '</div>' +
             '<div class="dash-section-divider">היסטוריית הקריאה</div>' +
             '<div class="dash-timeline">' +
             (log.length ? log.map(function (entry) { return renderTimelineEntry(entry, t); }).join('') : '<span style="color:var(--muted);font-size:12px">אין רשומות</span>') +
             '</div>' +
-            // Item 2: once IT has taken the ticket, the two pencils are gone (nothing left
-            // to correct via the requester-edit path) — instead the owner can still add a
-            // note, same "הוסף הערה" affordance the IT admin sees on their own dashboard row.
+            // Once IT has taken the ticket, the pencils are gone (nothing left to correct
+            // via the requester-edit path) — instead the owner can still add a note, same
+            // "הוסף הערה" affordance the IT admin sees on their own dashboard row.
             (t.status === 'בטיפול' ? '<div class="field" style="margin:10px 0 0"><label>הוסף הערה</label><div style="display:flex;gap:8px">' +
                 '<input data-emp-note-input type="text" style="flex:1" placeholder="הוסף הערה (Enter לשליחה)">' +
                 '<button type="button" class="secondary-button" data-emp-add-note>הוסף</button></div></div>' : '') +
             (resolutionNote ? '<div class="dash-section-divider">פתרון</div>' +
                 '<div style="background:var(--background);border-radius:10px;padding:10px 12px;font-size:14px;white-space:pre-wrap">' +
                 escapeHtml(resolutionNote.message) + '</div>' : '');
+
+        var descPencilBtn = el.querySelector('[data-edit-content]');
+        if (descPencilBtn) {
+            descPencilBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                toggleEmployeeEditForm(editForm, t, 'content');
+            });
+        }
 
         var noteInput = el.querySelector('[data-emp-note-input]');
         var addNoteBtn = el.querySelector('[data-emp-add-note]');
@@ -1621,10 +1640,11 @@
         var res = await apiPost('tickets', 'addNote', { ticketNumber: t.ticketNumber, message: message });
         showLoading(false);
         if (!res.ok) { alert(res.error || 'שגיאה'); return; }
-        if (openEmployeeRow) loadEmployeeTicketDetail(t, openEmployeeRow.cardEl, openEmployeeRow.detailEl);
+        if (openEmployeeRow) loadEmployeeTicketDetail(t, openEmployeeRow.cardEl, openEmployeeRow.detailEl, openEmployeeRow.editForm);
     }
 
     function closeEmployeeEditForm(editForm) {
+        if (!editForm) return;
         editForm.style.display = 'none';
         editForm.innerHTML = '';
         editForm.removeAttribute('data-mode');
@@ -1721,13 +1741,11 @@
         detail.style.display = 'none';
         detail.addEventListener('click', function (e) { e.stopPropagation(); });
 
-        card.addEventListener('click', function () { toggleEmployeeTicketDetail(t, card, detail); });
+        card.addEventListener('click', function () { toggleEmployeeTicketDetail(t, card, detail, editForm); });
         card.querySelectorAll('[data-stop]').forEach(function (el) { el.addEventListener('click', function (e) { e.stopPropagation(); }); });
 
         var editTypeBtn = card.querySelector('[data-edit-type]');
         if (editTypeBtn) editTypeBtn.addEventListener('click', function () { toggleEmployeeEditForm(editForm, t, 'type'); });
-        var editContentBtn = card.querySelector('[data-edit-content]');
-        if (editContentBtn) editContentBtn.addEventListener('click', function () { toggleEmployeeEditForm(editForm, t, 'content'); });
 
         wrap.appendChild(card);
         wrap.appendChild(editForm);
@@ -1798,7 +1816,7 @@
         var internalTag = entry.action === 'internal_note' ? '<span class="dash-timeline-internal-tag">פנימי</span>' : '';
         var actorName = escapeHtml(entry.actorName || entry.actorEmail);
         var isItActor = ticket && entry.actorEmail && String(entry.actorEmail).toLowerCase() !== String(ticket.userEmail || '').toLowerCase();
-        var actorHtml = isItActor ? '<span class="dash-it-actor">' + actorName + '</span>' : actorName;
+        var actorHtml = isItActor ? '<span class="dash-it-actor">' + actorName + '</span>' : '<span class="dash-user-actor">' + actorName + '</span>';
         return '<div class="dash-timeline-item"' + idAttr + '>' +
             '<span class="' + dotClass + '"' + (isMine ? ' title="לחץ לעריכת ההערה"' : '') + '></span>' +
             '<div class="dash-timeline-time">' + formatDateTime(entry.timestamp) + ' · ' + actorHtml + '</div>' +
@@ -2330,7 +2348,7 @@
 
         return '<div class="dash-ticket-meta-top"><span class="dash-link-field" data-open-user>' + escapeHtml(t.userName || t.userEmail) + '</span>' +
             (t.branch ? ' | ' + escapeHtml(t.branch) : '') + phoneHtml + '</div>' +
-            '<div class="ticket-card-header"><strong class="dash-link-field" data-edit-fields title="לחץ לתיקון פרטי הקריאה">' + titleParts.join(' | ') + '</strong>' +
+            '<div class="ticket-card-header"><strong class="dash-title-link" data-edit-fields title="לחץ לתיקון פרטי הקריאה">' + titleParts.join(' | ') + '</strong>' +
             '<span class="dash-header-right-group">' + computerTagHtml + printerTagHtml + anydeskHtml + statusControlHtml + '</span></div>' +
             '<div class="ticket-meta">' + formatDateTime(t.timestamp) + ' | <span class="dash-urgency-chip" style="background:' + urgencyBg + '">' + escapeHtml(t.urgency) + '</span></div>' +
             '<div class="dash-elapsed-row">' + escapeHtml(dashboardElapsedHtml(t)) + '</div>' +
