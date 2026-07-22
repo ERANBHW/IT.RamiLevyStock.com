@@ -51,9 +51,16 @@ async function saveCategory(payload, caller) {
   return { ok: true, data: { id: result.recordset[0].Id } };
 }
 
+// Deleting a category cascades (in the DB) into deleting its subcategories. Procedures.
+// SubcategoryId has no cascading FK of its own (see schema.sql — a second cascade path
+// down to Procedures isn't allowed), so any procedure still pointing at one of those
+// subcategories is unlinked here first, or the cascade delete would fail on the FK.
 async function deleteCategory(payload, caller) {
   if (!caller.isProceduresAdmin) return { ok: false, error: 'אין הרשאה' };
   const pool = await getPool();
+  await pool.request().input('id', sql.UniqueIdentifier, payload.id)
+    .query(`UPDATE Procedures SET SubcategoryId = NULL
+      WHERE SubcategoryId IN (SELECT Id FROM ProcedureSubcategories WHERE CategoryId = @id)`);
   const result = await pool.request().input('id', sql.UniqueIdentifier, payload.id)
     .query('DELETE FROM ProcedureCategories WHERE Id = @id');
   if (!result.rowsAffected[0]) return { ok: false, error: 'הקטגוריה לא נמצאה' };
@@ -85,9 +92,13 @@ async function saveSubcategory(payload, caller) {
   return { ok: true, data: { id: result.recordset[0].Id } };
 }
 
+// Same reason as deleteCategory above — Procedures.SubcategoryId has no cascading FK,
+// so any procedure still pointing at this subcategory is unlinked before the delete.
 async function deleteSubcategory(payload, caller) {
   if (!caller.isProceduresAdmin) return { ok: false, error: 'אין הרשאה' };
   const pool = await getPool();
+  await pool.request().input('id', sql.UniqueIdentifier, payload.id)
+    .query('UPDATE Procedures SET SubcategoryId = NULL WHERE SubcategoryId = @id');
   const result = await pool.request().input('id', sql.UniqueIdentifier, payload.id)
     .query('DELETE FROM ProcedureSubcategories WHERE Id = @id');
   if (!result.rowsAffected[0]) return { ok: false, error: 'תת-הקטגוריה לא נמצאה' };
