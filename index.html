@@ -694,6 +694,20 @@
         </div>
     </main>
 
+    <!-- VIEW: admin email settings -->
+    <main class="app" id="view-admin-email-settings">
+        <div class="content">
+            <h1 class="page-title">ניהול כתובות מייל</h1>
+            <p class="page-subtitle">כתובות אלה קובעות לאן נשלחות ההתראות האוטומטיות על קריאות שירות חדשות.</p>
+            <div class="field"><label for="esItCompanyEmail">מייל חברת המחשוב (קריאות מחשב)</label><input id="esItCompanyEmail" type="email" dir="ltr"></div>
+            <div class="field"><label for="esPrinterCompanyEmail">מייל חברת המדפסות (קריאות מדפסת)</label><input id="esPrinterCompanyEmail" type="email" dir="ltr"></div>
+            <div class="field"><label for="esAdminEmail">מייל מנהל גלובלי (עותק לכל קריאה)</label><input id="esAdminEmail" type="email" dir="ltr"></div>
+            <div id="emailSettingsError" style="display:none;color:var(--danger);font-size:13px;margin-bottom:12px"></div>
+            <div id="emailSettingsSuccess" style="display:none;color:var(--success);font-size:13px;margin-bottom:12px">נשמר בהצלחה.</div>
+            <button type="button" class="primary-button" style="width:100%" id="emailSettingsSaveBtn">שמור</button>
+        </div>
+    </main>
+
     <!-- VIEW: admin view-as user -->
     <main class="app" id="view-admin-view-as">
         <div class="content">
@@ -1046,6 +1060,7 @@
         if (id === 'admin-computers') loadComputersAdminPage();
         if (id === 'admin-branches') loadBranchesAdminPage();
         if (id === 'admin-sharedfolders') loadSharedFoldersAdminPage();
+        if (id === 'admin-email-settings') loadEmailSettingsAdminPage();
         if (id === 'user-request') loadUserRequestFormPage();
         if (id === 'admin-user-requests') loadUserRequestsAdminPage();
         if (id === 'admin-printers') loadPrintersAdminPage();
@@ -1151,6 +1166,7 @@
     var HUB_SUPERADMIN_BUTTONS = [
         { id: 'admin-branches', icon: '🏢', label: 'ניהול סניפים', check: function () { return Portal.isSuperAdmin(); } },
         { id: 'admin-sharedfolders', icon: '📁', label: 'תיקיות משותפות', check: function () { return Portal.isSuperAdmin(); } },
+        { id: 'admin-email-settings', icon: '📧', label: 'ניהול כתובות מייל', check: function () { return Portal.isSuperAdmin(); } },
     ];
 
     function renderHubButtons(container, buttons) {
@@ -3996,6 +4012,36 @@
     // ── ADMIN: SHARED FOLDERS ─────────────────────────────────
     var sharedFoldersCache = [];
     var editingSharedFolderId = null;
+
+    // ── ADMIN: EMAIL SETTINGS (Global Admin — section 8 follow-up) ──────────────
+    async function loadEmailSettingsAdminPage() {
+        document.getElementById('emailSettingsError').style.display = 'none';
+        document.getElementById('emailSettingsSuccess').style.display = 'none';
+        showLoading(true);
+        var res = await apiGet('emailSettings', 'get', {});
+        showLoading(false);
+        var data = res.ok ? res.data : { itCompanyEmail: '', printerCompanyEmail: '', adminEmail: '' };
+        document.getElementById('esItCompanyEmail').value = data.itCompanyEmail || '';
+        document.getElementById('esPrinterCompanyEmail').value = data.printerCompanyEmail || '';
+        document.getElementById('esAdminEmail').value = data.adminEmail || '';
+    }
+
+    document.getElementById('emailSettingsSaveBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('emailSettingsError');
+        var successEl = document.getElementById('emailSettingsSuccess');
+        errEl.style.display = 'none';
+        successEl.style.display = 'none';
+        var payload = {
+            itCompanyEmail: document.getElementById('esItCompanyEmail').value.trim(),
+            printerCompanyEmail: document.getElementById('esPrinterCompanyEmail').value.trim(),
+            adminEmail: document.getElementById('esAdminEmail').value.trim(),
+        };
+        showLoading(true);
+        var res = await apiPost('emailSettings', 'update', payload);
+        showLoading(false);
+        if (res.ok) successEl.style.display = 'block';
+        else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
+    });
 
     async function loadSharedFoldersAdminPage() {
         showLoading(true);

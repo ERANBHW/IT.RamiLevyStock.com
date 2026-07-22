@@ -22,6 +22,7 @@ const sharedFolders = require('../entities/sharedFolders');
 const userRequests = require('../entities/userRequests');
 const printers = require('../entities/printers');
 const ticketConfig = require('../entities/ticketConfig');
+const emailSettings = require('../entities/emailSettings');
 
 const ROUTES = {
   users: {
@@ -100,6 +101,10 @@ const ROUTES = {
     deleteSubcategory: ticketConfig.deleteSubcategory,
     saveUrgency: ticketConfig.saveUrgency,
     deleteUrgency: ticketConfig.deleteUrgency,
+  },
+  emailSettings: {
+    get: emailSettings.get,
+    update: emailSettings.update,
   },
 };
 

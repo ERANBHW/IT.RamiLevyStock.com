@@ -1,5 +1,5 @@
 const { sql, getPool } = require('../db');
-const { sendTicketEmails } = require('../mail');
+const { sendTicketEmails, sendTicketClosedEmail } = require('../mail');
 
 const STATUS_OPEN = 'פתוחה';
 const STATUS_PROGRESS = 'בטיפול';
@@ -419,6 +419,14 @@ async function closeWithDetails(payload, caller) {
       .query(`INSERT INTO TicketFollowUps (TicketNumber, Description, CreatedByEmail, CreatedByName)
         VALUES (@num, @description, @email, @name)`);
   }
+
+  // Item 4 (email follow-up): the requester gets the resolution + full history the
+  // moment their ticket closes — re-fetch both fresh rather than reconstructing them
+  // from the writes above, so the email always matches exactly what get() would show.
+  const closedTicket = await getTicketOr404(pool, ticketNumber);
+  const logResult = await pool.request().input('num', sql.NVarChar, ticketNumber)
+    .query('SELECT * FROM TicketLog WHERE TicketNumber = @num ORDER BY Timestamp ASC');
+  sendTicketClosedEmail(closedTicket, logResult.recordset).catch((err) => console.error('sendTicketClosedEmail failed', err));
 
   return { ok: true };
 }

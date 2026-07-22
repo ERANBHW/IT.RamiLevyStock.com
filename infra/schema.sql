@@ -375,3 +375,17 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_TicketFollowUps_TicketNumber')
 CREATE INDEX IX_TicketFollowUps_TicketNumber ON TicketFollowUps(TicketNumber);
 GO
+
+-- Email routing (section 8 follow-up) — a single settings row a Global Admin edits from
+-- "ניהול כתובות מייל" instead of these living only in app-settings env vars. mail.js
+-- falls back to the old env vars (IT_COMPANY_EMAIL/PRINTER_SUPPORT_EMAIL/ADMIN_EMAIL) if
+-- this row doesn't exist yet, so there's no hard cutover moment.
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'EmailSettings')
+CREATE TABLE EmailSettings (
+    Id                  INT             NOT NULL PRIMARY KEY CHECK (Id = 1),
+    ItCompanyEmail      NVARCHAR(320)   NOT NULL DEFAULT '',
+    PrinterCompanyEmail NVARCHAR(320)   NOT NULL DEFAULT '',
+    AdminEmail          NVARCHAR(320)   NOT NULL DEFAULT '',
+    UpdatedAt           DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME()
+);
+GO
