@@ -96,8 +96,8 @@ button, input, select, textarea { font-family: Arial, Helvetica, sans-serif; }
 
 .status-badge { padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
 .status-open { background: #fff3cd; color: #856404; }
-.status-progress { background: #cce5ff; color: #004085; }
-.status-closed { background: #d4edda; color: #155724; }
+.status-progress { background: #fff; color: var(--brand-pink); border: 1.5px solid var(--brand-pink); padding: 1.5px 8.5px; }
+.status-closed { background: #fff; color: var(--brand-pink); border: 1.5px solid var(--brand-pink); padding: 1.5px 8.5px; }
 
 .loading-overlay {
   display: none; position: fixed; inset: 0; z-index: 2000; align-items: center;
