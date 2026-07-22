@@ -60,13 +60,13 @@
         }
         .profile-modal-backdrop.visible { display: flex; }
         .profile-modal {
-            width: 100%; max-width: 420px; background: var(--white); border-radius: 16px;
-            box-shadow: 0 24px 70px rgba(0,0,0,0.28);
+            width: 100%; max-width: 420px; max-height: 88vh; background: var(--white); border-radius: 16px;
+            box-shadow: 0 24px 70px rgba(0,0,0,0.28); display: flex; flex-direction: column;
         }
-        .profile-modal-header { padding: 18px 20px; border-bottom: 4px solid var(--brand-pink); }
+        .profile-modal-header { padding: 14px 20px; border-bottom: 4px solid var(--brand-pink); flex-shrink: 0; }
         .profile-modal-header h2 { margin: 0; font-size: 18px; }
-        .profile-modal-body { padding: 18px 20px; }
-        .profile-modal-actions { display: flex; gap: 10px; padding: 0 20px 20px; }
+        .profile-modal-body { padding: 16px 20px; overflow-y: auto; }
+        .profile-modal-actions { display: flex; gap: 10px; padding: 12px 20px; flex-shrink: 0; border-top: 1px solid var(--border); }
 
         .placeholder-view { padding: 60px 40px; text-align: center; color: var(--muted); }
         .placeholder-view .icon { font-size: 44px; margin-bottom: 14px; }
@@ -149,16 +149,38 @@
         .procedure-card-content { display: none; padding: 0 14px 14px; font-size: 13px; color: #333; white-space: pre-wrap; line-height: 1.6; }
         .procedure-card.expanded .procedure-card-content { display: block; }
 
+        .admin-table-scroll { max-height: 65vh; overflow: auto; border: 1px solid var(--border); border-radius: 10px; }
         .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .admin-table th, .admin-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
-        .admin-table th { background: var(--background); position: sticky; top: 0; }
+        .admin-table th { background: var(--background); position: sticky; top: 0; z-index: 1; }
+        .admin-table tbody tr.admin-row-clickable { cursor: pointer; }
+        .admin-table tbody tr.admin-row-clickable:hover { background: var(--background); }
         .role-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; background: var(--brand-pink-soft); color: var(--brand-pink-dark); margin-inline-end: 4px; }
         .admin-row-actions { display: flex; gap: 4px; }
         .anydesk-link { color: var(--brand-pink-dark); text-decoration: none; font-weight: 700; }
 
-        .folder-checkbox-list { display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; padding: 8px 10px; border: 1px solid #cfd1d6; border-radius: 9px; }
+        .folder-checkbox-list { display: none; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; padding: 8px 10px; border: 1px solid #cfd1d6; border-radius: 9px; margin-top: 8px; }
+        .folder-checkbox-list.expanded { display: flex; }
         .folder-checkbox-list label { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 400; cursor: pointer; }
         .folder-checkbox-list input { width: auto; margin: 0; }
+        .folder-collapse-header {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer;
+            border: 1px solid #cfd1d6; border-radius: 9px; padding: 9px 12px; background: var(--white);
+        }
+        .folder-collapse-header:hover { border-color: var(--brand-pink); }
+        .folder-collapse-header label { cursor: pointer; font-weight: 600; font-size: 13px; margin: 0; flex-shrink: 0; }
+        .folder-collapse-summary { color: var(--muted); font-size: 12.5px; flex: 1; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .folder-collapse-arrow { color: var(--muted); font-size: 11px; transition: transform 0.15s ease; flex-shrink: 0; }
+        .folder-collapse-header.expanded .folder-collapse-arrow { transform: rotate(180deg); }
+
+        .choice-btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        .choice-btn {
+            flex: 1; min-width: 130px; padding: 10px 14px; border: 2px solid var(--border); border-radius: 10px;
+            background: var(--white); font-family: inherit; font-size: 14px; font-weight: 600; color: var(--text);
+            cursor: pointer; transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+        }
+        .choice-btn:hover { border-color: var(--brand-pink); }
+        .choice-btn.selected { border-color: var(--brand-pink); background: var(--brand-pink-soft); color: var(--brand-pink-dark); }
         .script-box { width: 100%; font-family: Consolas, Menlo, monospace; font-size: 12px; direction: ltr; text-align: left; resize: vertical; }
         .email-suffix-row { display: flex; align-items: center; gap: 8px; }
         .email-suffix-row input { flex: 1; }
@@ -603,25 +625,32 @@
 
                     <div class="field">
                         <label>סוג גישה</label>
-                        <div style="display:flex;gap:16px">
-                            <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="urAccessType" value="מחשב" checked style="width:auto">עמדת מחשב</label>
-                            <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="urAccessType" value="מייל" style="width:auto">תיבת מייל בלבד</label>
+                        <div class="choice-btn-group" data-toggle-group="urAccessType">
+                            <button type="button" class="choice-btn" data-value="מחשב">עמדת מחשב</button>
+                            <button type="button" class="choice-btn" data-value="מייל">תיבת מייל בלבד</button>
                         </div>
                     </div>
 
-                    <div id="urComputerBlock">
+                    <div id="urComputerBlock" style="display:none">
                         <div class="field">
                             <label for="urComputerSelect">עמדת מחשב</label>
                             <select id="urComputerSelect"></select>
                         </div>
                         <div class="field" id="urNewComputerTypeField" style="display:none">
                             <label>סוג המחשב המוזמן</label>
-                            <div style="display:flex;gap:16px">
-                                <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="urNewComputerType" value="נייח" checked style="width:auto">נייח</label>
-                                <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="urNewComputerType" value="נייד" style="width:auto">נייד</label>
+                            <div class="choice-btn-group" data-toggle-group="urNewComputerType">
+                                <button type="button" class="choice-btn" data-value="נייח">נייח</button>
+                                <button type="button" class="choice-btn" data-value="נייד">נייד</button>
                             </div>
                         </div>
-                        <div class="field"><label>תיקיות משותפות</label><div id="urFolders" class="folder-checkbox-list"></div></div>
+                        <div class="field">
+                            <div class="folder-collapse-header" id="urFoldersHeader">
+                                <label>תיקיות משותפות</label>
+                                <span class="folder-collapse-summary" id="urFoldersSummary">לא נבחרו תיקיות</span>
+                                <span class="folder-collapse-arrow">▾</span>
+                            </div>
+                            <div id="urFolders" class="folder-checkbox-list"></div>
+                        </div>
                     </div>
                 </section>
 
@@ -646,10 +675,10 @@
                 <h1 class="page-title" style="margin:0">ניהול משתמשים</h1>
                 <button type="button" class="primary-button" id="userAdminAddBtn">+ הוסף משתמש</button>
             </div>
-            <div style="overflow-x:auto">
+            <div class="admin-table-scroll">
                 <table class="admin-table" id="usersTable">
                     <thead>
-                        <tr><th>מייל</th><th>שם</th><th>סניף</th><th>תפקיד</th><th>הרשאות</th><th>מחשב</th><th></th></tr>
+                        <tr><th>מייל</th><th>שם</th><th>סניף</th><th>תפקיד</th><th>הרשאות</th><th>מחשב</th></tr>
                     </thead>
                     <tbody id="usersTableBody"></tbody>
                 </table>
@@ -774,62 +803,61 @@
 
 </div>
 
-<!-- User admin modal -->
+<!-- User admin modal — same wizard as the user-request form/review (item 5, follow-up),
+     plus a "הרשאות פורטל" step; applies to both "+ הוסף משתמש" and editing an existing one. -->
 <div class="profile-modal-backdrop" id="userAdminModalBackdrop">
-    <div class="profile-modal" style="max-width:480px">
+    <div class="profile-modal" style="max-width:520px">
         <div class="profile-modal-header"><h2 id="userAdminModalTitle">משתמש חדש</h2></div>
         <div class="profile-modal-body">
-            <p class="page-subtitle" style="margin:0 0 10px">שם באנגלית ממלא אוטומטית את שם המשתמש (ניתן לשינוי ידני)</p>
-            <div class="grid-2">
-                <div class="field"><label for="uaFirstNameEn">שם פרטי (אנגלית)</label><input id="uaFirstNameEn" type="text" dir="ltr"></div>
-                <div class="field"><label for="uaLastNameEn">שם משפחה (אנגלית)</label><input id="uaLastNameEn" type="text" dir="ltr"></div>
-            </div>
-            <div class="field"><label for="uaUsername">מייל</label>
-                <div class="email-suffix-row" dir="ltr"><input id="uaUsername" type="text" dir="ltr"><span class="email-suffix" dir="ltr">@rami-levy-stock.co.il</span></div>
-            </div>
-            <div class="grid-2">
-                <div class="field"><label for="uaFirstName">שם פרטי (עברית)</label><input id="uaFirstName" type="text"></div>
-                <div class="field"><label for="uaLastName">שם משפחה (עברית)</label><input id="uaLastName" type="text"></div>
-                <div class="field"><label for="uaPhone">טלפון</label><input id="uaPhone" type="tel" dir="ltr"></div>
-                <div class="field"><label for="uaBranch">סניף</label><select id="uaBranch"></select></div>
-            </div>
-            <div class="field"><label for="uaRole">תפקיד</label><input id="uaRole" type="text"></div>
+            <div class="wizard-steps" id="uaWizardSteps"></div>
 
-            <div class="field">
-                <label>סוג גישה</label>
-                <div style="display:flex;gap:16px">
-                    <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="uaAccessType" value="מחשב" checked style="width:auto">עמדת מחשב</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="uaAccessType" value="מייל" style="width:auto">תיבת מייל בלבד</label>
+            <div id="uaStep1">
+                <p class="page-subtitle" style="margin:0 0 10px">שם באנגלית ממלא אוטומטית את שם המשתמש (ניתן לשינוי ידני)</p>
+                <div class="grid-2">
+                    <div class="field"><label for="uaFirstNameEn">שם פרטי (אנגלית)</label><input id="uaFirstNameEn" type="text" dir="ltr"></div>
+                    <div class="field"><label for="uaLastNameEn">שם משפחה (אנגלית)</label><input id="uaLastNameEn" type="text" dir="ltr"></div>
                 </div>
-            </div>
+                <div class="field"><label for="uaUsername">מייל</label>
+                    <div class="email-suffix-row" dir="ltr"><input id="uaUsername" type="text" dir="ltr"><span class="email-suffix" dir="ltr">@rami-levy-stock.co.il</span></div>
+                </div>
+                <div class="grid-2">
+                    <div class="field"><label for="uaFirstName">שם פרטי (עברית)</label><input id="uaFirstName" type="text"></div>
+                    <div class="field"><label for="uaLastName">שם משפחה (עברית)</label><input id="uaLastName" type="text"></div>
+                    <div class="field"><label for="uaPhone">טלפון</label><input id="uaPhone" type="tel" dir="ltr"></div>
+                    <div class="field"><label for="uaBranch">סניף</label><select id="uaBranch"></select></div>
+                </div>
+                <div class="field"><label for="uaRole">תפקיד</label><input id="uaRole" type="text"></div>
 
-            <div id="uaComputerBlock">
-                <div class="field"><label for="uaComputer">עמדת מחשב</label><select id="uaComputer"></select></div>
-                <div class="field" id="uaNewComputerTypeField" style="display:none">
-                    <label>סוג המחשב החדש</label>
-                    <div style="display:flex;gap:16px">
-                        <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="uaNewComputerType" value="נייח" checked style="width:auto">נייח</label>
-                        <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="uaNewComputerType" value="נייד" style="width:auto">נייד</label>
+                <div class="field">
+                    <label>סוג גישה</label>
+                    <div class="choice-btn-group" data-toggle-group="uaAccessType">
+                        <button type="button" class="choice-btn" data-value="מחשב">עמדת מחשב</button>
+                        <button type="button" class="choice-btn" data-value="מייל">תיבת מייל בלבד</button>
+                    </div>
+                </div>
+
+                <div id="uaComputerBlock" style="display:none">
+                    <div class="field"><label for="uaComputer">עמדת מחשב</label><select id="uaComputer"></select></div>
+                    <div class="field" id="uaNewComputerTypeField" style="display:none">
+                        <label>סוג המחשב החדש</label>
+                        <div class="choice-btn-group" data-toggle-group="uaNewComputerType">
+                            <button type="button" class="choice-btn" data-value="נייח">נייח</button>
+                            <button type="button" class="choice-btn" data-value="נייד">נייד</button>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <div class="folder-collapse-header" id="uaFoldersHeader">
+                            <label>תיקיות משותפות</label>
+                            <span class="folder-collapse-summary" id="uaFoldersSummary">לא נבחרו תיקיות</span>
+                            <span class="folder-collapse-arrow">▾</span>
+                        </div>
+                        <div id="uaFolders" class="folder-checkbox-list"></div>
                     </div>
                 </div>
             </div>
 
-            <div id="uaAdminFlagsSection">
-                <div class="field" style="flex-direction:row;align-items:center;gap:8px">
-                    <input id="uaIsITAdmin" type="checkbox" style="width:auto"><label for="uaIsITAdmin" style="margin:0">הרשאת ניהול IT (מחשבים)</label>
-                </div>
-                <div class="field" style="flex-direction:row;align-items:center;gap:8px">
-                    <input id="uaIsProceduresAdmin" type="checkbox" style="width:auto"><label for="uaIsProceduresAdmin" style="margin:0">הרשאת ניהול נהלים</label>
-                </div>
-                <div class="field" style="flex-direction:row;align-items:center;gap:8px">
-                    <input id="uaIsUserRequestSubmitter" type="checkbox" style="width:auto"><label for="uaIsUserRequestSubmitter" style="margin:0">מורשה להקמת משתמשים</label>
-                </div>
-            </div>
-            <div id="userAdminModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
-
-            <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-                <p class="page-subtitle" style="margin:0 0 10px">הכנת סקריפט הקמה ב-365 (תיקיות משותפות)</p>
-                <div class="field" id="uaFoldersField"><label>תיקיות משותפות</label><div id="uaFolders" class="folder-checkbox-list"></div></div>
+            <div id="uaStep2" style="display:none">
+                <p class="page-subtitle" style="margin:0 0 10px">הכנת סקריפט הקמה ב-365 (Entra ID) - להרצה ידנית ע"י IT</p>
                 <button type="button" class="secondary-button" id="uaGenerateScriptBtn">הכן סקריפט הקמה</button>
                 <div id="uaScriptResult" style="display:none;margin-top:10px">
                     <div class="field"><label>מייל מחושב</label><input id="uaScriptEmail" readonly dir="ltr"></div>
@@ -844,10 +872,33 @@
                     </div>
                 </div>
             </div>
+
+            <div id="uaStep3" style="display:none">
+                <p class="page-subtitle" style="margin:0 0 10px">הרשאות ניהול בתוך הפורטל (מנהל-על בלבד)</p>
+                <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+                    <input id="uaIsITAdmin" type="checkbox" style="width:auto"><label for="uaIsITAdmin" style="margin:0">הרשאת ניהול IT (מחשבים)</label>
+                </div>
+                <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+                    <input id="uaIsProceduresAdmin" type="checkbox" style="width:auto"><label for="uaIsProceduresAdmin" style="margin:0">הרשאת ניהול נהלים</label>
+                </div>
+                <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+                    <input id="uaIsUserRequestSubmitter" type="checkbox" style="width:auto"><label for="uaIsUserRequestSubmitter" style="margin:0">מורשה להקמת משתמשים</label>
+                </div>
+            </div>
+
+            <div id="uaStep4" style="display:none">
+                <p class="page-subtitle" style="margin:0 0 10px">סקירה סופית - לחיצה על "שמור" מקימה/מעדכנת את המשתמש בפורטל</p>
+                <div id="uaSummary" style="font-size:13px;line-height:2"></div>
+            </div>
+
+            <div id="userAdminModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:10px"></div>
         </div>
         <div class="profile-modal-actions">
-            <button type="button" class="primary-button" style="flex:1" id="userAdminSaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="uaBackBtn" style="display:none">חזרה</button>
+            <button type="button" class="primary-button" style="flex:1" id="uaNextBtn">הבא</button>
+            <button type="button" class="primary-button" style="flex:1;display:none" id="userAdminSaveBtn">שמור</button>
             <button type="button" class="secondary-button" id="userAdminCancelBtn">ביטול</button>
+            <button type="button" class="secondary-button" id="uaDeleteBtn" style="display:none;border-color:var(--danger);color:var(--danger)">מחק משתמש</button>
         </div>
     </div>
 </div>
@@ -1023,9 +1074,9 @@
 
                 <div class="field">
                     <label>סוג גישה</label>
-                    <div style="display:flex;gap:16px">
-                        <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="urdAccessType" value="מחשב" checked style="width:auto">עמדת מחשב</label>
-                        <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="urdAccessType" value="מייל" style="width:auto">תיבת מייל בלבד</label>
+                    <div class="choice-btn-group" data-toggle-group="urdAccessType">
+                        <button type="button" class="choice-btn" data-value="מחשב">עמדת מחשב</button>
+                        <button type="button" class="choice-btn" data-value="מייל">תיבת מייל בלבד</button>
                     </div>
                 </div>
 
@@ -1040,12 +1091,19 @@
                     </div>
                     <div class="field" id="urdNewComputerTypeField" style="display:none">
                         <label>סוג המחשב המוזמן</label>
-                        <div style="display:flex;gap:16px">
-                            <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="urdNewComputerType" value="נייח" checked style="width:auto">נייח</label>
-                            <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="urdNewComputerType" value="נייד" style="width:auto">נייד</label>
+                        <div class="choice-btn-group" data-toggle-group="urdNewComputerType">
+                            <button type="button" class="choice-btn" data-value="נייח">נייח</button>
+                            <button type="button" class="choice-btn" data-value="נייד">נייד</button>
                         </div>
                     </div>
-                    <div class="field"><label>תיקיות משותפות</label><div id="urdFolders" class="folder-checkbox-list"></div></div>
+                    <div class="field">
+                        <div class="folder-collapse-header" id="urdFoldersHeader">
+                            <label>תיקיות משותפות</label>
+                            <span class="folder-collapse-summary" id="urdFoldersSummary">לא נבחרו תיקיות</span>
+                            <span class="folder-collapse-arrow">▾</span>
+                        </div>
+                        <div id="urdFolders" class="folder-checkbox-list"></div>
+                    </div>
                 </div>
             </div>
 
@@ -1221,6 +1279,65 @@
         var orderSelected = !selectedName ? '' : (selectedName === ORDER_NEW_COMPUTER_VALUE ? ' selected' : '');
         selectEl.innerHTML = '<option value="">בחר עמדה</option>' + options +
             '<option value="' + ORDER_NEW_COMPUTER_VALUE + '"' + orderSelected + '>🖥️ הזמנת מחשב חדש</option>';
+    }
+
+    // ── TOGGLE BUTTON GROUPS: replaces radio pairs (item 2, follow-up) — real buttons,
+    // no default selection, wired via [data-toggle-group] instead of a shared `name`.
+    // Shared by the user-request form, its review wizard, and the users-admin modal.
+    function toggleGroupEl(groupId) { return document.querySelector('[data-toggle-group="' + groupId + '"]'); }
+
+    function getToggleValue(groupId) {
+        var active = toggleGroupEl(groupId).querySelector('.choice-btn.selected');
+        return active ? active.getAttribute('data-value') : null;
+    }
+
+    function setToggleValue(groupId, value) {
+        toggleGroupEl(groupId).querySelectorAll('.choice-btn').forEach(function (btn) {
+            btn.classList.toggle('selected', value != null && btn.getAttribute('data-value') === value);
+        });
+    }
+
+    // Wired once at page load (the group element itself never gets re-created); onChange
+    // fires only on a real click, not when setToggleValue() sets a value programmatically.
+    function initToggleGroup(groupId, onChange) {
+        toggleGroupEl(groupId).querySelectorAll('.choice-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                setToggleValue(groupId, btn.getAttribute('data-value'));
+                if (onChange) onChange(btn.getAttribute('data-value'));
+            });
+        });
+    }
+
+    // ── COLLAPSIBLE SHARED-FOLDERS PICKER (item 4, follow-up): collapsed by default,
+    // showing a one-line summary of what's already checked; clicking the header opens it
+    // up to change the selection. Shared by the same three forms as the toggle groups above.
+    function folderCollapseSummary(listEl) {
+        var names = Array.from(listEl.querySelectorAll('label')).filter(function (l) {
+            return l.querySelector('input').checked;
+        }).map(function (l) { return l.textContent.trim(); });
+        return names.length ? names.join(', ') : 'לא נבחרו תיקיות';
+    }
+
+    function refreshFolderCollapseSummary(prefix) {
+        var summaryEl = document.getElementById(prefix + 'FoldersSummary');
+        if (summaryEl) summaryEl.textContent = folderCollapseSummary(document.getElementById(prefix + 'Folders'));
+    }
+
+    function collapseFolderPicker(prefix) {
+        document.getElementById(prefix + 'Folders').classList.remove('expanded');
+        document.getElementById(prefix + 'FoldersHeader').classList.remove('expanded');
+    }
+
+    function initFolderCollapse(prefix) {
+        var header = document.getElementById(prefix + 'FoldersHeader');
+        var list = document.getElementById(prefix + 'Folders');
+        header.addEventListener('click', function () {
+            list.classList.toggle('expanded');
+            header.classList.toggle('expanded');
+        });
+        list.addEventListener('change', function (e) {
+            if (e.target.type === 'checkbox') refreshFolderCollapseSummary(prefix);
+        });
     }
 
     // ── HUB VIEW ──────────────────────────────────────────────
@@ -3446,7 +3563,7 @@
 
     // ── USER REQUEST FORM (v2.1, section 4ב) ───────────────────
     function urAccessType() {
-        return document.querySelector('input[name="urAccessType"]:checked').value;
+        return getToggleValue('urAccessType');
     }
 
     function refreshUrComputerBlockVisibility() {
@@ -3465,22 +3582,26 @@
         ['urFirstNameHe', 'urLastNameHe', 'urFirstNameEn', 'urLastNameEn', 'urRole'].forEach(function (id) {
             document.getElementById(id).value = '';
         });
-        document.querySelector('input[name="urAccessType"][value="מחשב"]').checked = true;
-        document.querySelector('input[name="urNewComputerType"][value="נייח"]').checked = true;
+        // Item 2 (follow-up): nothing pre-selected on a brand-new form — the computer
+        // block only appears once the employee actually clicks "עמדת מחשב".
+        setToggleValue('urAccessType', null);
+        setToggleValue('urNewComputerType', null);
         showLoading(true);
         await ensureBranchesLoaded();
         populateBranchSelect(document.getElementById('urBranch'), '');
         populateBranchComputerSelect(document.getElementById('urComputerSelect'), [], '');
         await ensureSharedFoldersLoaded();
         renderFolderCheckboxes(document.getElementById('urFolders'), []);
+        collapseFolderPicker('ur');
+        refreshFolderCollapseSummary('ur');
         showLoading(false);
         refreshUrComputerBlockVisibility();
         refreshUrNewComputerTypeVisibility();
     }
 
-    document.querySelectorAll('input[name="urAccessType"]').forEach(function (radio) {
-        radio.addEventListener('change', refreshUrComputerBlockVisibility);
-    });
+    initToggleGroup('urAccessType', refreshUrComputerBlockVisibility);
+    initToggleGroup('urNewComputerType', function () {});
+    initFolderCollapse('ur');
 
     document.getElementById('urComputerSelect').addEventListener('change', refreshUrNewComputerTypeVisibility);
 
@@ -3508,14 +3629,30 @@
         };
         if (accessType === 'מחשב') {
             if (computerSelectValue === ORDER_NEW_COMPUTER_VALUE) {
-                payload.newComputerType = document.querySelector('input[name="urNewComputerType"]:checked').value;
+                payload.newComputerType = getToggleValue('urNewComputerType');
             } else {
                 payload.assignedComputerName = computerSelectValue;
             }
             payload.folderIds = getSelectedFolderIds(document.getElementById('urFolders'));
         }
+        // Item 3 (follow-up): every field is required except shared folders.
         if (!payload.firstNameHe || !payload.lastNameHe || !payload.firstNameEn || !payload.lastNameEn) {
             errEl.textContent = 'יש למלא שם פרטי ומשפחה בעברית ובאנגלית';
+            errEl.style.display = 'block';
+            return;
+        }
+        if (!payload.branchNumber) {
+            errEl.textContent = 'יש לבחור סניף';
+            errEl.style.display = 'block';
+            return;
+        }
+        if (!payload.role) {
+            errEl.textContent = 'יש למלא תפקיד';
+            errEl.style.display = 'block';
+            return;
+        }
+        if (!accessType) {
+            errEl.textContent = 'יש לבחור סוג גישה';
             errEl.style.display = 'block';
             return;
         }
@@ -3570,7 +3707,7 @@
     }
 
     function urdAccessType() {
-        return document.querySelector('input[name="urdAccessType"]:checked').value;
+        return getToggleValue('urdAccessType');
     }
 
     function refreshUrdComputerBlockVisibility() {
@@ -3608,7 +3745,7 @@
         };
         if (accessType === 'מחשב') {
             if (computerSelectValue === ORDER_NEW_COMPUTER_VALUE) {
-                payload.newComputerType = document.querySelector('input[name="urdNewComputerType"]:checked').value;
+                payload.newComputerType = getToggleValue('urdNewComputerType');
             } else {
                 payload.assignedComputerName = computerSelectValue;
             }
@@ -3668,15 +3805,15 @@
         document.getElementById('urdRole').value = req.role;
         await ensureSharedFoldersLoaded();
         renderFolderCheckboxes(document.getElementById('urdFolders'), res.data.folders.map(function (f) { return f.id; }));
+        refreshFolderCollapseSummary('urd');
+        collapseFolderPicker('urd');
         document.getElementById('urdRequesterEmailNote').textContent = req.requesterEmail || '';
 
-        document.querySelector('input[name="urdAccessType"][value="' + (req.accessType || 'מחשב') + '"]').checked = true;
+        setToggleValue('urdAccessType', req.accessType || 'מחשב');
         var branchComputers = await loadComputersByBranch(req.branchNumber);
         var computerSelectValue = req.assignedComputerName || (req.newComputerType ? ORDER_NEW_COMPUTER_VALUE : '');
         populateBranchComputerSelect(document.getElementById('urdComputerSelect'), branchComputers, computerSelectValue);
-        if (req.newComputerType) {
-            document.querySelector('input[name="urdNewComputerType"][value="' + req.newComputerType + '"]').checked = true;
-        }
+        setToggleValue('urdNewComputerType', req.newComputerType || null);
         refreshUrdComputerBlockVisibility();
         refreshUrdNewComputerTypeVisibility();
         refreshUrdProcurementStatus(req);
@@ -3707,9 +3844,9 @@
     document.getElementById('urdScriptPassword').addEventListener('input', function () { urdScriptPasswordManuallyEdited = true; });
     document.getElementById('urdScriptPassword').addEventListener('change', refreshUserRequestScriptPreview);
 
-    document.querySelectorAll('input[name="urdAccessType"]').forEach(function (radio) {
-        radio.addEventListener('change', refreshUrdComputerBlockVisibility);
-    });
+    initToggleGroup('urdAccessType', refreshUrdComputerBlockVisibility);
+    initToggleGroup('urdNewComputerType', function () {});
+    initFolderCollapse('urd');
     document.getElementById('urdComputerSelect').addEventListener('change', refreshUrdNewComputerTypeVisibility);
     document.getElementById('urdBranch').addEventListener('change', async function () {
         var list = await loadComputersByBranch(this.value);
@@ -3755,6 +3892,21 @@
             var payload = currentUserRequestFieldPayload();
             if (!payload.firstNameHe || !payload.lastNameHe || !payload.firstNameEn || !payload.lastNameEn) {
                 errEl.textContent = 'יש למלא שם פרטי ומשפחה בעברית ובאנגלית';
+                errEl.style.display = 'block';
+                return;
+            }
+            if (!payload.branchNumber) {
+                errEl.textContent = 'יש לבחור סניף';
+                errEl.style.display = 'block';
+                return;
+            }
+            if (!payload.role) {
+                errEl.textContent = 'יש למלא תפקיד';
+                errEl.style.display = 'block';
+                return;
+            }
+            if (!payload.accessType) {
+                errEl.textContent = 'יש לבחור סוג גישה';
                 errEl.style.display = 'block';
                 return;
             }
@@ -3833,15 +3985,15 @@
                 '<td>' + escapeHtml(branchName(u.branchNumber)) + '</td>' +
                 '<td>' + escapeHtml(u.role) + '</td>' +
                 '<td>' + (badges || '-') + '</td>' +
-                '<td>' + escapeHtml(comp ? comp.computerName : '-') + '</td>' +
-                '<td class="admin-row-actions">' +
-                (canManage ? '<button type="button" class="icon-button" data-edit>✏️</button>' : '') +
-                (canManage && !u.isSuperAdmin ? '<button type="button" class="icon-button" data-delete>🗑️</button>' : '') + '</td>';
+                '<td>' + escapeHtml(comp ? comp.computerName : '-') + '</td>';
 
-            var editBtn = tr.querySelector('[data-edit]');
-            if (editBtn) editBtn.addEventListener('click', function () { openUserAdminModal(u); });
-            var delBtn = tr.querySelector('[data-delete]');
-            if (delBtn) delBtn.addEventListener('click', function () { deleteAdminUser(u); });
+            // Item 7 (user-request follow-up): no per-row icons — the whole row opens the
+            // edit wizard (which itself gates admin-on-admin edits server-side); rows for
+            // an admin the current user isn't allowed to manage stay read-only (no click).
+            if (canManage) {
+                tr.classList.add('admin-row-clickable');
+                tr.addEventListener('click', function () { openUserAdminModal(u); });
+            }
             body.appendChild(tr);
         });
     }
@@ -3854,13 +4006,11 @@
     }
 
     function uaAccessType() {
-        return document.querySelector('input[name="uaAccessType"]:checked').value;
+        return getToggleValue('uaAccessType');
     }
 
     function refreshUaComputerBlockVisibility() {
-        var isComputer = uaAccessType() === 'מחשב';
-        document.getElementById('uaComputerBlock').style.display = isComputer ? 'block' : 'none';
-        document.getElementById('uaFoldersField').style.display = isComputer ? 'block' : 'none';
+        document.getElementById('uaComputerBlock').style.display = uaAccessType() === 'מחשב' ? 'block' : 'none';
     }
 
     function refreshUaNewComputerTypeVisibility() {
@@ -3868,26 +4018,24 @@
         document.getElementById('uaNewComputerTypeField').style.display = isOrderNew ? 'block' : 'none';
     }
 
-    // Choosing "הזמנת מחשב חדש" here creates the computer right away (unlike the request
-    // flow's procurement task) — this modal has no approval queue to defer it through.
-    document.getElementById('uaComputer').addEventListener('change', function () {
-        if (this.value !== ORDER_NEW_COMPUTER_VALUE) { refreshUaNewComputerTypeVisibility(); return; }
-        var newType = document.querySelector('input[name="uaNewComputerType"]:checked').value;
+    document.getElementById('uaComputer').addEventListener('change', refreshUaNewComputerTypeVisibility);
+
+    // Item 2 (follow-up): the נייח/נייד buttons start unselected — the create-computer
+    // modal only opens once one is actually clicked, never automatically.
+    initToggleGroup('uaNewComputerType', function (value) {
         var branchNumber = document.getElementById('uaBranch').value;
         openComputerAdminModal(null, {
-            prefillType: newType,
+            prefillType: value,
             prefillBranchNumber: branchNumber,
             onSaved: async function (computerName) {
                 await populateUaComputerSelect(branchNumber, computerName);
                 refreshUaNewComputerTypeVisibility();
             },
         });
-        refreshUaNewComputerTypeVisibility();
     });
 
-    document.querySelectorAll('input[name="uaAccessType"]').forEach(function (radio) {
-        radio.addEventListener('change', refreshUaComputerBlockVisibility);
-    });
+    initToggleGroup('uaAccessType', refreshUaComputerBlockVisibility);
+    initFolderCollapse('ua');
 
     document.getElementById('uaBranch').addEventListener('change', function () {
         populateUaComputerSelect(this.value, '');
@@ -3895,6 +4043,16 @@
 
     var userAdminTracker = makeDirtyTracker(document.getElementById('userAdminModalBackdrop'));
     maskPhoneInput(document.getElementById('uaPhone'));
+
+    // Item 1 (user-request follow-up): Hebrew-name fields reject anything but Hebrew
+    // letters, English-name fields reject anything but English letters — across all
+    // three forms that collect a name (submission form, review wizard, users admin).
+    ['urFirstNameHe', 'urLastNameHe', 'urdFirstNameHe', 'urdLastNameHe', 'uaFirstName', 'uaLastName'].forEach(function (id) {
+        restrictToHebrewLetters(document.getElementById(id));
+    });
+    ['urFirstNameEn', 'urLastNameEn', 'urdFirstNameEn', 'urdLastNameEn', 'uaFirstNameEn', 'uaLastNameEn'].forEach(function (id) {
+        restrictToEnglishLetters(document.getElementById(id));
+    });
 
     // Same formula as the server (userRequests.js computeSuggestedEmail) — kept in sync
     // manually since this is just a live preview; the server always recomputes for real.
@@ -3916,8 +4074,116 @@
     document.getElementById('uaFirstNameEn').addEventListener('input', autoFillUsernameFromEnglishName);
     document.getElementById('uaLastNameEn').addEventListener('input', autoFillUsernameFromEnglishName);
 
+    // ── Wizard navigation (item 5, follow-up): same steps as the request review wizard,
+    // plus a SuperAdmin-only "הרשאות פורטל" permissions step, and a final summary/save step.
+    var uaCurrentStep = 1;
+    var uaStepSequence = [1, 2, 4];
+    var currentUaEditingUser = null;
+
+    var UA_STEP_LABELS = { 1: 'פרטי עובד', 2: 'סקריפט', 3: 'הרשאות פורטל', 4: 'סיכום' };
+
+    function uaComputeStepSequence() {
+        return Portal.isSuperAdmin() ? [1, 2, 3, 4] : [1, 2, 4];
+    }
+
+    function renderUaWizardDots() {
+        var seq = uaStepSequence;
+        var idx = seq.indexOf(uaCurrentStep);
+        var html = '';
+        seq.forEach(function (step, i) {
+            html += '<div class="wizard-step' + (i === idx ? ' active' : (i < idx ? ' done' : '')) + '"><span>' + (i + 1) + '</span><label>' + UA_STEP_LABELS[step] + '</label></div>';
+            if (i < seq.length - 1) html += '<div class="wizard-step-line' + (i < idx ? ' done' : '') + '"></div>';
+        });
+        document.getElementById('uaWizardSteps').innerHTML = html;
+    }
+
+    function buildUaSummaryHtml() {
+        var accessType = uaAccessType();
+        var email = editingUserEmail || (document.getElementById('uaUsername').value.trim().toLowerCase() + '@rami-levy-stock.co.il');
+        var lines = [
+            '<div><strong>שם: </strong>' + escapeHtml(document.getElementById('uaFirstName').value.trim() + ' ' + document.getElementById('uaLastName').value.trim()) + '</div>',
+            '<div><strong>מייל: </strong><span dir="ltr">' + escapeHtml(email) + '</span></div>',
+            '<div><strong>סניף: </strong>' + escapeHtml(branchName(document.getElementById('uaBranch').value)) + '</div>',
+            '<div><strong>תפקיד: </strong>' + escapeHtml(document.getElementById('uaRole').value.trim()) + '</div>',
+            '<div><strong>סוג גישה: </strong>' + escapeHtml(accessType || '') + '</div>',
+        ];
+        if (accessType === 'מחשב') {
+            lines.push('<div><strong>עמדת מחשב: </strong>' + escapeHtml(document.getElementById('uaComputer').value || '-') + '</div>');
+        }
+        if (Portal.isSuperAdmin()) {
+            var flags = [];
+            if (document.getElementById('uaIsITAdmin').checked) flags.push('IT');
+            if (document.getElementById('uaIsProceduresAdmin').checked) flags.push('נהלים');
+            if (document.getElementById('uaIsUserRequestSubmitter').checked) flags.push('מורשה להקמת משתמשים');
+            lines.push('<div><strong>הרשאות פורטל: </strong>' + (flags.length ? escapeHtml(flags.join(', ')) : 'ללא') + '</div>');
+        }
+        return lines.join('');
+    }
+
+    function setUaStep(step) {
+        uaCurrentStep = step;
+        [1, 2, 3, 4].forEach(function (n) {
+            document.getElementById('uaStep' + n).style.display = n === step ? 'block' : 'none';
+        });
+        if (step === 4) document.getElementById('uaSummary').innerHTML = buildUaSummaryHtml();
+        renderUaWizardDots();
+        var idx = uaStepSequence.indexOf(step);
+        var isLast = idx === uaStepSequence.length - 1;
+        document.getElementById('uaBackBtn').style.display = idx > 0 ? 'inline-block' : 'none';
+        document.getElementById('uaNextBtn').style.display = isLast ? 'none' : 'inline-block';
+        document.getElementById('userAdminSaveBtn').style.display = isLast ? 'inline-block' : 'none';
+        // Never offered for a SuperAdmin target (server-side rule mirrored here too).
+        document.getElementById('uaDeleteBtn').style.display =
+            (editingUserEmail && currentUaEditingUser && !currentUaEditingUser.isSuperAdmin) ? 'inline-block' : 'none';
+    }
+
+    // Item 3 (follow-up): every field required except shared folders.
+    function uaValidateStep1() {
+        var errEl = document.getElementById('userAdminModalError');
+        errEl.style.display = 'none';
+        if (!editingUserEmail && !document.getElementById('uaUsername').value.trim()) {
+            errEl.textContent = 'יש למלא מייל'; errEl.style.display = 'block'; return false;
+        }
+        var firstNameHe = document.getElementById('uaFirstName').value.trim();
+        var lastNameHe = document.getElementById('uaLastName').value.trim();
+        var firstNameEn = document.getElementById('uaFirstNameEn').value.trim();
+        var lastNameEn = document.getElementById('uaLastNameEn').value.trim();
+        if (!firstNameHe || !lastNameHe || !firstNameEn || !lastNameEn) {
+            errEl.textContent = 'יש למלא שם פרטי ומשפחה בעברית ובאנגלית'; errEl.style.display = 'block'; return false;
+        }
+        if (!document.getElementById('uaBranch').value) {
+            errEl.textContent = 'יש לבחור סניף'; errEl.style.display = 'block'; return false;
+        }
+        if (!document.getElementById('uaRole').value.trim()) {
+            errEl.textContent = 'יש למלא תפקיד'; errEl.style.display = 'block'; return false;
+        }
+        var accessType = uaAccessType();
+        if (!accessType) {
+            errEl.textContent = 'יש לבחור סוג גישה'; errEl.style.display = 'block'; return false;
+        }
+        if (accessType === 'מחשב') {
+            var computerSelectValue = document.getElementById('uaComputer').value;
+            if (!computerSelectValue || computerSelectValue === ORDER_NEW_COMPUTER_VALUE) {
+                errEl.textContent = 'יש לבחור עמדת מחשב קיימת או לסיים את רישום המחשב החדש'; errEl.style.display = 'block'; return false;
+            }
+        }
+        return true;
+    }
+
+    document.getElementById('uaNextBtn').addEventListener('click', function () {
+        if (uaCurrentStep === 1 && !uaValidateStep1()) return;
+        var idx = uaStepSequence.indexOf(uaCurrentStep);
+        setUaStep(uaStepSequence[idx + 1]);
+    });
+
+    document.getElementById('uaBackBtn').addEventListener('click', function () {
+        var idx = uaStepSequence.indexOf(uaCurrentStep);
+        setUaStep(uaStepSequence[idx - 1]);
+    });
+
     async function openUserAdminModal(user) {
         editingUserEmail = user ? user.email : null;
+        currentUaEditingUser = user || null;
         uaUsernameManuallyEdited = false;
         uaScriptPasswordManuallyEdited = false;
         document.getElementById('userAdminModalTitle').textContent = user ? 'עריכת משתמש' : 'משתמש חדש';
@@ -3932,24 +4198,25 @@
         populateBranchSelect(document.getElementById('uaBranch'), user ? user.branchNumber : '');
         await ensureSharedFoldersLoaded();
         renderFolderCheckboxes(document.getElementById('uaFolders'), []);
+        refreshFolderCollapseSummary('ua');
+        collapseFolderPicker('ua');
         document.getElementById('uaScriptResult').style.display = 'none';
         document.getElementById('uaRole').value = user ? user.role : '';
         document.getElementById('uaIsITAdmin').checked = !!(user && user.isITAdmin);
         document.getElementById('uaIsProceduresAdmin').checked = !!(user && user.isProceduresAdmin);
         document.getElementById('uaIsUserRequestSubmitter').checked = !!(user && user.isUserRequestSubmitter);
-        // Only a SuperAdmin may grant admin flags — a plain IT/Procedures admin creating
-        // a user never sees this section (matches server-side enforcement).
-        document.getElementById('uaAdminFlagsSection').style.display = Portal.isSuperAdmin() ? 'block' : 'none';
         var assignedComp = user ? computerAssignedTo(user.email) : null;
-        // Editing an existing mail-only user (no computer today) defaults to מייל; a new
-        // user, or one who already has a computer, defaults to מחשב.
-        var defaultAccessType = (user && !assignedComp) ? 'מייל' : 'מחשב';
-        document.querySelector('input[name="uaAccessType"][value="' + defaultAccessType + '"]').checked = true;
+        // Item 2 (follow-up): a brand-new user starts with nothing selected; editing an
+        // existing user reflects their real current state, which isn't a "default".
+        setToggleValue('uaAccessType', user ? (assignedComp ? 'מחשב' : 'מייל') : null);
+        setToggleValue('uaNewComputerType', null);
         await populateUaComputerSelect(user ? user.branchNumber : '', assignedComp ? assignedComp.computerName : '');
         refreshUaComputerBlockVisibility();
         refreshUaNewComputerTypeVisibility();
         document.getElementById('userAdminModalError').style.display = 'none';
         document.getElementById('userAdminModalBackdrop').classList.add('visible');
+        uaStepSequence = uaComputeStepSequence();
+        setUaStep(1);
         userAdminTracker.reset();
     }
 
@@ -4046,13 +4313,24 @@
         copyToClipboard(text, this);
     });
 
+    // Item 8 (follow-up): a red delete button lives inside the edit wizard itself — never
+    // offered when adding a new user (nothing to delete yet) or for a SuperAdmin target.
     async function deleteAdminUser(user) {
-        if (!confirm('למחוק את המשתמש ' + user.email + '?')) return;
+        if (!confirm('למחוק את המשתמש ' + user.email + '? פעולה זו אינה הפיכה.')) return;
         showLoading(true);
         var res = await apiPost('users', 'delete', { email: user.email });
         showLoading(false);
-        if (res.ok) loadUsersAdminPage(); else alert(res.error || 'שגיאה במחיקה');
+        if (res.ok) { closeUserAdminModal(); loadUsersAdminPage(); }
+        else {
+            var errEl = document.getElementById('userAdminModalError');
+            errEl.textContent = res.error || 'שגיאה במחיקה';
+            errEl.style.display = 'block';
+        }
     }
+
+    document.getElementById('uaDeleteBtn').addEventListener('click', function () {
+        if (currentUaEditingUser) deleteAdminUser(currentUaEditingUser);
+    });
 
     // ── ADMIN: COMPUTERS ──────────────────────────────────────
     var editingComputerName = null;
