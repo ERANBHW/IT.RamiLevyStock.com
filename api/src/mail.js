@@ -98,6 +98,14 @@ function formatDateTimeHe(date) {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+// Outlook's desktop client renders HTML mail through Word's engine, which ignores
+// `white-space: pre-wrap` entirely — the only reliable cross-client way to preserve a
+// user's line breaks in free-text fields (description, resolution, notes) is to turn
+// each \n into a real <br> in the markup itself.
+function nl2br(str) {
+  return escapeHtml(str).replace(/\r\n|\r|\n/g, '<br>');
+}
+
 function fieldRow(label, value) {
   if (!value) return '';
   return `<tr>
@@ -118,21 +126,29 @@ function urgencyBadge(urgency) {
 }
 
 function wrapEmailHtml({ title, badgeHtml, bodyHtml }) {
+  // Logo sits above the card, on the plain page background — not inside it — with the
+  // card itself keeping a thin brand-pink top accent instead of a full colored header.
+  const titleRow = badgeHtml
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:18px;"><tr>
+        <td style="font-size:19px;color:${TEXT_COLOR};font-weight:700;">${title}</td>
+        <td style="padding-inline-start:10px;">${badgeHtml}</td>
+      </tr></table>`
+    : `<h1 style="margin:0 0 18px;font-size:19px;color:${TEXT_COLOR};">${title}</h1>`;
+
   return `<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:${BACKGROUND_COLOR};font-family:Arial,Helvetica,sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BACKGROUND_COLOR};padding:24px 12px;">
     <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 4px 16px rgba(20,20,30,0.08);">
-        <tr><td style="background:${BRAND_PINK};padding:22px 28px;text-align:center;">
-          <img src="${LOGO_URL}" alt="רמי לוי סטוק" style="height:38px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
+        <tr><td align="center" style="padding-bottom:16px;">
+          <img src="${LOGO_URL}" alt="רמי לוי סטוק" style="height:40px;">
         </td></tr>
+      </table>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:14px;border-top:4px solid ${BRAND_PINK};overflow:hidden;box-shadow:0 4px 16px rgba(20,20,30,0.08);">
         <tr><td style="padding:28px;">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
-            <h1 style="margin:0;font-size:19px;color:${TEXT_COLOR};display:inline-block;">${title}</h1>
-            ${badgeHtml ? `<span style="margin-inline-start:10px;">${badgeHtml}</span>` : ''}
-          </div>
+          ${titleRow}
           ${bodyHtml}
         </td></tr>
         <tr><td style="padding:16px 28px;background:#fafafa;border-top:1px solid ${BORDER_COLOR};text-align:center;font-size:12px;color:${MUTED_COLOR};">
@@ -196,7 +212,7 @@ async function sendTicketEmails(ticket, opts = {}) {
   const staffBodyHtml = `
     ${detailRows}
     <div style="margin-bottom:6px;color:${MUTED_COLOR};font-size:13px;">תיאור:</div>
-    <div style="white-space:pre-wrap;font-size:14px;color:${TEXT_COLOR};background:${BACKGROUND_COLOR};border-radius:10px;padding:12px 14px;">${escapeHtml(ticket.Description)}</div>`;
+    <div style="font-size:14px;color:${TEXT_COLOR};background:${BACKGROUND_COLOR};border-radius:10px;padding:12px 14px;">${nl2br(ticket.Description)}</div>`;
 
   if (staffRecipients.length) {
     // Item 5: urgency goes in the staff-facing subject only, never the employee's own.
@@ -221,7 +237,7 @@ async function sendTicketEmails(ticket, opts = {}) {
       <p style="font-size:14px;color:${TEXT_COLOR};margin:0 0 16px;">שלום ${escapeHtml(ticket.UserName)},<br>הקריאה שלך התקבלה בהצלחה ובקרוב יהיה לך מענה מצוות ה-IT.</p>
       ${employeeRows}
       <div style="margin-bottom:6px;color:${MUTED_COLOR};font-size:13px;">תיאור שהוזן:</div>
-      <div style="white-space:pre-wrap;font-size:14px;color:${TEXT_COLOR};background:${BACKGROUND_COLOR};border-radius:10px;padding:12px 14px;">${escapeHtml(ticket.Description)}</div>`;
+      <div style="font-size:14px;color:${TEXT_COLOR};background:${BACKGROUND_COLOR};border-radius:10px;padding:12px 14px;">${nl2br(ticket.Description)}</div>`;
     await graphSendMail({
       to: [ticket.UserEmail],
       subject: `הקריאה שלך נפתחה - ${ticket.TicketNumber}`,
@@ -240,7 +256,7 @@ async function sendTicketClosedEmail(ticket, log) {
     <p style="font-size:14px;color:${TEXT_COLOR};margin:0 0 16px;">שלום ${escapeHtml(ticket.UserName)},<br>הקריאה שלך נסגרה. פרטי הפתרון וההיסטוריה המלאה למטה.</p>
     ${resolutionNote ? `
       <div style="margin-bottom:6px;color:${MUTED_COLOR};font-size:13px;">פתרון:</div>
-      <div style="white-space:pre-wrap;font-size:14px;color:${TEXT_COLOR};background:${BACKGROUND_COLOR};border-radius:10px;padding:12px 14px;margin-bottom:18px;">${escapeHtml(resolutionNote.Message)}</div>
+      <div style="font-size:14px;color:${TEXT_COLOR};background:${BACKGROUND_COLOR};border-radius:10px;padding:12px 14px;margin-bottom:18px;">${nl2br(resolutionNote.Message)}</div>
     ` : ''}
     <div style="margin-bottom:6px;color:${MUTED_COLOR};font-size:13px;">היסטוריית הקריאה:</div>
     ${timelineHtml(log)}`;
