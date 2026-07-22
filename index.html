@@ -2318,10 +2318,12 @@
                 DASHBOARD_STATUS_OPTIONS.map(function (s) {
                     return '<option value="' + s + '"' + (s === t.status ? ' selected' : '') + '>' + s + '</option>';
                 }).join('') + '</select>';
-        // AnyDesk quick-connect (computer tickets only, once taken): if the ticket's own
-        // AnyDeskId snapshot is missing, still show the tag — clicking it opens the
-        // computer's record to set one, instead of just disappearing with no way to fix it.
-        var anydeskHtml = (t.status === 'בטיפול' && !t.isPrinterTicket && t.computerName)
+        // AnyDesk quick-connect: shown permanently whenever there's a computer tag,
+        // same as the computer tag itself — regardless of status or whether the ticket
+        // is also flagged as a printer ticket. If the AnyDeskId snapshot is missing,
+        // still show the tag — clicking it opens the computer's record to set one,
+        // instead of just disappearing with no way to fix it.
+        var anydeskHtml = t.computerName
             ? (t.anyDeskId
                 ? '<a class="dash-anydesk-btn" href="anydesk:' + encodeURIComponent(t.anyDeskId) + '" title="התחברות למחשב דרך AnyDesk" data-stop>🖥️</a>'
                 : '<button type="button" class="dash-anydesk-btn" data-assign-anydesk title="אין AnyDesk מוגדר - לחץ להוספה" data-stop>🖥️ אין AnyDesk</button>')
