@@ -216,18 +216,23 @@ function maskPhoneInput(el) {
 // Strips disallowed characters live as the user types, keeping the caret position stable.
 // Used for name fields (v2.1, follow-up): Hebrew-only inputs reject anything outside
 // א-ת (no digits, no Latin), English-only inputs reject anything outside A-Za-z.
-function restrictInputChars(el, disallowedPattern) {
+function restrictInputChars(el, disallowedPattern, transform) {
   el.addEventListener('input', function () {
     var pos = el.selectionStart;
     var before = el.value;
-    el.value = el.value.replace(disallowedPattern, '');
+    var next = el.value.replace(disallowedPattern, '');
+    if (transform) next = transform(next);
+    el.value = next;
     var removedBeforeCaret = before.slice(0, pos).replace(disallowedPattern, '').length;
     el.setSelectionRange(removedBeforeCaret, removedBeforeCaret);
   });
 }
 
 function restrictToHebrewLetters(el) { restrictInputChars(el, /[^א-ת]/g); }
-function restrictToEnglishLetters(el) { restrictInputChars(el, /[^A-Za-z]/g); }
+// Item 1 (follow-up): English names are always forced lowercase as the user types — matches
+// the server's own suggested-email formula (computeSuggestedEmail), which lowercases anyway.
+// Lowercasing never changes string length, so the caret position math above stays correct.
+function restrictToEnglishLetters(el) { restrictInputChars(el, /[^A-Za-z]/g, function (v) { return v.toLowerCase(); }); }
 
 // Copies text and gives brief inline feedback on the triggering button (v2.1, section 4ב —
 // script/welcome-message copy boxes). Falls back silently if the Clipboard API is blocked.

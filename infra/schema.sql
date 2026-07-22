@@ -476,3 +476,13 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Procedures') AND name = 'IsDraft')
 ALTER TABLE Procedures ADD IsDraft BIT NOT NULL DEFAULT 0;
 GO
+
+-- Item 8 (follow-up): a procedure may optionally belong to one of its category's
+-- subcategories — always optional, never required (the category alone is still enough).
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Procedures') AND name = 'SubcategoryId')
+ALTER TABLE Procedures ADD SubcategoryId UNIQUEIDENTIFIER NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Procedures_Subcategory')
+ALTER TABLE Procedures ADD CONSTRAINT FK_Procedures_Subcategory
+    FOREIGN KEY (SubcategoryId) REFERENCES ProcedureSubcategories(Id) ON DELETE SET NULL;
+GO

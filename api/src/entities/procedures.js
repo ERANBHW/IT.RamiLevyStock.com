@@ -6,6 +6,7 @@ function rowToProcedure(r) {
     title: r.Title,
     content: r.Content,
     categoryId: r.CategoryId,
+    subcategoryId: r.SubcategoryId,
     isDraft: !!r.IsDraft,
     updatedAt: r.UpdatedAt,
     updatedBy: r.UpdatedBy,
@@ -29,10 +30,11 @@ async function create(payload, caller) {
     .input('title', sql.NVarChar, String(payload.title || ''))
     .input('content', sql.NVarChar, String(payload.content || ''))
     .input('categoryId', sql.UniqueIdentifier, payload.categoryId)
+    .input('subcategoryId', sql.UniqueIdentifier, payload.subcategoryId || null)
     .input('isDraft', sql.Bit, !!payload.isDraft)
     .input('updatedBy', sql.NVarChar, caller.email)
-    .query(`INSERT INTO Procedures (Title, Content, CategoryId, IsDraft, UpdatedBy)
-      OUTPUT INSERTED.Id VALUES (@title, @content, @categoryId, @isDraft, @updatedBy)`);
+    .query(`INSERT INTO Procedures (Title, Content, CategoryId, SubcategoryId, IsDraft, UpdatedBy)
+      OUTPUT INSERTED.Id VALUES (@title, @content, @categoryId, @subcategoryId, @isDraft, @updatedBy)`);
   return { ok: true, data: { id: result.recordset[0].Id } };
 }
 
@@ -45,9 +47,10 @@ async function update(payload, caller) {
     .input('title', sql.NVarChar, String(payload.title || ''))
     .input('content', sql.NVarChar, String(payload.content || ''))
     .input('categoryId', sql.UniqueIdentifier, payload.categoryId)
+    .input('subcategoryId', sql.UniqueIdentifier, payload.subcategoryId || null)
     .input('isDraft', sql.Bit, !!payload.isDraft)
     .input('updatedBy', sql.NVarChar, caller.email)
-    .query(`UPDATE Procedures SET Title=@title, Content=@content, CategoryId=@categoryId, IsDraft=@isDraft,
+    .query(`UPDATE Procedures SET Title=@title, Content=@content, CategoryId=@categoryId, SubcategoryId=@subcategoryId, IsDraft=@isDraft,
       UpdatedAt=SYSUTCDATETIME(), UpdatedBy=@updatedBy WHERE Id=@id`);
   if (!result.rowsAffected[0]) return { ok: false, error: 'הנוהל לא נמצא' };
   return { ok: true };

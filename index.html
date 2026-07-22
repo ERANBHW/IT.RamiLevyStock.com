@@ -128,6 +128,8 @@
         .tc-category-header-left { display: flex; align-items: center; gap: 8px; }
         .tc-sub-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-top: 1px solid var(--border); font-size: 13px; }
         .tc-sub-row.tc-drag-over { background: #fff5f9; }
+        /* Item 7 (follow-up): the whole row is red, not just a small tag — unmistakable at a glance. */
+        .tc-sub-row.procedure-row-draft { background: #fdecec; border-radius: 8px; padding: 7px 10px; border-top: none; }
         .tc-sub-row-left { display: flex; align-items: center; gap: 8px; }
         .tc-urgency-row { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; }
         .tc-urgency-row.tc-drag-over { border-color: var(--brand-pink); background: #fff5f9; }
@@ -149,11 +151,46 @@
         .procedure-card-content { display: none; padding: 0 14px 14px; font-size: 13px; color: #333; white-space: pre-wrap; line-height: 1.6; }
         .procedure-card.expanded .procedure-card-content { display: block; }
         .procedure-draft-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; background: #fdecec; color: var(--danger); }
+        /* Item 7 (follow-up): the whole card is red for a draft, not just the small badge above. */
+        .procedure-card.is-draft .procedure-card-header,
+        .procedure-card.is-draft .procedure-card-content { background: #fdecec; }
+        .procedure-card.is-draft .procedure-card-header:hover { background: #fbd5d5; }
+        .procedure-card-content.rich { white-space: normal; }
+
+        /* Item 9 (follow-up): a small "mini-Word" — a plain toolbar over a contenteditable
+           page, no external library/build step (matches this app's plain-script-tags rule). */
+        .rte-toolbar {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+            border: 1px solid #cfd1d6; border-bottom: none; border-radius: 9px 9px 0 0;
+            padding: 6px; background: var(--background);
+        }
+        .rte-btn {
+            min-width: 30px; height: 30px; padding: 0 6px; border: 1px solid transparent; border-radius: 6px;
+            background: transparent; cursor: pointer; font-size: 13px; color: #333;
+        }
+        .rte-btn:hover { background: var(--white); border-color: var(--border); }
+        .rte-sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+        .rte-color-label {
+            display: inline-flex; align-items: center; gap: 2px; font-size: 13px; cursor: pointer;
+            padding: 0 4px; height: 30px; border-radius: 6px;
+        }
+        .rte-color-label:hover { background: var(--white); }
+        .rte-color-label input[type="color"] { width: 20px; height: 20px; padding: 0; border: none; cursor: pointer; }
+        .rte-content {
+            min-height: 50vh; max-height: 65vh; overflow: auto; border: 1px solid #cfd1d6; border-radius: 0 0 9px 9px;
+            padding: 20px; background: var(--white); font-size: 14px; line-height: 1.7;
+        }
+        .rte-content:focus { outline: none; border-color: var(--brand-pink); }
+        .rte-content h2 { font-size: 18px; margin: 10px 0; }
+        .rte-content ul, .rte-content ol { margin: 8px 20px; }
 
         .admin-table-scroll { max-height: 65vh; overflow: auto; border: 1px solid var(--border); border-radius: 10px; }
         .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .admin-table th, .admin-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
         .admin-table th { background: var(--background); position: sticky; top: 0; z-index: 1; }
+        .admin-table th.sortable { cursor: pointer; user-select: none; }
+        .admin-table th.sortable:hover { color: var(--brand-pink-dark); }
+        .admin-table th.sortable .sort-arrow { font-size: 10px; margin-inline-start: 4px; color: var(--muted); }
         .admin-table tbody tr.admin-row-clickable { cursor: pointer; }
         .admin-table tbody tr.admin-row-clickable:hover { background: var(--background); }
         .role-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; background: var(--brand-pink-soft); color: var(--brand-pink-dark); margin-inline-end: 4px; }
@@ -679,7 +716,14 @@
             <div class="admin-table-scroll">
                 <table class="admin-table" id="usersTable">
                     <thead>
-                        <tr><th>מייל</th><th>שם</th><th>סניף</th><th>תפקיד</th><th>הרשאות</th><th>מחשב</th></tr>
+                        <tr>
+                            <th class="sortable" data-sort="email">מייל</th>
+                            <th class="sortable" data-sort="name">שם</th>
+                            <th class="sortable" data-sort="branch">סניף</th>
+                            <th class="sortable" data-sort="role">תפקיד</th>
+                            <th>הרשאות</th>
+                            <th class="sortable" data-sort="computer">מחשב</th>
+                        </tr>
                     </thead>
                     <tbody id="usersTableBody"></tbody>
                 </table>
@@ -694,10 +738,18 @@
                 <h1 class="page-title" style="margin:0">ניהול מחשבים</h1>
                 <button type="button" class="primary-button" id="computerAdminAddBtn">+ הוסף מחשב</button>
             </div>
-            <div style="overflow-x:auto">
+            <div class="admin-table-scroll">
                 <table class="admin-table" id="computersTable">
                     <thead>
-                        <tr><th>שם מחשב</th><th>סוג</th><th>מדפסת</th><th>AnyDesk</th><th>משתמש</th><th></th></tr>
+                        <tr>
+                            <th class="sortable" data-sort="computerName">שם מחשב</th>
+                            <th class="sortable" data-sort="type">סוג</th>
+                            <th class="sortable" data-sort="branch">סניף</th>
+                            <th class="sortable" data-sort="printer">מדפסת</th>
+                            <th>AnyDesk</th>
+                            <th class="sortable" data-sort="user">משתמש</th>
+                            <th></th>
+                        </tr>
                     </thead>
                     <tbody id="computersTableBody"></tbody>
                 </table>
@@ -826,6 +878,52 @@
         </div>
     </main>
 
+    <!-- VIEW: procedure editor (item 9, follow-up) — a dedicated page (not a small modal)
+         with a Word-like rich-text content area, used for both creating and editing. -->
+    <main class="app" id="view-procedure-editor">
+        <div class="content">
+            <h1 class="page-title" id="peTitle">נוהל חדש</h1>
+            <section class="section">
+                <div class="grid-2">
+                    <div class="field"><label for="peCategory">קטגוריה</label><select id="peCategory"></select></div>
+                    <div class="field" id="peSubcategoryField" style="display:none">
+                        <label for="peSubcategory">תת-קטגוריה (אופציונלי)</label><select id="peSubcategory"></select>
+                    </div>
+                </div>
+                <div class="field"><label for="peTitleInput">כותרת</label><input id="peTitleInput" type="text"></div>
+                <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+                    <input id="peIsDraft" type="checkbox" style="width:auto">
+                    <label for="peIsDraft" style="margin:0;color:var(--danger);font-weight:700">טיוטה - עדיין לא פורסם לעובדים</label>
+                </div>
+                <div class="field">
+                    <label>תוכן הנוהל</label>
+                    <div class="rte-toolbar">
+                        <button type="button" class="rte-btn" data-cmd="bold" title="מודגש"><strong>B</strong></button>
+                        <button type="button" class="rte-btn" data-cmd="italic" title="נטוי"><em>I</em></button>
+                        <button type="button" class="rte-btn" data-cmd="underline" title="קו תחתון"><u>U</u></button>
+                        <span class="rte-sep"></span>
+                        <button type="button" class="rte-btn" data-cmd="insertUnorderedList" title="רשימה">•≡</button>
+                        <button type="button" class="rte-btn" data-cmd="insertOrderedList" title="רשימה ממוספרת">1≡</button>
+                        <span class="rte-sep"></span>
+                        <button type="button" class="rte-btn" data-cmd="formatBlock" data-value="H2" title="כותרת">H2</button>
+                        <button type="button" class="rte-btn" data-cmd="formatBlock" data-value="P" title="פסקה רגילה">¶</button>
+                        <span class="rte-sep"></span>
+                        <label class="rte-color-label" title="צבע טקסט">A<input type="color" id="peTextColor" value="#000000"></label>
+                        <label class="rte-color-label" title="צביעת רקע (הדגשה)">🖍️<input type="color" id="peHighlightColor" value="#fff59d"></label>
+                        <span class="rte-sep"></span>
+                        <button type="button" class="rte-btn" data-cmd="removeFormat" title="נקה עיצוב">Tx</button>
+                    </div>
+                    <div id="peContent" class="rte-content" contenteditable="true"></div>
+                </div>
+                <div id="procedureEditorError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+                <div style="display:flex;gap:10px;margin-top:16px">
+                    <button type="button" class="primary-button" style="flex:1" id="peSaveBtn">שמור</button>
+                    <button type="button" class="secondary-button" id="peCancelBtn">ביטול</button>
+                </div>
+            </section>
+        </div>
+    </main>
+
 </div>
 
 <!-- Procedure category modal -->
@@ -932,13 +1030,13 @@
             <div id="uaStep3" style="display:none">
                 <p class="page-subtitle" style="margin:0 0 10px">הרשאות ניהול בתוך הפורטל (מנהל-על בלבד)</p>
                 <div class="field" style="flex-direction:row;align-items:center;gap:8px">
-                    <input id="uaIsITAdmin" type="checkbox" style="width:auto"><label for="uaIsITAdmin" style="margin:0">הרשאת ניהול IT (מחשבים)</label>
+                    <input id="uaIsITAdmin" type="checkbox" style="width:auto"><label for="uaIsITAdmin" style="margin:0">ניהול IT</label>
                 </div>
                 <div class="field" style="flex-direction:row;align-items:center;gap:8px">
-                    <input id="uaIsProceduresAdmin" type="checkbox" style="width:auto"><label for="uaIsProceduresAdmin" style="margin:0">הרשאת ניהול נהלים</label>
+                    <input id="uaIsProceduresAdmin" type="checkbox" style="width:auto"><label for="uaIsProceduresAdmin" style="margin:0">עריכת נהלים</label>
                 </div>
                 <div class="field" style="flex-direction:row;align-items:center;gap:8px">
-                    <input id="uaIsUserRequestSubmitter" type="checkbox" style="width:auto"><label for="uaIsUserRequestSubmitter" style="margin:0">מורשה להקמת משתמשים</label>
+                    <input id="uaIsUserRequestSubmitter" type="checkbox" style="width:auto"><label for="uaIsUserRequestSubmitter" style="margin:0">בקשת הקמת משתמש</label>
                 </div>
             </div>
 
@@ -985,6 +1083,7 @@
         <div class="profile-modal-actions">
             <button type="button" class="primary-button" style="flex:1" id="computerAdminSaveBtn">שמור</button>
             <button type="button" class="secondary-button" id="computerAdminCancelBtn">ביטול</button>
+            <button type="button" class="secondary-button" id="computerAdminDeleteBtn" style="display:none;border-color:var(--danger);color:var(--danger)">מחק מחשב</button>
         </div>
     </div>
 </div>
@@ -1094,17 +1193,6 @@
     </div>
 </div>
 
-<!-- Computer ticket history modal -->
-<div class="profile-modal-backdrop" id="computerHistoryBackdrop">
-    <div class="profile-modal" style="max-width:520px">
-        <div class="profile-modal-header"><h2 id="computerHistoryTitle">היסטוריית קריאות</h2></div>
-        <div class="profile-modal-body" id="computerHistoryBody"></div>
-        <div class="profile-modal-actions">
-            <button type="button" class="secondary-button" style="flex:1" id="computerHistoryCloseBtn">סגור</button>
-        </div>
-    </div>
-</div>
-
 <!-- User request detail modal (review + script) -->
 <div class="profile-modal-backdrop" id="userRequestDetailBackdrop">
     <div class="profile-modal" style="max-width:560px">
@@ -1173,13 +1261,13 @@
             <div id="urdStep3" style="display:none">
                 <p class="page-subtitle" style="margin:0 0 10px">הרשאות ניהול בתוך הפורטל (מנהל-על בלבד) - יוענקו למשתמש עם הקמתו</p>
                 <div class="field" style="flex-direction:row;align-items:center;gap:8px">
-                    <input id="urdIsITAdmin" type="checkbox" style="width:auto"><label for="urdIsITAdmin" style="margin:0">הרשאת ניהול IT (מחשבים)</label>
+                    <input id="urdIsITAdmin" type="checkbox" style="width:auto"><label for="urdIsITAdmin" style="margin:0">ניהול IT</label>
                 </div>
                 <div class="field" style="flex-direction:row;align-items:center;gap:8px">
-                    <input id="urdIsProceduresAdmin" type="checkbox" style="width:auto"><label for="urdIsProceduresAdmin" style="margin:0">הרשאת ניהול נהלים</label>
+                    <input id="urdIsProceduresAdmin" type="checkbox" style="width:auto"><label for="urdIsProceduresAdmin" style="margin:0">עריכת נהלים</label>
                 </div>
                 <div class="field" style="flex-direction:row;align-items:center;gap:8px">
-                    <input id="urdIsUserRequestSubmitter" type="checkbox" style="width:auto"><label for="urdIsUserRequestSubmitter" style="margin:0">מורשה להקמת משתמשים</label>
+                    <input id="urdIsUserRequestSubmitter" type="checkbox" style="width:auto"><label for="urdIsUserRequestSubmitter" style="margin:0">בקשת הקמת משתמש</label>
                 </div>
             </div>
 
@@ -1202,26 +1290,6 @@
     </div>
 </div>
 
-<!-- Procedure edit modal -->
-<div class="profile-modal-backdrop" id="procedureModalBackdrop">
-    <div class="profile-modal" style="max-width:520px">
-        <div class="profile-modal-header"><h2 id="procedureModalTitle">נוהל חדש</h2></div>
-        <div class="profile-modal-body">
-            <div class="field"><label for="prCategory">קטגוריה</label><select id="prCategory"></select></div>
-            <div class="field"><label for="prTitle">כותרת</label><input id="prTitle" type="text"></div>
-            <div class="field"><label for="prContent">תוכן הנוהל</label><textarea id="prContent" rows="6"></textarea></div>
-            <div class="field" style="flex-direction:row;align-items:center;gap:8px">
-                <input id="prIsDraft" type="checkbox" style="width:auto">
-                <label for="prIsDraft" style="margin:0;color:var(--danger);font-weight:700">טיוטה - עדיין לא פורסם לעובדים</label>
-            </div>
-            <div id="procedureModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
-        </div>
-        <div class="profile-modal-actions">
-            <button type="button" class="primary-button" style="flex:1" id="procedureSaveBtn">שמור</button>
-            <button type="button" class="secondary-button" id="procedureCancelBtn">ביטול</button>
-        </div>
-    </div>
-</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.27.0/lib/msal-browser.min.js"></script>
 <script src="common.js"></script>
@@ -1234,7 +1302,15 @@
 
         renderHeader(document.getElementById('headerContainer'), {
             showBack: id !== 'hub' && id !== 'notfound',
-            onBack: function () { showView('hub'); },
+            onBack: function () {
+                // Item 9 (follow-up): the editor is reached from "עריכת נהלי עבודה", not the
+                // hub — back should return there (and still ask before discarding changes).
+                if (id === 'procedure-editor') {
+                    if (procedureEditorTracker.confirmDiscard()) showView('admin-procedure-config');
+                    return;
+                }
+                showView('hub');
+            },
         });
 
         if (id === 'ticket') loadTicketPage();
@@ -3578,10 +3654,18 @@
         renderProcedures(res.ok ? res.data : []);
     }
 
+    // Item 9 (follow-up): content is now rich HTML from the mini-Word editor — a legacy
+    // plain-text procedure (saved before this feature existed) has no tags at all, so it
+    // renders as escaped text with line breaks preserved instead of raw HTML.
+    function renderProcedureContentInto(el, content) {
+        var raw = content || '';
+        el.innerHTML = raw.indexOf('<') === -1 ? escapeHtml(raw).replace(/\n/g, '<br>') : raw;
+    }
+
     function buildProcedureCard(proc, color) {
         var card = document.createElement('div');
-        card.className = 'procedure-card';
-        card.style.borderRightColor = color;
+        card.className = 'procedure-card' + (proc.isDraft ? ' is-draft' : '');
+        card.style.borderRightColor = proc.isDraft ? 'var(--danger)' : color;
 
         var draftBadge = proc.isDraft ? ' <span class="procedure-draft-badge">טיוטה - טרם פורסם</span>' : '';
         var header = document.createElement('div');
@@ -3589,8 +3673,8 @@
         header.innerHTML = '<span class="procedure-card-title">' + escapeHtml(proc.title) + draftBadge + '</span>';
 
         var content = document.createElement('div');
-        content.className = 'procedure-card-content';
-        content.textContent = proc.content;
+        content.className = 'procedure-card-content rich';
+        renderProcedureContentInto(content, proc.content);
 
         header.addEventListener('click', function () { card.classList.toggle('expanded'); });
 
@@ -3839,12 +3923,70 @@
     }
 
     function populateProcedureCategorySelect(selectedId) {
-        var select = document.getElementById('prCategory');
+        var select = document.getElementById('peCategory');
         var options = (procedureConfigCache.categories || []).map(function (c) {
             return '<option value="' + c.id + '"' + (c.id === selectedId ? ' selected' : '') + '>' + escapeHtml(c.name) + '</option>';
         }).join('');
         select.innerHTML = '<option value="">בחר קטגוריה</option>' + options;
     }
+
+    // Item 8 (follow-up): subcategory is always optional — the field only appears at all
+    // when the chosen category actually has subcategories to offer.
+    function populateProcedureSubcategorySelect(categoryId, selectedId) {
+        var field = document.getElementById('peSubcategoryField');
+        var select = document.getElementById('peSubcategory');
+        var category = procedureCategoryById(categoryId);
+        var subcategories = (category && category.subcategories) || [];
+        if (!subcategories.length) {
+            field.style.display = 'none';
+            select.innerHTML = '';
+            return;
+        }
+        field.style.display = 'block';
+        var options = subcategories.map(function (s) {
+            return '<option value="' + s.id + '"' + (s.id === selectedId ? ' selected' : '') + '>' + escapeHtml(s.name) + '</option>';
+        }).join('');
+        select.innerHTML = '<option value="">ללא תת-קטגוריה</option>' + options;
+    }
+
+    document.getElementById('peCategory').addEventListener('change', function () {
+        populateProcedureSubcategorySelect(this.value, '');
+    });
+
+    // Item 9 (follow-up): a small "mini-Word" toolbar over the contenteditable page — plain
+    // execCommand, no library. The selection inside #peContent is saved continuously so a
+    // click on the toolbar (or opening the native color picker) never loses what was selected.
+    var peContentEl = document.getElementById('peContent');
+    var peSavedRange = null;
+    function savePeSelection() {
+        var sel = window.getSelection();
+        if (sel.rangeCount > 0 && peContentEl.contains(sel.anchorNode)) peSavedRange = sel.getRangeAt(0);
+    }
+    function restorePeSelection() {
+        peContentEl.focus();
+        if (!peSavedRange) return;
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(peSavedRange);
+    }
+    peContentEl.addEventListener('mouseup', savePeSelection);
+    peContentEl.addEventListener('keyup', savePeSelection);
+
+    document.querySelectorAll('.rte-toolbar .rte-btn').forEach(function (btn) {
+        btn.addEventListener('mousedown', function (e) { e.preventDefault(); });
+        btn.addEventListener('click', function () {
+            restorePeSelection();
+            document.execCommand(btn.getAttribute('data-cmd'), false, btn.getAttribute('data-value') || undefined);
+        });
+    });
+    document.getElementById('peTextColor').addEventListener('input', function () {
+        restorePeSelection();
+        document.execCommand('foreColor', false, this.value);
+    });
+    document.getElementById('peHighlightColor').addEventListener('input', function () {
+        restorePeSelection();
+        document.execCommand('hiliteColor', false, this.value);
+    });
 
     function renderProceduresAdminList() {
         var container = document.getElementById('pcProceduresList');
@@ -3855,54 +3997,61 @@
         }
         proceduresAdminCache.forEach(function (proc) {
             var category = procedureCategoryById(proc.categoryId);
+            var subcategory = category && (category.subcategories || []).filter(function (s) { return s.id === proc.subcategoryId; })[0];
+            var categoryLabel = (category ? category.name : 'ללא קטגוריה') + (subcategory ? ' / ' + subcategory.name : '');
             var row = document.createElement('div');
-            row.className = 'tc-sub-row';
+            row.className = 'tc-sub-row' + (proc.isDraft ? ' procedure-row-draft' : '');
             row.innerHTML =
                 '<span class="tc-sub-row-left">' +
                 '<span class="tc-color-dot" style="background:' + escapeHtml(category ? category.colorHex : '#9ca3af') + '"></span>' +
-                escapeHtml(proc.title) + ' <span style="color:var(--muted);font-size:12px">(' + escapeHtml(category ? category.name : 'ללא קטגוריה') + ')</span>' +
-                (proc.isDraft ? ' <span class="procedure-draft-badge">טיוטה</span>' : '') +
+                (proc.isDraft ? '<strong style="color:var(--danger)">[טיוטה] </strong>' : '') +
+                escapeHtml(proc.title) + ' <span style="color:var(--muted);font-size:12px">(' + escapeHtml(categoryLabel) + ')</span>' +
                 '</span>' +
                 '<span class="admin-row-actions">' +
                 '<button type="button" class="icon-button" data-edit title="עריכה">✏️</button>' +
                 '<button type="button" class="icon-button" data-delete title="מחיקה">🗑️</button></span>';
-            row.querySelector('[data-edit]').addEventListener('click', function () { openProcedureModal(proc); });
+            row.querySelector('[data-edit]').addEventListener('click', function () { openProcedureEditorPage(proc); });
             row.querySelector('[data-delete]').addEventListener('click', function () { deleteProcedure(proc); });
             container.appendChild(row);
         });
     }
 
+    // Item 9 (follow-up): create/edit moved from a small modal to its own page — same
+    // dirty-tracking convention as every other edit screen, just scoped to the whole view.
     var editingProcedureId = null;
-    var procedureTracker = makeDirtyTracker(document.getElementById('procedureModalBackdrop'));
+    var procedureEditorTracker = makeDirtyTracker(document.getElementById('view-procedure-editor'));
 
-    function openProcedureModal(proc) {
+    function openProcedureEditorPage(proc) {
         editingProcedureId = proc ? proc.id : null;
-        document.getElementById('procedureModalTitle').textContent = proc ? 'עריכת נוהל' : 'נוהל חדש';
+        document.getElementById('peTitle').textContent = proc ? 'עריכת נוהל' : 'נוהל חדש';
         populateProcedureCategorySelect(proc ? proc.categoryId : '');
-        document.getElementById('prTitle').value = proc ? proc.title : '';
-        document.getElementById('prContent').value = proc ? proc.content : '';
-        document.getElementById('prIsDraft').checked = proc ? proc.isDraft : false;
-        document.getElementById('procedureModalError').style.display = 'none';
-        document.getElementById('procedureModalBackdrop').classList.add('visible');
-        procedureTracker.reset();
+        populateProcedureSubcategorySelect(proc ? proc.categoryId : '', proc ? proc.subcategoryId : '');
+        document.getElementById('peTitleInput').value = proc ? proc.title : '';
+        document.getElementById('peIsDraft').checked = proc ? proc.isDraft : false;
+        peContentEl.innerHTML = proc ? (proc.content || '') : '';
+        peSavedRange = null;
+        document.getElementById('procedureEditorError').style.display = 'none';
+        showView('procedure-editor');
+        procedureEditorTracker.reset();
     }
 
-    function closeProcedureModal() { document.getElementById('procedureModalBackdrop').classList.remove('visible'); }
-
-    document.getElementById('pcProcedureAddBtn').addEventListener('click', function () { openProcedureModal(null); });
-    document.getElementById('procedureCancelBtn').addEventListener('click', function () {
-        if (procedureTracker.confirmDiscard()) closeProcedureModal();
+    document.getElementById('pcProcedureAddBtn').addEventListener('click', function () { openProcedureEditorPage(null); });
+    document.getElementById('peCancelBtn').addEventListener('click', function () {
+        if (procedureEditorTracker.confirmDiscard()) showView('admin-procedure-config');
     });
 
-    document.getElementById('procedureSaveBtn').addEventListener('click', async function () {
-        var errEl = document.getElementById('procedureModalError');
+    document.getElementById('peSaveBtn').addEventListener('click', async function () {
+        var errEl = document.getElementById('procedureEditorError');
+        var content = peContentEl.innerHTML.trim();
+        var isEmpty = !content || content === '<br>';
         var payload = {
-            categoryId: document.getElementById('prCategory').value,
-            title: document.getElementById('prTitle').value.trim(),
-            content: document.getElementById('prContent').value.trim(),
-            isDraft: document.getElementById('prIsDraft').checked,
+            categoryId: document.getElementById('peCategory').value,
+            subcategoryId: document.getElementById('peSubcategory').value || null,
+            title: document.getElementById('peTitleInput').value.trim(),
+            content: content,
+            isDraft: document.getElementById('peIsDraft').checked,
         };
-        if (!payload.categoryId || !payload.title || !payload.content) {
+        if (!payload.categoryId || !payload.title || isEmpty) {
             errEl.textContent = 'יש למלא קטגוריה, כותרת ותוכן.';
             errEl.style.display = 'block';
             return;
@@ -3913,9 +4062,8 @@
         var res = await apiPost('procedures', editingProcedureId ? 'update' : 'create', payload);
         showLoading(false);
         if (res.ok) {
-            procedureTracker.reset();
-            closeProcedureModal();
-            loadProcedureConfigAdminPage();
+            procedureEditorTracker.reset();
+            showView('admin-procedure-config');
         } else {
             errEl.textContent = res.error || 'שגיאה בשמירה';
             errEl.style.display = 'block';
@@ -4349,6 +4497,7 @@
     // ── ADMIN: USERS ──────────────────────────────────────────
     var editingUserEmail = null;
     var computersCache = [];
+    var usersCache = [];
 
     async function loadUsersAdminPage() {
         showLoading(true);
@@ -4357,17 +4506,67 @@
         var compRes = await apiGet('computers', 'list', {});
         showLoading(false);
         computersCache = compRes.ok ? compRes.data : [];
-        renderUsersTable(usersRes.ok ? usersRes.data : []);
+        usersCache = usersRes.ok ? usersRes.data : [];
+        renderUsersTable(usersCache);
     }
 
     function computerAssignedTo(email) {
         return computersCache.find(function (c) { return String(c.assignedUserEmail).toLowerCase() === String(email).toLowerCase(); });
     }
 
+    // Item 6 (follow-up): clicking a sortable column header sorts a-to-z (Hebrew collation),
+    // toggling direction on repeated clicks of the same column — shared helper for both the
+    // users table and the computers table.
+    function makeSortableTable(theadSelector, sortState, valueFns, onSort) {
+        document.querySelectorAll(theadSelector + ' th.sortable').forEach(function (th) {
+            th.addEventListener('click', function () {
+                var key = th.getAttribute('data-sort');
+                if (sortState.key === key) sortState.dir *= -1; else { sortState.key = key; sortState.dir = 1; }
+                onSort();
+            });
+        });
+    }
+
+    function applySortState(list, sortState, valueFns) {
+        if (!sortState.key || !valueFns[sortState.key]) return list;
+        var getValue = valueFns[sortState.key];
+        return list.slice().sort(function (a, b) {
+            return String(getValue(a)).localeCompare(String(getValue(b)), 'he') * sortState.dir;
+        });
+    }
+
+    function renderSortArrows(theadSelector, sortState) {
+        document.querySelectorAll(theadSelector + ' th.sortable').forEach(function (th) {
+            var existing = th.querySelector('.sort-arrow');
+            if (existing) existing.remove();
+            if (th.getAttribute('data-sort') === sortState.key) {
+                var arrow = document.createElement('span');
+                arrow.className = 'sort-arrow';
+                arrow.textContent = sortState.dir === 1 ? '▲' : '▼';
+                th.appendChild(arrow);
+            }
+        });
+    }
+
+    var usersSortState = { key: null, dir: 1 };
+
+    var usersSortValueFns = {
+        email: function (u) { return u.email || ''; },
+        name: function (u) { return [u.firstName, u.lastName].filter(Boolean).join(' '); },
+        branch: function (u) { return branchName(u.branchNumber); },
+        role: function (u) { return u.role || ''; },
+        computer: function (u) { var c = computerAssignedTo(u.email); return c ? c.computerName : ''; },
+    };
+
+    makeSortableTable('#usersTable thead', usersSortState, usersSortValueFns, function () {
+        renderUsersTable(usersCache);
+    });
+
     function renderUsersTable(users) {
+        renderSortArrows('#usersTable thead', usersSortState);
         var body = document.getElementById('usersTableBody');
         body.innerHTML = '';
-        users.forEach(function (u) {
+        applySortState(users, usersSortState, usersSortValueFns).forEach(function (u) {
             var tr = document.createElement('tr');
             var badges = '';
             if (u.isSuperAdmin) badges += '<span class="role-badge">מנהל-על</span>';
@@ -4481,8 +4680,22 @@
 
     var UA_STEP_LABELS = { 1: 'פרטי עובד', 2: 'סקריפט', 3: 'הרשאות פורטל', 4: 'סיכום' };
 
+    // Item 2 (follow-up): editing an existing user skips the "סקריפט" step entirely — the
+    // Entra account already exists, there's nothing left to run a creation script for.
     function uaComputeStepSequence() {
-        return Portal.isSuperAdmin() ? [1, 2, 3, 4] : [1, 2, 4];
+        var seq = [1];
+        if (!editingUserEmail) seq.push(2);
+        if (Portal.isSuperAdmin()) seq.push(3);
+        seq.push(4);
+        return seq;
+    }
+
+    // Item 2 (follow-up): the step dots are clickable — jumping forward past step 1 still
+    // runs its validation (same guard as the "הבא" button), jumping back never needs to.
+    function goToUaStep(step) {
+        if (uaStepSequence.indexOf(step) === -1 || step === uaCurrentStep) return;
+        if (uaCurrentStep === 1 && step !== 1 && !uaValidateStep1()) return;
+        setUaStep(step);
     }
 
     function renderUaWizardDots() {
@@ -4490,10 +4703,16 @@
         var idx = seq.indexOf(uaCurrentStep);
         var html = '';
         seq.forEach(function (step, i) {
-            html += '<div class="wizard-step' + (i === idx ? ' active' : (i < idx ? ' done' : '')) + '"><span>' + (i + 1) + '</span><label>' + UA_STEP_LABELS[step] + '</label></div>';
+            html += '<div class="wizard-step' + (i === idx ? ' active' : (i < idx ? ' done' : '')) +
+                '" data-step="' + step + '" style="cursor:pointer">' +
+                '<span>' + (i + 1) + '</span><label>' + UA_STEP_LABELS[step] + '</label></div>';
             if (i < seq.length - 1) html += '<div class="wizard-step-line' + (i < idx ? ' done' : '') + '"></div>';
         });
-        document.getElementById('uaWizardSteps').innerHTML = html;
+        var container = document.getElementById('uaWizardSteps');
+        container.innerHTML = html;
+        container.querySelectorAll('[data-step]').forEach(function (dot) {
+            dot.addEventListener('click', function () { goToUaStep(Number(dot.getAttribute('data-step'))); });
+        });
     }
 
     function buildUaSummaryHtml() {
@@ -4513,7 +4732,7 @@
             var flags = [];
             if (document.getElementById('uaIsITAdmin').checked) flags.push('IT');
             if (document.getElementById('uaIsProceduresAdmin').checked) flags.push('נהלים');
-            if (document.getElementById('uaIsUserRequestSubmitter').checked) flags.push('מורשה להקמת משתמשים');
+            if (document.getElementById('uaIsUserRequestSubmitter').checked) flags.push('בקשת הקמת משתמש');
             lines.push('<div><strong>הרשאות פורטל: </strong>' + (flags.length ? escapeHtml(flags.join(', ')) : 'ללא') + '</div>');
         }
         return lines.join('');
@@ -4570,9 +4789,8 @@
     }
 
     document.getElementById('uaNextBtn').addEventListener('click', function () {
-        if (uaCurrentStep === 1 && !uaValidateStep1()) return;
         var idx = uaStepSequence.indexOf(uaCurrentStep);
-        setUaStep(uaStepSequence[idx + 1]);
+        goToUaStep(uaStepSequence[idx + 1]);
     });
 
     document.getElementById('uaBackBtn').addEventListener('click', function () {
@@ -4745,29 +4963,83 @@
         renderComputersTable(computersCache);
     }
 
+    var computersSortState = { key: null, dir: 1 };
+
+    var computersSortValueFns = {
+        computerName: function (c) { return c.computerName || ''; },
+        type: function (c) { return c.type || ''; },
+        branch: function (c) { return branchName(c.branchNumber); },
+        printer: function (c) { return c.defaultPrinterName || ''; },
+        user: function (c) { return c.assignedUserEmail || ''; },
+    };
+
+    makeSortableTable('#computersTable thead', computersSortState, computersSortValueFns, function () {
+        renderComputersTable(computersCache);
+    });
+
+    // Item 4 (follow-up): the ticket-history button expands the tickets inline, right
+    // below the computer's own row, instead of opening a second competing modal on top
+    // of the still-open history modal (which is what made clicking a ticket look broken).
+    async function toggleComputerHistoryRow(comp, cell) {
+        var isOpen = cell.style.display !== 'none';
+        if (isOpen) { cell.style.display = 'none'; return; }
+        cell.style.display = 'table-cell';
+        cell.innerHTML = '<p style="color:var(--muted);font-size:13px">טוען...</p>';
+        var res = await apiGet('computers', 'ticketHistory', { computerName: comp.computerName });
+        var tickets = res.ok ? res.data : [];
+        if (!tickets.length) {
+            cell.innerHTML = '<p style="color:var(--muted);font-size:13px">אין קריאות עבור מחשב זה.</p>';
+            return;
+        }
+        var wrap = document.createElement('div');
+        wrap.style.display = 'flex';
+        wrap.style.flexDirection = 'column';
+        wrap.style.gap = '10px';
+        tickets.forEach(function (t) { wrap.appendChild(buildTicketCard(t)); });
+        cell.innerHTML = '';
+        cell.appendChild(wrap);
+    }
+
+    // Item 5 (follow-up): mirrors the users table exactly — grey hover, click-row-to-edit,
+    // delete lives inside the edit modal; the only remaining per-row button is the
+    // ticket-history toggle, which stops its click from also opening the edit modal.
     function renderComputersTable(computers) {
+        renderSortArrows('#computersTable thead', computersSortState);
         var body = document.getElementById('computersTableBody');
         body.innerHTML = '';
-        computers.forEach(function (c) {
+        applySortState(computers, computersSortState, computersSortValueFns).forEach(function (c) {
             var tr = document.createElement('tr');
+            tr.classList.add('admin-row-clickable');
             var anyDeskCell = c.anyDeskId
                 ? '<a class="anydesk-link" href="anydesk:' + encodeURIComponent(c.anyDeskId) + '" title="התחברות מרחוק דרך AnyDesk">🖥️ ' + escapeHtml(c.anyDeskId) + '</a>'
                 : '-';
             tr.innerHTML =
                 '<td dir="ltr">' + escapeHtml(c.computerName) + '</td>' +
                 '<td>' + escapeHtml(c.type) + '</td>' +
+                '<td>' + escapeHtml(branchName(c.branchNumber)) + '</td>' +
                 '<td>' + escapeHtml(c.defaultPrinterName || '-') + '</td>' +
                 '<td>' + anyDeskCell + '</td>' +
                 '<td dir="ltr">' + escapeHtml(c.assignedUserEmail || '-') + '</td>' +
-                '<td class="admin-row-actions">' +
-                '<button type="button" class="icon-button" data-history title="היסטוריית קריאות">🕘</button>' +
-                '<button type="button" class="icon-button" data-edit title="עריכה">✏️</button>' +
-                '<button type="button" class="icon-button" data-delete title="מחיקה">🗑️</button></td>';
+                '<td class="admin-row-actions"><button type="button" class="icon-button" data-history title="היסטוריית קריאות">🕘</button></td>';
+            tr.addEventListener('click', function () { openComputerAdminModal(c); });
 
-            tr.querySelector('[data-edit]').addEventListener('click', function () { openComputerAdminModal(c); });
-            tr.querySelector('[data-delete]').addEventListener('click', function () { deleteAdminComputer(c); });
-            tr.querySelector('[data-history]').addEventListener('click', function () { openComputerHistory(c); });
+            var historyRow = document.createElement('tr');
+            historyRow.addEventListener('click', function (e) { e.stopPropagation(); });
+            var historyCell = document.createElement('td');
+            historyCell.colSpan = 7;
+            historyCell.style.display = 'none';
+            historyCell.style.background = 'var(--background)';
+            historyCell.style.padding = '12px';
+            historyCell.style.whiteSpace = 'normal';
+            historyRow.appendChild(historyCell);
+
+            tr.querySelector('[data-history]').addEventListener('click', function (e) {
+                e.stopPropagation();
+                toggleComputerHistoryRow(c, historyCell);
+            });
+
             body.appendChild(tr);
+            body.appendChild(historyRow);
         });
     }
 
@@ -4809,6 +5081,9 @@
         populateBranchSelect(document.getElementById('caBranch'), comp ? comp.branchNumber : (opts.prefillBranchNumber != null ? opts.prefillBranchNumber : ''));
         document.getElementById('caNotes').value = comp ? comp.notes : '';
         document.getElementById('computerAdminModalError').style.display = 'none';
+        // Item 5 (follow-up): the red delete button only makes sense once the computer
+        // already exists — never offered while adding a new one.
+        document.getElementById('computerAdminDeleteBtn').style.display = comp ? 'inline-block' : 'none';
         document.getElementById('computerAdminModalBackdrop').classList.add('visible');
         computerAdminTracker.reset();
     }
@@ -4857,29 +5132,17 @@
         showLoading(true);
         var res = await apiPost('computers', 'delete', { computerName: comp.computerName });
         showLoading(false);
-        if (res.ok) loadComputersAdminPage(); else alert(res.error || 'שגיאה במחיקה');
-    }
-
-    async function openComputerHistory(comp) {
-        document.getElementById('computerHistoryTitle').textContent = 'היסטוריית קריאות - ' + comp.computerName;
-        var body = document.getElementById('computerHistoryBody');
-        body.innerHTML = '<p style="color:var(--muted);font-size:13px">טוען...</p>';
-        document.getElementById('computerHistoryBackdrop').classList.add('visible');
-
-        var res = await apiGet('computers', 'ticketHistory', { computerName: comp.computerName });
-        var tickets = res.ok ? res.data : [];
-        body.innerHTML = '';
-        if (!tickets.length) {
-            body.innerHTML = '<p style="color:var(--muted);font-size:13px">אין קריאות עבור מחשב זה.</p>';
-            return;
+        if (res.ok) { closeComputerAdminModal(); loadComputersAdminPage(); }
+        else {
+            var errEl = document.getElementById('computerAdminModalError');
+            errEl.textContent = res.error || 'שגיאה במחיקה';
+            errEl.style.display = 'block';
         }
-        tickets.forEach(function (t) { body.appendChild(buildTicketCard(t)); });
     }
 
-    document.getElementById('computerHistoryCloseBtn').addEventListener('click', function () {
-        document.getElementById('computerHistoryBackdrop').classList.remove('visible');
+    document.getElementById('computerAdminDeleteBtn').addEventListener('click', function () {
+        if (editingComputerName) deleteAdminComputer({ computerName: editingComputerName });
     });
-    document.getElementById('computerHistoryBackdrop').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('visible'); });
 
     // ── ADMIN: BRANCHES ───────────────────────────────────────
     var editingBranchNumber = null;
