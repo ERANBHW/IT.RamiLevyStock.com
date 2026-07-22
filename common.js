@@ -31,6 +31,7 @@ var msalInstance = new msal.PublicClientApplication({
 var Portal = (function () {
   var currentUser = null; // resolved Users row, or null if not found / not yet provisioned
   var account = null;
+  var viewAsUser = null; // IT Admin "view as" impersonation target (in-memory only, never persisted)
 
   async function acquireToken() {
     if (!account) throw new Error('לא מחובר');
@@ -75,15 +76,26 @@ var Portal = (function () {
     return currentUser;
   }
 
-  function getUser() { return currentUser; }
+  // While impersonating, getUser() (and every permission check built on it) reflects
+  // the IMPERSONATED employee — that's the whole point of "view as": every existing
+  // render function that already calls Portal.getUser()/isITAdmin() etc. automatically
+  // shows exactly what that employee would see, with no per-page changes needed.
+  function getUser() { return viewAsUser || currentUser; }
   function setUser(u) { currentUser = u; }
 
-  function isSuperAdmin() { return !!(currentUser && currentUser.isSuperAdmin); }
-  function isITAdmin() { return !!(currentUser && (currentUser.isITAdmin || currentUser.isSuperAdmin)); }
-  function isProceduresAdmin() { return !!(currentUser && (currentUser.isProceduresAdmin || currentUser.isSuperAdmin)); }
+  function isSuperAdmin() { var u = getUser(); return !!(u && u.isSuperAdmin); }
+  function isITAdmin() { var u = getUser(); return !!(u && (u.isITAdmin || u.isSuperAdmin)); }
+  function isProceduresAdmin() { var u = getUser(); return !!(u && (u.isProceduresAdmin || u.isSuperAdmin)); }
   function isUserRequestSubmitter() {
-    return !!(currentUser && (currentUser.isUserRequestSubmitter || currentUser.isITAdmin || currentUser.isSuperAdmin));
+    var u = getUser();
+    return !!(u && (u.isUserRequestSubmitter || u.isITAdmin || u.isSuperAdmin));
   }
+
+  function isViewingAs() { return !!viewAsUser; }
+  function startViewAs(user) { viewAsUser = user; }
+  function stopViewAs() { viewAsUser = null; }
+  function getViewAsEmail() { return viewAsUser ? viewAsUser.email : null; }
+  function getRealUser() { return currentUser; } // the actual logged-in admin, regardless of impersonation
 
   return {
     loadIdentity: loadIdentity,
@@ -94,6 +106,11 @@ var Portal = (function () {
     isProceduresAdmin: isProceduresAdmin,
     isUserRequestSubmitter: isUserRequestSubmitter,
     acquireToken: acquireToken,
+    isViewingAs: isViewingAs,
+    startViewAs: startViewAs,
+    stopViewAs: stopViewAs,
+    getViewAsEmail: getViewAsEmail,
+    getRealUser: getRealUser,
   };
 })();
 
@@ -102,6 +119,11 @@ var Portal = (function () {
 // POST: JSON body { entity, action, ...payload }
 // Every call carries a real Bearer token — the server never trusts an email/id the
 // client sends in params/payload for identity purposes.
+// While "view as" is active, every call automatically carries viewAsEmail — harmless
+// for endpoints that don't look at it, and honored (IT Admin only, re-checked server-
+// side from the real Easy Auth token every time) by the handful that do: it's what lets
+// listMine/getAssigned/create show and act as the impersonated employee everywhere,
+// without every call site needing to remember to pass it.
 async function apiGet(entity, action, params) {
   var token = await Portal.acquireToken();
   var url = new URL(API_BASE_URL);
@@ -110,6 +132,9 @@ async function apiGet(entity, action, params) {
   Object.keys(params || {}).forEach(function (k) {
     if (params[k] !== undefined && params[k] !== null) url.searchParams.set(k, params[k]);
   });
+  if (Portal.isViewingAs() && !url.searchParams.has('viewAsEmail')) {
+    url.searchParams.set('viewAsEmail', Portal.getViewAsEmail());
+  }
   var res = await fetch(url.toString(), { headers: { Authorization: 'Bearer ' + token } });
   return res.json();
 }
@@ -117,6 +142,7 @@ async function apiGet(entity, action, params) {
 async function apiPost(entity, action, payload) {
   var token = await Portal.acquireToken();
   var body = Object.assign({ entity: entity, action: action }, payload || {});
+  if (Portal.isViewingAs() && body.viewAsEmail === undefined) body.viewAsEmail = Portal.getViewAsEmail();
   var res = await fetch(API_BASE_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },

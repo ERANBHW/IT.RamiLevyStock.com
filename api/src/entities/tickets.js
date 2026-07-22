@@ -75,9 +75,15 @@ async function create(payload, caller) {
   const isPrinterTicket = !!String(payload.printerName || '').trim();
   const printer = String(payload.printerName || payload.printer || '');
 
+  // "View as" ticket submission (IT Admin only) — the ticket is owned by the
+  // impersonated employee (UserEmail/Name come from them), not the admin actually
+  // clicking submit; the 'created' log entry below still attributes to the real admin.
+  const ownerEmail = (payload.viewAsEmail && caller.isITAdmin)
+    ? String(payload.viewAsEmail).trim().toLowerCase() : caller.email;
+
   const pool = await getPool();
   const result = await pool.request()
-    .input('userEmail', sql.NVarChar, caller.email)
+    .input('userEmail', sql.NVarChar, ownerEmail)
     .input('userName', sql.NVarChar, String(payload.userName || caller.name || ''))
     .input('phone', sql.NVarChar, String(payload.phone || ''))
     .input('branch', sql.NVarChar, String(payload.branch || ''))
@@ -174,6 +180,43 @@ async function update(payload, caller) {
   const sets = ['UpdatedAt = SYSUTCDATETIME()'];
   const changes = [];
   REQUESTER_EDITABLE_FIELDS.forEach((f) => {
+    const key = f.charAt(0).toLowerCase() + f.slice(1);
+    if (Object.prototype.hasOwnProperty.call(payload, key)) {
+      const newVal = String(payload[key] ?? '');
+      const oldVal = String(ticket[f] ?? '');
+      if (newVal !== oldVal) {
+        req.input(f, sql.NVarChar, newVal);
+        sets.push(`${f} = @${f}`);
+        changes.push({ field: f, oldVal, newVal });
+      }
+    }
+  });
+  if (!changes.length) return { ok: true };
+
+  await req.query(`UPDATE Tickets SET ${sets.join(', ')} WHERE TicketNumber = @num`);
+  for (const c of changes) {
+    await writeLog(pool, ticketNumber, caller, 'field_updated', { fieldName: c.field, oldValue: c.oldVal, newValue: c.newVal });
+  }
+  return { ok: true };
+}
+
+// IT Admin correction of a ticket's core facts (item 5, dashboard follow-up) — e.g. the
+// employee picked the wrong category by mistake. Unlike REQUESTER_EDITABLE_FIELDS this
+// has no status restriction (a closed ticket's record can still be corrected) and always
+// logs a 'field_updated' entry per changed field, same as the requester's own edit path.
+const ADMIN_EDITABLE_FIELDS = ['Category', 'Urgency', 'UserName', 'ComputerName', 'Printer'];
+
+async function adminUpdateFields(payload, caller) {
+  if (!caller.isITAdmin) return { ok: false, error: 'אין הרשאה' };
+  const pool = await getPool();
+  const ticketNumber = String(payload.ticketNumber || '');
+  const ticket = await getTicketOr404(pool, ticketNumber);
+  if (!ticket) return { ok: false, error: 'הקריאה לא נמצאה' };
+
+  const req = pool.request().input('num', sql.NVarChar, ticketNumber);
+  const sets = ['UpdatedAt = SYSUTCDATETIME()'];
+  const changes = [];
+  ADMIN_EDITABLE_FIELDS.forEach((f) => {
     const key = f.charAt(0).toLowerCase() + f.slice(1);
     if (Object.prototype.hasOwnProperty.call(payload, key)) {
       const newVal = String(payload[key] ?? '');
@@ -331,6 +374,27 @@ async function followUpCount(_payload, caller) {
   return { ok: true, data: { count: result.recordset[0].cnt } };
 }
 
+function rowToFollowUp(r) {
+  return {
+    id: r.Id,
+    ticketNumber: r.TicketNumber,
+    description: r.Description,
+    createdAt: r.CreatedAt,
+    createdByEmail: r.CreatedByEmail,
+    createdByName: r.CreatedByName,
+    status: r.Status,
+  };
+}
+
+// Dashboard "משימות" tab (section 7 follow-up, item 2) — every follow-up task
+// regardless of status, so the client can filter/count חדש/בטיפול/הושלם itself.
+async function listFollowUps(_payload, caller) {
+  if (!caller.isITAdmin) return { ok: false, error: 'אין הרשאה' };
+  const pool = await getPool();
+  const result = await pool.request().query('SELECT * FROM TicketFollowUps ORDER BY CreatedAt DESC');
+  return { ok: true, data: result.recordset.map(rowToFollowUp) };
+}
+
 // Dashboard timeline follow-up: only the person who wrote a free-text note may edit it
 // later (clicking its dot in the timeline) — never a system-generated entry (status
 // changes, field updates, assignment), and never someone else's note.
@@ -355,6 +419,6 @@ async function updateNote(payload, caller) {
 }
 
 module.exports = {
-  create, listMine, list, closedCount, listClosed, get, update, take, reassign, updateStatus, updateNote,
-  closeWithDetails, followUpCount, rowToTicket,
+  create, listMine, list, closedCount, listClosed, get, update, adminUpdateFields, take, reassign, updateStatus,
+  updateNote, closeWithDetails, followUpCount, listFollowUps, rowToTicket,
 };

@@ -39,6 +39,21 @@
         .hub-btn:hover { border-color: var(--brand-pink); background: var(--brand-pink-soft); color: var(--brand-pink-dark); }
         .hub-btn-icon { font-size: 30px; }
 
+        body.viewing-as-active .app-shell {
+            border: 5px solid var(--danger);
+            box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.18), 0 18px 54px rgba(20, 20, 30, 0.10);
+        }
+        #viewAsBanner {
+            display: none; align-items: center; justify-content: center; gap: 10px;
+            background: var(--danger); color: #fff; font-weight: 700; font-size: 14px;
+            padding: 10px 16px; text-align: center;
+        }
+        body.viewing-as-active #viewAsBanner { display: flex; }
+        #viewAsBanner button {
+            background: #fff; color: var(--danger); border: none; border-radius: 8px;
+            padding: 6px 14px; font-weight: 700; font-size: 13px; cursor: pointer;
+        }
+
         .profile-modal-backdrop {
             display: none; position: fixed; inset: 0; z-index: 1000; align-items: center; justify-content: center;
             padding: 18px; background: rgba(17,17,22,0.55);
@@ -185,6 +200,10 @@
         .dash-whatsapp-link { text-decoration: none; margin-right: 4px; display: inline-flex; align-items: center; vertical-align: middle; }
         .dash-assigned-tag { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 10px; background: rgba(222, 57, 149, 0.12); color: var(--brand-pink); font-size: 11px; font-weight: 700; }
         .dash-it-actor { color: var(--brand-pink); font-weight: 700; }
+        .dash-focus-tag { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; border-radius: 20px; background: var(--brand-pink); color: #fff; font-size: 12px; font-weight: 700; }
+        .dash-focus-tag button { border: none; background: rgba(255,255,255,0.25); color: #fff; border-radius: 50%; width: 18px; height: 18px; cursor: pointer; font-size: 11px; line-height: 1; }
+        .dash-task-card { border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--white); }
+        .dash-task-meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
         .dash-section-divider { display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px; }
         .dash-section-divider::before, .dash-section-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
         .dash-timeline { position: relative; padding-right: 18px; margin: 10px 0; }
@@ -253,7 +272,30 @@
     </div>
 </div>
 
+<!-- Edit ticket fields modal (IT Admin — item 5: correct mis-entered ticket details) -->
+<div class="profile-modal-backdrop" id="ticketFieldsModalBackdrop">
+    <div class="profile-modal">
+        <div class="profile-modal-header"><h2>תיקון פרטי קריאה <span id="tfTicketNumber" dir="ltr" style="unicode-bidi:embed"></span></h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="tfCategory">סוג קריאה</label><select id="tfCategory"></select></div>
+            <div class="field"><label for="tfUrgency">דרגת חשיבות</label><select id="tfUrgency"></select></div>
+            <div class="field"><label for="tfUserName">שם עובד</label><input id="tfUserName" type="text"></div>
+            <div class="field"><label for="tfComputerName">שם מחשב</label><input id="tfComputerName" type="text" dir="ltr"></div>
+            <div class="field"><label for="tfPrinter">שם מדפסת</label><input id="tfPrinter" type="text" dir="ltr"></div>
+            <div id="ticketFieldsModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="ticketFieldsSaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="ticketFieldsCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
 <div class="app-shell">
+    <div id="viewAsBanner">
+        <span id="viewAsBannerText"></span>
+        <button type="button" id="viewAsExitBtn">יציאה מהתחזות</button>
+    </div>
     <div id="headerContainer"></div>
 
     <!-- VIEW: user not found -->
@@ -284,16 +326,22 @@
                 <h3 class="procedure-category-title">ניהול</h3>
                 <div class="hub-actions" id="hubAdminActions"></div>
 
+                <div id="hubSuperAdminSection" style="display:none;margin-top:20px">
+                    <h3 class="procedure-category-title">ניהול גלובלי</h3>
+                    <div class="hub-actions" id="hubSuperAdminActions"></div>
+                </div>
+
                 <div id="hubTicketsDashboard" style="display:none;margin-top:32px">
                     <h3 class="procedure-category-title">קריאות שירות</h3>
                     <div class="dashboard-counters">
                         <button type="button" class="dashboard-counter dc-open" id="dashCubeOpen"><span id="dashOpenCount">0</span><label>פתוחות</label></button>
                         <button type="button" class="dashboard-counter dc-progress" id="dashCubeProgress"><span id="dashProgressCount">0</span><label>בטיפול</label></button>
                         <button type="button" class="dashboard-counter dc-closed" id="dashCubeClosed"><span id="dashClosedCount">0</span><label>סגורות</label></button>
-                        <div class="dashboard-counter dc-followups" id="dashCubeFollowups" title="יורחב בהמשך"><span id="dashFollowupsCount">0</span><label>משימות המשך</label></div>
+                        <button type="button" class="dashboard-counter dc-followups" id="dashCubeTasks"><span id="dashFollowupsCount">0</span><label>משימות</label></button>
                     </div>
-                    <div class="dashboard-charts" id="dashboardCharts"></div>
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin:14px 0 8px;flex-wrap:wrap">
+                    <div id="dashFocusTagContainer" style="display:none;margin-top:10px"></div>
+                    <div class="dashboard-charts" id="dashboardCharts" style="display:none"></div>
+                    <div id="dashTicketsToolbar" style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin:14px 0 8px;flex-wrap:wrap">
                         <div class="dash-toolbar-group">
                             <span class="dash-toolbar-icon" title="סינון">▼</span>
                             <div style="position:relative">
@@ -311,6 +359,11 @@
                             <button type="button" class="sort-btn" id="dashSortDate" data-sort="date">תאריך</button>
                             <button type="button" class="sort-btn" id="dashSortBranch" data-sort="branch">סניף</button>
                         </div>
+                    </div>
+                    <div id="dashTaskStatusRow" class="dash-toolbar-group" style="display:none;margin-bottom:10px">
+                        <button type="button" class="sort-btn active" id="dashTaskStatusNew" data-task-status="חדש">חדש</button>
+                        <button type="button" class="sort-btn" id="dashTaskStatusProgress" data-task-status="בטיפול">בטיפול</button>
+                        <button type="button" class="sort-btn" id="dashTaskStatusDone" data-task-status="הושלם">הושלם</button>
                     </div>
                     <div id="dashTicketsList" style="display:flex;flex-direction:column;gap:8px"></div>
                     <button type="button" class="secondary-button" id="dashLoadMoreBtn" style="display:none;margin-top:10px;width:100%">הצג עוד</button>
@@ -602,27 +655,10 @@
     <!-- VIEW: admin view-as user -->
     <main class="app" id="view-admin-view-as">
         <div class="content">
-            <h1 class="page-title">צפייה כמשתמש</h1>
-            <p class="page-subtitle">תצוגה בלבד — לא ניתן לפתוח קריאה, לערוך פרופיל, או לבצע כל פעולה בשם המשתמש הנבחר.</p>
+            <h1 class="page-title">התחזות למשתמש</h1>
+            <p class="page-subtitle">תיכנס לדף הבית של המשתמש הנבחר בדיוק כפי שהוא רואה אותו, ותוכל לשלוח קריאות בשמו לצורך בדיקות. הפעולה מתועדת ומוגבלת ל-IT Admin בלבד.</p>
             <div class="field"><label for="viewAsUserSelect">בחר משתמש</label><select id="viewAsUserSelect"></select></div>
-            <div id="viewAsResult" style="display:none">
-                <section class="section">
-                    <h2 class="section-title">דף הבית שלו</h2>
-                    <p id="viewAsGreeting" style="font-size:16px;font-weight:700;margin:0 0 4px"></p>
-                    <p id="viewAsInfo" style="color:var(--muted);font-size:13px;margin:0 0 10px"></p>
-                    <div id="viewAsBadges" style="margin-bottom:12px"></div>
-                    <p style="font-size:13px;font-weight:700;margin:10px 0 6px">כפתורים שהוא רואה:</p>
-                    <div id="viewAsHubButtons" style="display:flex;flex-wrap:wrap;gap:8px"></div>
-                </section>
-                <section class="section">
-                    <h2 class="section-title">מחשב משוייך</h2>
-                    <div id="viewAsComputer" style="font-size:14px"></div>
-                </section>
-                <section class="section">
-                    <h2 class="section-title">קריאות שירות</h2>
-                    <div id="viewAsTicketsList" style="display:flex;flex-direction:column;gap:8px"></div>
-                </section>
-            </div>
+            <button type="button" class="primary-button" id="viewAsEnterBtn" disabled>היכנס בתור המשתמש הזה</button>
         </div>
     </main>
 
@@ -974,8 +1010,14 @@
         if (id === 'admin-ticket-config') loadTicketConfigAdminPage();
         if (id === 'admin-view-as') loadViewAsPage();
 
-        if (id === 'hub') { loadHubDashboard(); startDashboardAutoRefresh(); }
-        else { stopDashboardAutoRefresh(); }
+        if (id === 'hub') {
+            renderHubGreeting();
+            renderHubActions();
+            loadHubDashboard();
+            startDashboardAutoRefresh();
+        } else {
+            stopDashboardAutoRefresh();
+        }
     }
 
     // ── BRANCHES: shared cache used by profile/ticket/admin screens ───
@@ -1057,12 +1099,15 @@
             return Portal.isSuperAdmin() || Portal.isITAdmin() || Portal.isProceduresAdmin();
         } },
         { id: 'admin-computers', icon: '💻', label: 'ניהול מחשבים', check: function () { return Portal.isITAdmin(); } },
-        { id: 'admin-branches', icon: '🏢', label: 'ניהול סניפים', check: function () { return Portal.isSuperAdmin(); } },
-        { id: 'admin-sharedfolders', icon: '📁', label: 'תיקיות משותפות', check: function () { return Portal.isSuperAdmin(); } },
         { id: 'admin-user-requests', icon: '🧑‍💼', label: 'בקשות הקמת משתמש', check: function () { return Portal.isITAdmin(); } },
         { id: 'admin-printers', icon: '🖨️', label: 'קטלוג מדפסות', check: function () { return Portal.isITAdmin(); } },
         { id: 'admin-ticket-config', icon: '🏷️', label: 'סוגי קריאות', check: function () { return Portal.isITAdmin(); } },
-        { id: 'admin-view-as', icon: '👁️', label: 'צפייה כמשתמש', check: function () { return Portal.isITAdmin(); } },
+        { id: 'admin-view-as', icon: '👁️', label: 'התחזות למשתמש', check: function () { return Portal.isITAdmin(); } },
+    ];
+
+    var HUB_SUPERADMIN_BUTTONS = [
+        { id: 'admin-branches', icon: '🏢', label: 'ניהול סניפים', check: function () { return Portal.isSuperAdmin(); } },
+        { id: 'admin-sharedfolders', icon: '📁', label: 'תיקיות משותפות', check: function () { return Portal.isSuperAdmin(); } },
     ];
 
     function renderHubButtons(container, buttons) {
@@ -1082,8 +1127,11 @@
         renderHubButtons(document.getElementById('hubActions'), mainButtons);
 
         var adminButtons = HUB_ADMIN_BUTTONS.filter(function (b) { return b.check(); });
-        document.getElementById('hubAdminSection').style.display = adminButtons.length ? 'block' : 'none';
+        var superAdminButtons = HUB_SUPERADMIN_BUTTONS.filter(function (b) { return b.check(); });
+        document.getElementById('hubAdminSection').style.display = (adminButtons.length || superAdminButtons.length) ? 'block' : 'none';
         renderHubButtons(document.getElementById('hubAdminActions'), adminButtons);
+        document.getElementById('hubSuperAdminSection').style.display = superAdminButtons.length ? 'block' : 'none';
+        renderHubButtons(document.getElementById('hubSuperAdminActions'), superAdminButtons);
     }
 
     function renderHubGreeting() {
@@ -1573,16 +1621,21 @@
 
     // ── HUB DASHBOARD (v2.1, section 5; redesigned per follow-up feedback) ──────
     var dashboardOpenTickets = [];
-    var dashboardOpenRequests = []; // user-creation requests, shown in the same list (follow-up, section 4/17)
+    var dashAllUserRequests = []; // ALL user-creation requests (every status) — the "משימות" tab needs חדש/בטיפול/הושלם, not just pending
+    var dashFollowUps = []; // TicketFollowUps — lazy-loaded, same "משימות" tab
+    var dashFollowUpsLoaded = false;
     var dashboardClosedTickets = null; // null = not fetched yet (lazy, behind the "סגורות" cube)
     var dashboardRefreshTimer = null;
     var dashStatusFilter = null; // null = open+in-progress (default) | 'פתוחה' | 'בטיפול' | 'סגורה' — set by clicking a cube
+    var dashViewMode = 'tickets'; // 'tickets' | 'tasks' — the 4th cube switches the whole table to a different data source
+    var dashTaskStatusFilter = 'חדש'; // 'חדש' | 'בטיפול' | 'הושלם' — sub-filter inside tasks mode
     var dashSortBy = 'urgency'; // 'urgency' | 'date' | 'branch'
     var dashDisplayLimit = 30; // pagination — "הצג עוד" adds 30 more, client-side only
     var openDashboardTicketNumber = null; // survives re-renders; the reused DOM node keeps its content untouched
     var openDashboardRow = null; // { cardEl, detailEl } of the currently-expanded row
     var dashRowElements = {}; // ticketNumber -> { wrap, card, detail } — reused across refreshes so an open row never gets torn down
     var dashTicketsByNumber = {}; // ticketNumber -> latest ticket object, so click handlers never act on stale data
+    var dashFocusedTicketNumber = null; // item 4 — isolates the table on one ticket right after taking it
 
     function isHubActive() { return document.getElementById('view-hub').classList.contains('active'); }
 
@@ -1596,16 +1649,21 @@
         var countRes = await apiGet('tickets', 'closedCount', {});
         var closedCount = countRes.ok ? countRes.data.count : 0;
         var reqRes = await apiGet('userRequests', 'list', {});
-        dashboardOpenRequests = reqRes.ok ? reqRes.data.filter(function (r) { return r.status !== 'הוקם'; }) : [];
-        var followUpRes = await apiGet('tickets', 'followUpCount', {});
-        document.getElementById('dashFollowupsCount').textContent = followUpRes.ok ? followUpRes.data.count : 0;
+        dashAllUserRequests = reqRes.ok ? reqRes.data : [];
+        if (dashFollowUpsLoaded) {
+            var followUpsRes = await apiGet('tickets', 'listFollowUps', {});
+            dashFollowUps = followUpsRes.ok ? followUpsRes.data : [];
+        }
+        var pendingRequests = dashAllUserRequests.filter(function (r) { return r.status !== 'הוקם'; }).length;
+        var openFollowUps = dashFollowUps.filter(function (f) { return f.status !== 'הושלם'; }).length;
+        document.getElementById('dashFollowupsCount').textContent = pendingRequests + openFollowUps;
 
         renderDashboardCounts(closedCount);
         renderDashboardUserFilter();
         renderDashboardBranchFilter();
         renderDashboardCharts();
         updateDashCubeActiveClasses();
-        renderDashboardTicketsList();
+        if (dashViewMode === 'tasks') renderDashboardTasksList(); else renderDashboardTicketsList();
     }
 
     function renderDashboardCounts(closedCount) {
@@ -1667,87 +1725,11 @@
         return parts2.join(' · ');
     }
 
-    // Small horizontal bar chart, one brand hue (this is a single-series magnitude-by-
-    // category chart, so per-category color would be noise — the axis label already
-    // carries identity). Built from plain divs, no chart library.
-    function buildBarChart(title, counts) {
-        var entries = Object.keys(counts).map(function (k) { return { label: k, count: counts[k] }; })
-            .sort(function (a, b) { return b.count - a.count; });
-        var max = entries.length ? entries[0].count : 0;
-        var top = entries.slice(0, 6);
-        var restTotal = entries.slice(6).reduce(function (sum, e) { return sum + e.count; }, 0);
-        if (restTotal > 0) top.push({ label: 'אחר', count: restTotal });
-        var rowsHtml = top.length
-            ? top.map(function (e) {
-                var pct = max ? Math.round((e.count / max) * 100) : 0;
-                return '<div class="dash-bar-row"><span class="dash-bar-label">' + escapeHtml(e.label) + '</span>' +
-                    '<span class="dash-bar-track"><span class="dash-bar-fill" style="width:' + pct + '%"></span></span>' +
-                    '<span class="dash-bar-value">' + e.count + '</span></div>';
-            }).join('')
-            : '<div class="dash-chart-empty">אין נתונים</div>';
-        return '<div class="dash-chart"><div class="dash-chart-title">' + escapeHtml(title) + '</div>' + rowsHtml + '</div>';
-    }
-
-    // Charts reflect the SAME set the table below shows (status-cube + user/branch
-    // filters) — switching cubes updates the charts too (section 7 follow-up, item 6).
+    // Charts hidden for now (section 7 follow-up, items 3+6) — the product owner didn't
+    // like the average-handling-time line and wants to redesign what goes here; keeping
+    // the container + this hook so new charts can be dropped back in later.
     function renderDashboardCharts() {
-        var workingSet = getStatusFilteredSource().filter(function (t) {
-            var userOk = !dashUserFilterSelection.length || dashUserFilterSelection.indexOf(t.userName || t.userEmail) !== -1;
-            var branchOk = !dashBranchFilterSelection.length || dashBranchFilterSelection.indexOf(t.branch || 'ללא סניף') !== -1;
-            return userOk && branchOk;
-        });
-        var byCategory = {};
-        var byBranch = {};
-        workingSet.forEach(function (t) {
-            var cat = t.category || 'ללא קטגוריה';
-            byCategory[cat] = (byCategory[cat] || 0) + 1;
-            var br = t.branch || 'ללא סניף';
-            byBranch[br] = (byBranch[br] || 0) + 1;
-        });
-        var html = buildBarChart('קריאות לפי קטגוריה', byCategory) + buildBarChart('קריאות לפי סניף', byBranch);
-        // Only relevant when actually looking at closed tickets (item 4) — not a
-        // general workload metric. A trend line of recent handling times (item 9)
-        // instead of a single average number.
-        if (dashStatusFilter === 'סגורה') html += buildHandlingTimeLineChart();
-        document.getElementById('dashboardCharts').innerHTML = html;
-    }
-
-    // Full-width line chart of the last 20 closed tickets' handling time (takenAt→
-    // closedAt, falling back to timestamp→closedAt if never explicitly taken) — replaces
-    // the single "average" number with an actual trend (item 9). Thin 2px line, rounded
-    // caps, one hue, direct hover tooltips via native <title> (no chart library).
-    function buildHandlingTimeLineChart() {
-        var closed = (dashboardClosedTickets || []).filter(function (t) {
-            var userOk = !dashUserFilterSelection.length || dashUserFilterSelection.indexOf(t.userName || t.userEmail) !== -1;
-            var branchOk = !dashBranchFilterSelection.length || dashBranchFilterSelection.indexOf(t.branch || 'ללא סניף') !== -1;
-            return userOk && branchOk && t.closedAt;
-        });
-        closed.sort(function (a, b) { return new Date(a.closedAt) - new Date(b.closedAt); });
-        var points = closed.slice(-20).map(function (t) {
-            return { label: t.ticketNumber, ms: msBetween(t.takenAt || t.timestamp, t.closedAt) };
-        });
-        if (!points.length) {
-            return '<div class="dash-chart dash-linechart-tile"><div class="dash-chart-title">זמני טיפול אחרונים (קריאות סגורות)</div>' +
-                '<div class="dash-chart-empty">אין נתונים</div></div>';
-        }
-        var avg = points.reduce(function (sum, p) { return sum + p.ms; }, 0) / points.length;
-        var maxMs = Math.max.apply(null, points.map(function (p) { return p.ms; }));
-        var w = 600, h = 110, pad = 10;
-        var stepX = points.length > 1 ? (w - pad * 2) / (points.length - 1) : 0;
-        var coords = points.map(function (p, i) {
-            return { x: pad + i * stepX, y: h - pad - (maxMs ? (p.ms / maxMs) * (h - pad * 2) : 0), p: p };
-        });
-        var pathD = coords.map(function (c, i) { return (i === 0 ? 'M' : 'L') + c.x.toFixed(1) + ',' + c.y.toFixed(1); }).join(' ');
-        var circles = coords.map(function (c) {
-            return '<circle cx="' + c.x.toFixed(1) + '" cy="' + c.y.toFixed(1) + '" r="3" fill="var(--brand-pink)">' +
-                '<title>' + escapeHtml(c.p.label) + ': ' + escapeHtml(formatDuration(c.p.ms)) + '</title></circle>';
-        }).join('');
-        return '<div class="dash-chart dash-linechart-tile">' +
-            '<div class="dash-chart-title">זמני טיפול אחרונים (קריאות סגורות)</div>' +
-            '<div class="dash-linechart-subtitle">ממוצע: ' + escapeHtml(formatDuration(avg)) + '</div>' +
-            '<svg viewBox="0 0 ' + w + ' ' + h + '" class="dash-linechart-svg" preserveAspectRatio="none">' +
-            '<path d="' + pathD + '" fill="none" stroke="var(--brand-pink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
-            circles + '</svg></div>';
+        document.getElementById('dashboardCharts').style.display = 'none';
     }
 
     // v2.1, follow-up: "משתמש"/"סניף" are pill buttons that open a multi-select checkbox
@@ -1803,7 +1785,13 @@
 
     // Single source of truth for what the table below shows: the status-cube source,
     // then user/branch selections filter it, then the active sort button orders it.
+    // A "focused" ticket (item 4 — set right after taking one, off a busy queue) bypasses
+    // all of that and shows just itself, regardless of status/filters.
     function getFilteredSortedTickets() {
+        if (dashFocusedTicketNumber) {
+            var focused = dashTicketsByNumber[dashFocusedTicketNumber];
+            return focused ? [focused] : [];
+        }
         var list = getStatusFilteredSource().filter(function (t) {
             var userOk = !dashUserFilterSelection.length || dashUserFilterSelection.indexOf(t.userName || t.userEmail) !== -1;
             var branchOk = !dashBranchFilterSelection.length || dashBranchFilterSelection.indexOf(t.branch || 'ללא סניף') !== -1;
@@ -1826,20 +1814,11 @@
     function renderDashboardTicketsList() {
         var container = document.getElementById('dashTicketsList');
 
-        var requests = (dashStatusFilter === null) ? dashboardOpenRequests.filter(function (r) {
-            var name = [r.firstNameHe, r.lastNameHe].filter(Boolean).join(' ');
-            var userOk = !dashUserFilterSelection.length ||
-                dashUserFilterSelection.indexOf(r.requesterName) !== -1 || dashUserFilterSelection.indexOf(name) !== -1;
-            var branchOk = !dashBranchFilterSelection.length ||
-                dashBranchFilterSelection.indexOf(branchName(r.branchNumber) || 'ללא סניף') !== -1;
-            return userOk && branchOk;
-        }) : [];
-
         var tickets = getFilteredSortedTickets();
         tickets.forEach(function (t) { dashTicketsByNumber[t.ticketNumber] = t; });
         var visibleTickets = tickets.slice(0, dashDisplayLimit);
 
-        if (!requests.length && !visibleTickets.length) {
+        if (!visibleTickets.length) {
             container.innerHTML = '<p style="color:var(--muted);font-size:13px">אין קריאות להצגה.</p>';
             document.getElementById('dashLoadMoreBtn').style.display = 'none';
             if (openDashboardTicketNumber) closeDashboardDetail();
@@ -1868,9 +1847,72 @@
         });
 
         container.innerHTML = '';
-        requests.forEach(function (r) { container.appendChild(buildUserRequestCard(r)); });
         ticketNodes.forEach(function (n) { container.appendChild(n); });
         document.getElementById('dashLoadMoreBtn').style.display = tickets.length > dashDisplayLimit ? 'block' : 'none';
+    }
+
+    // "משימות" tab (section 7 follow-up, item 2) — user-creation requests + follow-up
+    // tasks, normalized into one shape so they share a single חדש/בטיפול/הושלם filter,
+    // the same user/branch popovers, and the same date sort. No status-cube/urgency
+    // concept applies here, so it's a separate render path from the tickets table.
+    function normalizeTask(kind, raw) {
+        if (kind === 'request') {
+            var name = [raw.firstNameHe, raw.lastNameHe].filter(Boolean).join(' ');
+            var statusNorm = raw.status === 'ממתינה' ? 'חדש' : (raw.status === 'בטיפול' ? 'בטיפול' : 'הושלם');
+            return {
+                kind: 'request', raw: raw, id: raw.requestId,
+                title: 'הקמת משתמש: ' + (name || raw.suggestedEmail),
+                statusNorm: statusNorm, timestamp: raw.timestamp,
+                userName: raw.requesterName, branch: branchName(raw.branchNumber),
+            };
+        }
+        return {
+            kind: 'followup', raw: raw, id: raw.id,
+            title: 'משימת המשך: קריאה ' + raw.ticketNumber,
+            statusNorm: raw.status === 'הושלם' ? 'הושלם' : (raw.status === 'בטיפול' ? 'בטיפול' : 'חדש'),
+            timestamp: raw.createdAt, userName: raw.createdByName, branch: null,
+        };
+    }
+
+    function getAllTasks() {
+        return dashAllUserRequests.map(function (r) { return normalizeTask('request', r); })
+            .concat(dashFollowUps.map(function (f) { return normalizeTask('followup', f); }));
+    }
+
+    function getFilteredTasks() {
+        return getAllTasks().filter(function (task) {
+            var statusOk = task.statusNorm === dashTaskStatusFilter;
+            var userOk = !dashUserFilterSelection.length || dashUserFilterSelection.indexOf(task.userName) !== -1;
+            var branchOk = !dashBranchFilterSelection.length || dashBranchFilterSelection.indexOf(task.branch || 'ללא סניף') !== -1;
+            return statusOk && userOk && branchOk;
+        }).sort(function (a, b) { return new Date(b.timestamp) - new Date(a.timestamp); });
+    }
+
+    function buildTaskCard(task) {
+        var card = document.createElement('div');
+        card.className = 'dash-task-card';
+        var statusClass = task.statusNorm === 'הושלם' ? 'status-closed' : (task.statusNorm === 'בטיפול' ? 'status-progress' : 'status-open');
+        card.innerHTML =
+            '<div class="ticket-card-header"><strong>' + escapeHtml(task.title) + '</strong>' +
+            '<span class="status-badge ' + statusClass + '">' + escapeHtml(task.statusNorm) + '</span></div>' +
+            '<div class="dash-task-meta">' + formatDateTime(task.timestamp) +
+            (task.userName ? ' | ' + escapeHtml(task.userName) : '') + (task.branch ? ' | ' + escapeHtml(task.branch) : '') + '</div>';
+        if (task.kind === 'request') {
+            card.addEventListener('click', function () { openUserRequestDetail(task.raw); });
+        }
+        return card;
+    }
+
+    function renderDashboardTasksList() {
+        var container = document.getElementById('dashTicketsList');
+        var tasks = getFilteredTasks();
+        document.getElementById('dashLoadMoreBtn').style.display = 'none';
+        if (!tasks.length) {
+            container.innerHTML = '<p style="color:var(--muted);font-size:13px">אין משימות בסטטוס הזה.</p>';
+            return;
+        }
+        container.innerHTML = '';
+        tasks.forEach(function (task) { container.appendChild(buildTaskCard(task)); });
     }
 
     // Header shows category | subcategory (if any) | ticket number, employee/branch
@@ -1880,7 +1922,6 @@
     // progress ticket with an AnyDesk ID also gets a quick-connect button (item 9),
     // grouped with the dropdown so both sit on the row's left side.
     var DASHBOARD_STATUS_OPTIONS = ['פתוחה', 'בטיפול', 'סגורה'];
-    var DASHBOARD_STATUS_CLASS = { 'פתוחה': 'status-open', 'בטיפול': 'status-progress', 'סגורה': 'status-closed' };
     var WHATSAPP_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="#25D366">' +
         '<path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.35 5.09L2 22l4.91-1.35C8.42 21.5 10.15 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm5.2 14.3c-.2.6-1.2 1.15-1.7 1.2-.44.05-1 .07-1.6-.1-.37-.1-.85-.28-1.46-.55-2.58-1.12-4.26-3.75-4.4-3.93-.13-.18-1.05-1.4-1.05-2.67 0-1.26.66-1.88.9-2.14.23-.25.5-.32.67-.32h.48c.15 0 .36-.03.55.42.2.48.68 1.65.74 1.77.06.13.1.28.02.45-.08.17-.13.28-.25.43-.13.15-.27.34-.38.46-.13.13-.26.27-.11.53.15.27.66 1.1 1.42 1.78.98.87 1.8 1.14 2.07 1.27.27.13.42.11.58-.07.16-.18.68-.79.86-1.06.18-.27.36-.22.6-.13.25.09 1.56.74 1.83.87.27.13.45.2.52.32.07.11.07.63-.13 1.23z"/></svg>';
 
@@ -1895,10 +1936,17 @@
         if (t.subcategory) titleParts.push(escapeHtml(t.subcategory));
         titleParts.push(escapeHtml(t.ticketNumber));
 
-        var statusSelectHtml = '<select class="status-badge status-select ' + DASHBOARD_STATUS_CLASS[t.status] + '" data-status-select>' +
-            DASHBOARD_STATUS_OPTIONS.map(function (s) {
-                return '<option value="' + s + '"' + (s === t.status ? ' selected' : '') + '>' + s + '</option>';
-            }).join('') + '</select>';
+        // "פתוחה" shows a plain take-ticket button (not the dropdown) — clicking it both
+        // takes the ticket AND isolates the table on just this one row (item 4), so a
+        // busy queue doesn't get confusing right when you've committed to handling it.
+        // The dropdown (uncolored — item 1) only appears once the ticket has an actual
+        // in-progress/closed state to move between.
+        var statusControlHtml = t.status === 'פתוחה'
+            ? '<button type="button" class="dash-quick-tag" data-take-and-focus>קח קריאה</button>'
+            : '<select class="dash-quick-tag status-select" data-status-select>' +
+                DASHBOARD_STATUS_OPTIONS.map(function (s) {
+                    return '<option value="' + s + '"' + (s === t.status ? ' selected' : '') + '>' + s + '</option>';
+                }).join('') + '</select>';
         var anydeskHtml = (t.status === 'בטיפול' && t.anyDeskId)
             ? '<a class="dash-anydesk-btn" href="anydesk:' + encodeURIComponent(t.anyDeskId) + '" title="התחברות למחשב דרך AnyDesk" data-stop>🖥️</a>'
             : '';
@@ -1929,8 +1977,8 @@
 
         return '<div class="dash-ticket-meta-top"><span class="dash-link-field" data-open-user>' + escapeHtml(t.userName || t.userEmail) + '</span>' +
             (t.branch ? ' | ' + escapeHtml(t.branch) : '') + phoneHtml + '</div>' +
-            '<div class="ticket-card-header"><strong>' + titleParts.join(' | ') + '</strong>' +
-            '<span class="dash-header-right-group">' + computerTagHtml + printerTagHtml + anydeskHtml + statusSelectHtml + '</span></div>' +
+            '<div class="ticket-card-header"><strong class="dash-link-field" data-edit-fields title="לחץ לתיקון פרטי הקריאה">' + titleParts.join(' | ') + '</strong>' +
+            '<span class="dash-header-right-group">' + computerTagHtml + printerTagHtml + anydeskHtml + statusControlHtml + '</span></div>' +
             '<div class="ticket-meta">' + formatDateTime(t.timestamp) + ' | <span class="dash-urgency-chip" style="background:' + urgencyBg + '">' + escapeHtml(t.urgency) + '</span></div>' +
             '<div class="dash-elapsed-row">' + escapeHtml(dashboardElapsedHtml(t)) + '</div>' +
             assignedTagHtml;
@@ -1951,6 +1999,20 @@
             select.addEventListener('click', function (e) { e.stopPropagation(); });
             select.addEventListener('change', function () {
                 dashboardChangeStatus(dashTicketsByNumber[t.ticketNumber] || t, select.value);
+            });
+        }
+        var takeBtn = card.querySelector('[data-take-and-focus]');
+        if (takeBtn) {
+            takeBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                dashboardTakeAndFocus(dashTicketsByNumber[t.ticketNumber] || t);
+            });
+        }
+        var editFieldsLink = card.querySelector('[data-edit-fields]');
+        if (editFieldsLink) {
+            editFieldsLink.addEventListener('click', function (e) {
+                e.stopPropagation();
+                openTicketEditFieldsModal(dashTicketsByNumber[t.ticketNumber] || t);
             });
         }
         card.querySelectorAll('[data-stop]').forEach(function (el) {
@@ -2343,7 +2405,7 @@
         updateDashFilterButtonLabel('dashUserFilterBtn', 'משתמש', dashUserFilterSelection.length);
         dashDisplayLimit = 30;
         renderDashboardCharts();
-        renderDashboardTicketsList();
+        renderDashboardCurrentList();
     });
     document.getElementById('dashBranchFilterPopover').addEventListener('change', function (e) {
         if (e.target.type !== 'checkbox') return;
@@ -2354,20 +2416,29 @@
         updateDashFilterButtonLabel('dashBranchFilterBtn', 'סניף', dashBranchFilterSelection.length);
         dashDisplayLimit = 30;
         renderDashboardCharts();
-        renderDashboardTicketsList();
+        renderDashboardCurrentList();
     });
 
     // Clicking a stat cube filters the table by that status (click again to clear back
     // to the default open+in-progress view) — replaces the old separate "closed
     // tickets"/"all tickets" buttons (section 3/4 follow-up). Switching it also
     // recomputes the popover counts and charts (items 5+6).
+    function renderDashboardCurrentList() {
+        if (dashViewMode === 'tasks') renderDashboardTasksList(); else renderDashboardTicketsList();
+    }
+
     function updateDashCubeActiveClasses() {
-        document.getElementById('dashCubeOpen').classList.toggle('dc-active', dashStatusFilter === 'פתוחה');
-        document.getElementById('dashCubeProgress').classList.toggle('dc-active', dashStatusFilter === 'בטיפול');
-        document.getElementById('dashCubeClosed').classList.toggle('dc-active', dashStatusFilter === 'סגורה');
+        document.getElementById('dashCubeOpen').classList.toggle('dc-active', dashViewMode === 'tickets' && dashStatusFilter === 'פתוחה');
+        document.getElementById('dashCubeProgress').classList.toggle('dc-active', dashViewMode === 'tickets' && dashStatusFilter === 'בטיפול');
+        document.getElementById('dashCubeClosed').classList.toggle('dc-active', dashViewMode === 'tickets' && dashStatusFilter === 'סגורה');
+        document.getElementById('dashCubeTasks').classList.toggle('dc-active', dashViewMode === 'tasks');
     }
 
     function setDashStatusFilter(status) {
+        dashViewMode = 'tickets';
+        dashFocusedTicketNumber = null;
+        renderDashFocusTag();
+        document.getElementById('dashTaskStatusRow').style.display = 'none';
         dashStatusFilter = (dashStatusFilter === status) ? null : status;
         dashDisplayLimit = 30;
         updateDashCubeActiveClasses();
@@ -2389,6 +2460,41 @@
         setDashStatusFilter('סגורה');
     });
 
+    // "משימות" (item 2) is a MODE, not a status filter — clicking it again returns to
+    // the normal tickets view (mirrors how the other three cubes toggle off).
+    document.getElementById('dashCubeTasks').addEventListener('click', async function () {
+        if (dashViewMode === 'tasks') { setDashStatusFilter(null); return; }
+        dashViewMode = 'tasks';
+        dashFocusedTicketNumber = null;
+        renderDashFocusTag();
+        dashDisplayLimit = 30;
+        if (!dashFollowUpsLoaded) {
+            showLoading(true);
+            var res = await apiGet('tickets', 'listFollowUps', {});
+            dashFollowUps = res.ok ? res.data : [];
+            dashFollowUpsLoaded = true;
+            showLoading(false);
+        }
+        updateDashCubeActiveClasses();
+        document.getElementById('dashTaskStatusRow').style.display = 'flex';
+        renderDashboardCharts();
+        renderDashboardUserFilter();
+        renderDashboardBranchFilter();
+        renderDashboardTasksList();
+    });
+
+    function setDashTaskStatusFilter(status) {
+        dashTaskStatusFilter = status;
+        ['dashTaskStatusNew', 'dashTaskStatusProgress', 'dashTaskStatusDone'].forEach(function (id) {
+            var btn = document.getElementById(id);
+            btn.classList.toggle('active', btn.getAttribute('data-task-status') === status);
+        });
+        renderDashboardTasksList();
+    }
+    document.getElementById('dashTaskStatusNew').addEventListener('click', function () { setDashTaskStatusFilter('חדש'); });
+    document.getElementById('dashTaskStatusProgress').addEventListener('click', function () { setDashTaskStatusFilter('בטיפול'); });
+    document.getElementById('dashTaskStatusDone').addEventListener('click', function () { setDashTaskStatusFilter('הושלם'); });
+
     function setDashSortBy(sortBy) {
         dashSortBy = sortBy;
         dashDisplayLimit = 30;
@@ -2396,7 +2502,7 @@
             var btn = document.getElementById(id);
             btn.classList.toggle('active', btn.getAttribute('data-sort') === sortBy);
         });
-        renderDashboardTicketsList();
+        if (dashViewMode === 'tickets') renderDashboardTicketsList();
     }
     document.getElementById('dashSortUrgency').addEventListener('click', function () { setDashSortBy('urgency'); });
     document.getElementById('dashSortDate').addEventListener('click', function () { setDashSortBy('date'); });
@@ -2405,6 +2511,88 @@
     document.getElementById('dashLoadMoreBtn').addEventListener('click', function () {
         dashDisplayLimit += 30;
         renderDashboardTicketsList();
+    });
+
+    // Item 4 — the tag that appears under the cubes once you're focused on a single
+    // ticket, with an X to drop back to the normal filtered view.
+    function renderDashFocusTag() {
+        var container = document.getElementById('dashFocusTagContainer');
+        if (!dashFocusedTicketNumber) { container.style.display = 'none'; container.innerHTML = ''; return; }
+        container.style.display = 'block';
+        container.innerHTML = '<span class="dash-focus-tag">קריאה: ' + escapeHtml(dashFocusedTicketNumber) +
+            '<button type="button" data-clear-focus title="חזרה לרשימה המלאה">✖</button></span>';
+        container.querySelector('[data-clear-focus]').addEventListener('click', function () {
+            dashFocusedTicketNumber = null;
+            renderDashFocusTag();
+            renderDashboardTicketsList();
+        });
+    }
+
+    async function dashboardTakeAndFocus(t) {
+        await dashboardTakeTicket(t);
+        dashFocusedTicketNumber = t.ticketNumber;
+        renderDashFocusTag();
+        renderDashboardTicketsList();
+    }
+
+    // ── ITEM 5: admin correction of mis-entered ticket fields (with audit log) ──
+    var ticketFieldsModal = document.getElementById('ticketFieldsModalBackdrop');
+    var ticketFieldsError = document.getElementById('ticketFieldsModalError');
+    var ticketFieldsTracker = makeDirtyTracker(ticketFieldsModal);
+    var editingTicketFields = null;
+
+    function openTicketEditFieldsModal(t) {
+        editingTicketFields = t;
+        document.getElementById('tfTicketNumber').textContent = t.ticketNumber;
+        var catSel = document.getElementById('tfCategory');
+        var categories = ticketConfigCache ? ticketConfigCache.categories : [];
+        catSel.innerHTML = categories.map(function (c) {
+            return '<option' + (c.name === t.category ? ' selected' : '') + '>' + escapeHtml(c.name) + '</option>';
+        }).join('');
+        var urgSel = document.getElementById('tfUrgency');
+        var urgencies = ticketConfigCache ? ticketConfigCache.urgencies : [];
+        urgSel.innerHTML = urgencies.map(function (u) {
+            return '<option' + (u.name === t.urgency ? ' selected' : '') + '>' + escapeHtml(u.name) + '</option>';
+        }).join('');
+        document.getElementById('tfUserName').value = t.userName || '';
+        document.getElementById('tfComputerName').value = t.computerName || '';
+        document.getElementById('tfPrinter').value = t.printer || '';
+        ticketFieldsError.style.display = 'none';
+        ticketFieldsModal.classList.add('visible');
+        ticketFieldsTracker.reset();
+    }
+
+    function closeTicketFieldsModal() { ticketFieldsModal.classList.remove('visible'); }
+
+    document.getElementById('ticketFieldsCancelBtn').addEventListener('click', function () {
+        if (ticketFieldsTracker.confirmDiscard()) closeTicketFieldsModal();
+    });
+
+    document.getElementById('ticketFieldsSaveBtn').addEventListener('click', async function () {
+        if (!editingTicketFields) return;
+        var payload = {
+            ticketNumber: editingTicketFields.ticketNumber,
+            category: document.getElementById('tfCategory').value,
+            urgency: document.getElementById('tfUrgency').value,
+            userName: document.getElementById('tfUserName').value.trim(),
+            computerName: document.getElementById('tfComputerName').value.trim(),
+            printer: document.getElementById('tfPrinter').value.trim(),
+        };
+        showLoading(true);
+        var res = await apiPost('tickets', 'adminUpdateFields', payload);
+        showLoading(false);
+        if (!res.ok) {
+            ticketFieldsError.textContent = res.error || 'שגיאה בשמירה';
+            ticketFieldsError.style.display = 'block';
+            return;
+        }
+        ticketFieldsTracker.reset();
+        closeTicketFieldsModal();
+        patchDashboardTicket(payload.ticketNumber, {
+            category: payload.category, urgency: payload.urgency, userName: payload.userName,
+            computerName: payload.computerName, printer: payload.printer,
+        });
+        refreshOpenDashboardDetail();
     });
 
     function stopDashboardAutoRefresh() {
@@ -3771,37 +3959,20 @@
         if (res.ok) loadTicketConfigAdminPage(); else alert(res.error || 'שגיאה במחיקה');
     }
 
-    // ── ADMIN: VIEW AS USER (read-only — never submits/edits anything as them) ──
+    // ── ADMIN: TRUE IMPERSONATION ("היכנס בתור המשתמש") ──────────
+    // Puts the admin inside the real hub UI exactly as the target employee sees it
+    // (Portal.getUser() becomes the impersonated user everywhere), wrapped in a red
+    // border so it's never mistaken for the admin's own session. Every apiGet/apiPost
+    // call automatically carries viewAsEmail (common.js), and the backend re-validates
+    // caller.isITAdmin from the real Easy Auth token on every honored endpoint — the
+    // client-side switch below is purely a UI convenience, not a trust boundary.
     var viewAsUsersCache = [];
 
-    function userIsSuperAdmin(u) { return !!(u && u.isSuperAdmin); }
-    function userIsITAdmin(u) { return !!(u && (u.isITAdmin || u.isSuperAdmin)); }
-    function userIsProceduresAdmin(u) { return !!(u && (u.isProceduresAdmin || u.isSuperAdmin)); }
-    function userIsUserRequestSubmitter(u) { return !!(u && (u.isUserRequestSubmitter || u.isITAdmin || u.isSuperAdmin)); }
-
-    // Mirrors HUB_BUTTONS/HUB_ADMIN_BUTTONS, but evaluated against an arbitrary user
-    // object instead of the live Portal singleton (which always reflects the real,
-    // logged-in admin — never the person being previewed).
-    var VIEW_AS_BUTTON_DEFS = [
-        { label: 'פתיחת קריאה', show: function () { return true; } },
-        { label: 'יצירת חתימה', show: function () { return true; } },
-        { label: 'נהלי עבודה', show: function () { return true; } },
-        { label: 'בקשת הקמת משתמש', show: userIsUserRequestSubmitter },
-        { label: 'ניהול משתמשים', show: function (u) { return userIsSuperAdmin(u) || userIsITAdmin(u) || userIsProceduresAdmin(u); } },
-        { label: 'ניהול מחשבים', show: userIsITAdmin },
-        { label: 'ניהול סניפים', show: userIsSuperAdmin },
-        { label: 'תיקיות משותפות', show: userIsSuperAdmin },
-        { label: 'בקשות הקמת משתמש', show: userIsITAdmin },
-        { label: 'קטלוג מדפסות', show: userIsITAdmin },
-        { label: 'צפייה כמשתמש', show: userIsITAdmin },
-    ];
-
     async function loadViewAsPage() {
-        document.getElementById('viewAsResult').style.display = 'none';
         document.getElementById('viewAsUserSelect').value = '';
+        document.getElementById('viewAsEnterBtn').disabled = true;
         showLoading(true);
         var res = await apiGet('users', 'list', {});
-        await ensureBranchesLoaded();
         showLoading(false);
         viewAsUsersCache = res.ok ? res.data : [];
         var sel = document.getElementById('viewAsUserSelect');
@@ -3812,50 +3983,28 @@
             }).join('');
     }
 
-    document.getElementById('viewAsUserSelect').addEventListener('change', async function () {
-        var email = this.value;
-        if (!email) { document.getElementById('viewAsResult').style.display = 'none'; return; }
+    document.getElementById('viewAsUserSelect').addEventListener('change', function () {
+        document.getElementById('viewAsEnterBtn').disabled = !this.value;
+    });
+
+    document.getElementById('viewAsEnterBtn').addEventListener('click', function () {
+        var email = document.getElementById('viewAsUserSelect').value;
         var user = viewAsUsersCache.find(function (u) { return u.email === email; });
         if (!user) return;
-
-        showLoading(true);
-        var compRes = await apiGet('computers', 'getAssigned', { viewAsEmail: email });
-        var ticketsRes = await apiGet('tickets', 'listMine', { viewAsEmail: email });
-        showLoading(false);
-
+        Portal.startViewAs(user);
+        document.body.classList.add('viewing-as-active');
         var name = [user.firstName, user.lastName].filter(Boolean).join(' ');
-        document.getElementById('viewAsGreeting').textContent = 'שלום' + (name ? ', ' + name : '') + '!';
-        document.getElementById('viewAsInfo').textContent =
-            [user.role, branchName(user.branchNumber)].filter(Boolean).join(' | ') || 'ללא תפקיד/סניף מוגדר';
+        document.getElementById('viewAsBannerText').textContent =
+            'אתה מתחזה כרגע ל-' + (name || user.email) + ' — כל פעולה (כולל פתיחת קריאות) מבוצעת בשמו';
+        showView('hub');
+    });
 
-        var badges = '';
-        if (user.isSuperAdmin) badges += '<span class="role-badge">מנהל-על</span>';
-        if (user.isITAdmin) badges += '<span class="role-badge">IT</span>';
-        if (user.isProceduresAdmin) badges += '<span class="role-badge">נהלים</span>';
-        if (user.isUserRequestSubmitter) badges += '<span class="role-badge">מורשה הקמת משתמשים</span>';
-        document.getElementById('viewAsBadges').innerHTML = badges || '<span style="color:var(--muted);font-size:13px">ללא הרשאות מיוחדות</span>';
-
-        var buttonLabels = VIEW_AS_BUTTON_DEFS.filter(function (b) { return b.show(user); }).map(function (b) { return b.label; });
-        document.getElementById('viewAsHubButtons').innerHTML = buttonLabels.length
-            ? buttonLabels.map(function (label) { return '<span class="dashboard-branch-chip">' + escapeHtml(label) + '</span>'; }).join('')
-            : '<span style="color:var(--muted);font-size:13px">אין כפתורים</span>';
-
-        var comp = compRes.ok ? compRes.data : null;
-        document.getElementById('viewAsComputer').innerHTML = comp
-            ? ('<strong dir="ltr" style="unicode-bidi:embed">' + escapeHtml(comp.computerName) + '</strong> | מדפסת: ' +
-                escapeHtml(comp.defaultPrinterName || '-') + ' | AnyDesk: ' + escapeHtml(comp.anyDeskId || '-'))
-            : '<span style="color:var(--muted);font-size:13px">אין מחשב משוייך.</span>';
-
-        var tickets = ticketsRes.ok ? ticketsRes.data : [];
-        var ticketsList = document.getElementById('viewAsTicketsList');
-        ticketsList.innerHTML = '';
-        if (!tickets.length) {
-            ticketsList.innerHTML = '<p style="color:var(--muted);font-size:13px">אין קריאות.</p>';
-        } else {
-            tickets.forEach(function (t) { ticketsList.appendChild(buildTicketCard(t)); });
-        }
-
-        document.getElementById('viewAsResult').style.display = 'block';
+    document.getElementById('viewAsExitBtn').addEventListener('click', function () {
+        Portal.stopViewAs();
+        document.body.classList.remove('viewing-as-active');
+        renderHubGreeting();
+        renderHubActions();
+        showView('hub');
     });
 
     // ── INIT ──────────────────────────────────────────────────
