@@ -29,8 +29,12 @@ function parseBranchNumber(v) {
   return Number.isInteger(n) ? n : null;
 }
 
-function isAnyAdmin(caller) {
-  return caller.isSuperAdmin || caller.isITAdmin || caller.isProceduresAdmin;
+// Portal user management is an IT/SuperAdmin axis, entirely separate from IsProceduresAdmin
+// (procedures editing) and IsUserRequestSubmitter (submitting a setup request) — a plain
+// procedures admin must never be able to list/create/edit/delete portal users, at the API
+// level or otherwise.
+function canManageUsers(caller) {
+  return caller.isSuperAdmin || caller.isITAdmin;
 }
 
 async function identify(_payload, caller) {
@@ -62,7 +66,7 @@ async function updateProfile(payload, caller) {
 }
 
 async function list(_payload, caller) {
-  if (!isAnyAdmin(caller)) return { ok: false, error: 'אין הרשאה' };
+  if (!canManageUsers(caller)) return { ok: false, error: 'אין הרשאה' };
   const pool = await getPool();
   const result = await pool.request().query('SELECT * FROM Users ORDER BY Email');
   return { ok: true, data: result.recordset.map(rowToUser) };
@@ -80,7 +84,7 @@ async function setAssignment(pool, computerName, email) {
 const USER_EMAIL_DOMAIN = 'rami-levy-stock.co.il';
 
 async function create(payload, caller) {
-  if (!isAnyAdmin(caller)) return { ok: false, error: 'אין הרשאה' };
+  if (!canManageUsers(caller)) return { ok: false, error: 'אין הרשאה' };
   const username = String(payload.username || '').trim().toLowerCase().replace(/@.*$/, '');
   if (!username) return { ok: false, error: 'חסר שם משתמש' };
   const email = `${username}@${USER_EMAIL_DOMAIN}`;
@@ -117,7 +121,7 @@ async function create(payload, caller) {
 const EDITABLE_ADMIN_USER_FIELDS = ['FirstName', 'LastName', 'FirstNameEn', 'LastNameEn', 'Phone', 'Role'];
 
 async function adminUpdate(payload, caller) {
-  if (!isAnyAdmin(caller)) return { ok: false, error: 'אין הרשאה' };
+  if (!canManageUsers(caller)) return { ok: false, error: 'אין הרשאה' };
   const email = String(payload.email || '').trim().toLowerCase();
   const pool = await getPool();
   const targetRes = await pool.request().input('email', sql.NVarChar, email)
@@ -169,7 +173,7 @@ async function adminUpdate(payload, caller) {
 }
 
 async function remove(payload, caller) {
-  if (!isAnyAdmin(caller)) return { ok: false, error: 'אין הרשאה' };
+  if (!canManageUsers(caller)) return { ok: false, error: 'אין הרשאה' };
   const email = String(payload.email || '').trim().toLowerCase();
   const pool = await getPool();
   const targetRes = await pool.request().input('email', sql.NVarChar, email)

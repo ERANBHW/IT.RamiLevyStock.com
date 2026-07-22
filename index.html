@@ -1362,8 +1362,10 @@
     ];
 
     var HUB_ADMIN_BUTTONS = [
+        // IT-only (and SuperAdmin) — a plain "עריכת נהלים" permission must never grant this,
+        // it's a completely separate axis (see the 3-permission model: IT / נהלים / בקשת משתמש).
         { id: 'admin-users', icon: '👥', label: 'ניהול משתמשים', check: function () {
-            return Portal.isSuperAdmin() || Portal.isITAdmin() || Portal.isProceduresAdmin();
+            return Portal.isSuperAdmin() || Portal.isITAdmin();
         } },
         { id: 'admin-computers', icon: '💻', label: 'ניהול מחשבים', check: function () { return Portal.isITAdmin(); } },
         { id: 'admin-printers', icon: '🖨️', label: 'קטלוג מדפסות', check: function () { return Portal.isITAdmin(); } },
