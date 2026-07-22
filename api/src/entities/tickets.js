@@ -48,11 +48,29 @@ function rowToLog(r) {
   };
 }
 
-async function writeLog(pool, ticketNumber, caller, action, fields = {}) {
+// While impersonating (view-as, IT Admin only — same trust boundary as ticket
+// creation/listing below), every write action should appear to have been taken by the
+// impersonated employee, not the real admin behind the keyboard — that's the whole
+// point of using it for testing. Resolved once per call so the log entry, any
+// assignment record, and ownership checks all agree on the same identity. Falls back to
+// the real caller whenever viewAsEmail is absent or the real caller isn't an IT admin —
+// exactly like every other viewAsEmail-honoring endpoint in this file.
+async function resolveActor(pool, payload, caller) {
+  if (payload.viewAsEmail && caller.isITAdmin) {
+    const email = String(payload.viewAsEmail).trim().toLowerCase();
+    const result = await pool.request().input('email', sql.NVarChar, email)
+      .query('SELECT FirstName, LastName FROM Users WHERE Email = @email');
+    const row = result.recordset[0];
+    return { email, name: row ? `${row.FirstName} ${row.LastName}`.trim() : email };
+  }
+  return { email: caller.email, name: caller.name || '' };
+}
+
+async function writeLog(pool, ticketNumber, actor, action, fields = {}) {
   await pool.request()
     .input('ticketNumber', sql.NVarChar, ticketNumber)
-    .input('actorEmail', sql.NVarChar, caller.email)
-    .input('actorName', sql.NVarChar, caller.name || '')
+    .input('actorEmail', sql.NVarChar, actor.email)
+    .input('actorName', sql.NVarChar, actor.name || '')
     .input('action', sql.NVarChar, action)
     .input('fieldName', sql.NVarChar, fields.fieldName ?? null)
     .input('oldValue', sql.NVarChar, fields.oldValue != null ? String(fields.oldValue) : null)
@@ -75,13 +93,12 @@ async function create(payload, caller) {
   const isPrinterTicket = !!String(payload.printerName || '').trim();
   const printer = String(payload.printerName || payload.printer || '');
 
-  // "View as" ticket submission (IT Admin only) — the ticket is owned by the
-  // impersonated employee (UserEmail/Name come from them), not the admin actually
-  // clicking submit; the 'created' log entry below still attributes to the real admin.
-  const ownerEmail = (payload.viewAsEmail && caller.isITAdmin)
-    ? String(payload.viewAsEmail).trim().toLowerCase() : caller.email;
-
   const pool = await getPool();
+  // "View as" ticket submission (IT Admin only) — the ticket is owned by, and the
+  // 'created' log entry attributed to, the impersonated employee.
+  const actor = await resolveActor(pool, payload, caller);
+  const ownerEmail = actor.email;
+
   const result = await pool.request()
     .input('userEmail', sql.NVarChar, ownerEmail)
     .input('userName', sql.NVarChar, String(payload.userName || caller.name || ''))
@@ -103,7 +120,7 @@ async function create(payload, caller) {
       VALUES (@userEmail, @userName, @phone, @branch, @computerName, @ip, @printer, @anyDeskId, @category, @subcategory, @urgency, @description, @status, @isPrinterTicket)`);
 
   const ticket = result.recordset[0];
-  await writeLog(pool, ticket.TicketNumber, caller, 'created', { message: 'הקריאה נפתחה' });
+  await writeLog(pool, ticket.TicketNumber, actor, 'created', { message: 'הקריאה נפתחה' });
 
   sendTicketEmails(ticket, { isPrinterTicket }).catch((err) => console.error('sendTicketEmails failed', err));
 
@@ -173,7 +190,8 @@ async function update(payload, caller) {
   const ticketNumber = String(payload.ticketNumber || '');
   const ticket = await getTicketOr404(pool, ticketNumber);
   if (!ticket) return { ok: false, error: 'הקריאה לא נמצאה' };
-  if (ticket.UserEmail.toLowerCase() !== caller.email) return { ok: false, error: 'אין הרשאה' };
+  const actor = await resolveActor(pool, payload, caller);
+  if (ticket.UserEmail.toLowerCase() !== actor.email) return { ok: false, error: 'אין הרשאה' };
   if (ticket.Status !== STATUS_OPEN) return { ok: false, error: 'לא ניתן לערוך קריאה שכבר נלקחה לטיפול' };
 
   const req = pool.request().input('num', sql.NVarChar, ticketNumber);
@@ -195,7 +213,7 @@ async function update(payload, caller) {
 
   await req.query(`UPDATE Tickets SET ${sets.join(', ')} WHERE TicketNumber = @num`);
   for (const c of changes) {
-    await writeLog(pool, ticketNumber, caller, 'field_updated', { fieldName: c.field, oldValue: c.oldVal, newValue: c.newVal });
+    await writeLog(pool, ticketNumber, actor, 'field_updated', { fieldName: c.field, oldValue: c.oldVal, newValue: c.newVal });
   }
   return { ok: true };
 }
@@ -212,6 +230,7 @@ async function adminUpdateFields(payload, caller) {
   const ticketNumber = String(payload.ticketNumber || '');
   const ticket = await getTicketOr404(pool, ticketNumber);
   if (!ticket) return { ok: false, error: 'הקריאה לא נמצאה' };
+  const actor = await resolveActor(pool, payload, caller);
 
   const req = pool.request().input('num', sql.NVarChar, ticketNumber);
   const sets = ['UpdatedAt = SYSUTCDATETIME()'];
@@ -232,7 +251,7 @@ async function adminUpdateFields(payload, caller) {
 
   await req.query(`UPDATE Tickets SET ${sets.join(', ')} WHERE TicketNumber = @num`);
   for (const c of changes) {
-    await writeLog(pool, ticketNumber, caller, 'field_updated', { fieldName: c.field, oldValue: c.oldVal, newValue: c.newVal });
+    await writeLog(pool, ticketNumber, actor, 'field_updated', { fieldName: c.field, oldValue: c.oldVal, newValue: c.newVal });
   }
   return { ok: true };
 }
@@ -244,21 +263,22 @@ async function take(payload, caller) {
   const ticket = await getTicketOr404(pool, ticketNumber);
   if (!ticket) return { ok: false, error: 'הקריאה לא נמצאה' };
   if (ticket.Status !== STATUS_OPEN) return { ok: false, error: 'הקריאה כבר נלקחה' };
+  const actor = await resolveActor(pool, payload, caller);
 
   await pool.request()
     .input('num', sql.NVarChar, ticketNumber)
-    .input('email', sql.NVarChar, caller.email)
-    .input('name', sql.NVarChar, caller.name || '')
+    .input('email', sql.NVarChar, actor.email)
+    .input('name', sql.NVarChar, actor.name)
     .input('status', sql.NVarChar, STATUS_PROGRESS)
     .query(`UPDATE Tickets SET AssignedToEmail = @email, AssignedToName = @name, Status = @status,
         TakenAt = SYSUTCDATETIME(), UpdatedAt = SYSUTCDATETIME()
       WHERE TicketNumber = @num`);
 
-  await writeLog(pool, ticketNumber, caller, 'assigned', {
-    newValue: caller.email,
-    message: `${caller.name || caller.email} לקח/ה את הקריאה לטיפול`,
+  await writeLog(pool, ticketNumber, actor, 'assigned', {
+    newValue: actor.email,
+    message: `${actor.name || actor.email} לקח/ה את הקריאה לטיפול`,
   });
-  await writeLog(pool, ticketNumber, caller, 'status_changed', {
+  await writeLog(pool, ticketNumber, actor, 'status_changed', {
     fieldName: 'Status', oldValue: STATUS_OPEN, newValue: STATUS_PROGRESS,
   });
   return { ok: true };
@@ -270,6 +290,7 @@ async function reassign(payload, caller) {
   const ticketNumber = String(payload.ticketNumber || '');
   const ticket = await getTicketOr404(pool, ticketNumber);
   if (!ticket) return { ok: false, error: 'הקריאה לא נמצאה' };
+  const actor = await resolveActor(pool, payload, caller);
 
   const newEmail = String(payload.assignedToEmail || '').trim().toLowerCase();
   const userRes = await pool.request().input('email', sql.NVarChar, newEmail)
@@ -284,7 +305,7 @@ async function reassign(payload, caller) {
     .input('name', sql.NVarChar, newName)
     .query('UPDATE Tickets SET AssignedToEmail = @email, AssignedToName = @name, UpdatedAt = SYSUTCDATETIME() WHERE TicketNumber = @num');
 
-  await writeLog(pool, ticketNumber, caller, 'assigned', {
+  await writeLog(pool, ticketNumber, actor, 'assigned', {
     oldValue: ticket.AssignedToEmail, newValue: newEmail, message: `שויך מחדש ל-${newName}`,
   });
   return { ok: true };
@@ -296,6 +317,7 @@ async function updateStatus(payload, caller) {
   const ticketNumber = String(payload.ticketNumber || '');
   const ticket = await getTicketOr404(pool, ticketNumber);
   if (!ticket) return { ok: false, error: 'הקריאה לא נמצאה' };
+  const actor = await resolveActor(pool, payload, caller);
 
   const newStatus = String(payload.status || '');
   if (!VALID_STATUSES.includes(newStatus)) return { ok: false, error: 'סטטוס לא תקין' };
@@ -310,12 +332,12 @@ async function updateStatus(payload, caller) {
     .query(`UPDATE Tickets SET Status = @status, UpdatedAt = SYSUTCDATETIME()${closedAtSet}${reopenSet} WHERE TicketNumber = @num`);
 
   if (newStatus !== ticket.Status) {
-    await writeLog(pool, ticketNumber, caller, 'status_changed', {
+    await writeLog(pool, ticketNumber, actor, 'status_changed', {
       fieldName: 'Status', oldValue: ticket.Status, newValue: newStatus,
     });
   }
   if (payload.message) {
-    await writeLog(pool, ticketNumber, caller, 'note', { message: String(payload.message) });
+    await writeLog(pool, ticketNumber, actor, 'note', { message: String(payload.message) });
   }
   return { ok: true };
 }
@@ -333,6 +355,7 @@ async function closeWithDetails(payload, caller) {
   const ticket = await getTicketOr404(pool, ticketNumber);
   if (!ticket) return { ok: false, error: 'הקריאה לא נמצאה' };
   if (ticket.Status !== STATUS_PROGRESS) return { ok: false, error: 'ניתן לסגור רק קריאה שנמצאת בטיפול' };
+  const actor = await resolveActor(pool, payload, caller);
 
   const resolutionDescription = String(payload.resolutionDescription || '').trim();
   if (!resolutionDescription) return { ok: false, error: 'יש למלא תיאור פתרון' };
@@ -347,18 +370,18 @@ async function closeWithDetails(payload, caller) {
     .query(`UPDATE Tickets SET Status = @status, Flagged = @flagged, ClosedAt = SYSUTCDATETIME(), UpdatedAt = SYSUTCDATETIME()
       WHERE TicketNumber = @num`);
 
-  await writeLog(pool, ticketNumber, caller, 'status_changed', {
+  await writeLog(pool, ticketNumber, actor, 'status_changed', {
     fieldName: 'Status', oldValue: ticket.Status, newValue: STATUS_CLOSED,
   });
-  await writeLog(pool, ticketNumber, caller, 'note', { message: resolutionDescription });
-  if (internalNote) await writeLog(pool, ticketNumber, caller, 'internal_note', { message: internalNote });
+  await writeLog(pool, ticketNumber, actor, 'note', { message: resolutionDescription });
+  if (internalNote) await writeLog(pool, ticketNumber, actor, 'internal_note', { message: internalNote });
 
   if (followUpDescription) {
     await pool.request()
       .input('num', sql.NVarChar, ticketNumber)
       .input('description', sql.NVarChar, followUpDescription)
-      .input('email', sql.NVarChar, caller.email)
-      .input('name', sql.NVarChar, caller.name || '')
+      .input('email', sql.NVarChar, actor.email)
+      .input('name', sql.NVarChar, actor.name)
       .query(`INSERT INTO TicketFollowUps (TicketNumber, Description, CreatedByEmail, CreatedByName)
         VALUES (@num, @description, @email, @name)`);
   }
@@ -397,19 +420,22 @@ async function listFollowUps(_payload, caller) {
 
 // Dashboard timeline follow-up: only the person who wrote a free-text note may edit it
 // later (clicking its dot in the timeline) — never a system-generated entry (status
-// changes, field updates, assignment), and never someone else's note.
+// changes, field updates, assignment), and never someone else's note. The ownership
+// check compares against the effective actor (the impersonated employee, while
+// impersonating) so an admin can edit a note they just wrote under that identity.
 async function updateNote(payload, caller) {
   if (!caller.isITAdmin) return { ok: false, error: 'אין הרשאה' };
   const pool = await getPool();
   const logId = Number(payload.logId);
   const message = String(payload.message || '').trim();
   if (!message) return { ok: false, error: 'ההערה לא יכולה להיות ריקה' };
+  const actor = await resolveActor(pool, payload, caller);
 
   const result = await pool.request().input('id', sql.Int, logId).query('SELECT * FROM TicketLog WHERE Id = @id');
   const entry = result.recordset[0];
   if (!entry) return { ok: false, error: 'הרשומה לא נמצאה' };
   if (entry.Action !== 'note' && entry.Action !== 'internal_note') return { ok: false, error: 'ניתן לערוך רק הערות' };
-  if (String(entry.ActorEmail).toLowerCase() !== caller.email.toLowerCase()) {
+  if (String(entry.ActorEmail).toLowerCase() !== actor.email.toLowerCase()) {
     return { ok: false, error: 'ניתן לערוך רק הערות שהוספת בעצמך' };
   }
 

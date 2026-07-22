@@ -30,6 +30,21 @@ function canReview(caller) {
   return caller.isSuperAdmin || caller.isITAdmin;
 }
 
+// Mirrors tickets.js's resolveActor — while impersonating (view-as, IT Admin only),
+// take()/markCompleted() should record the impersonated admin as the reviewer, not the
+// real admin behind the keyboard, same trust boundary as every viewAsEmail-honoring
+// endpoint elsewhere in the app.
+async function resolveActor(pool, payload, caller) {
+  if (payload.viewAsEmail && caller.isITAdmin) {
+    const email = String(payload.viewAsEmail).trim().toLowerCase();
+    const result = await pool.request().input('email', sql.NVarChar, email)
+      .query('SELECT FirstName, LastName FROM Users WHERE Email = @email');
+    const row = result.recordset[0];
+    return { email, name: row ? `${row.FirstName} ${row.LastName}`.trim() : email };
+  }
+  return { email: caller.email, name: caller.name || '' };
+}
+
 // Email is always computed server-side, never trusted from the client — same rule as
 // every other identity-adjacent value in this codebase (see dispatch.js).
 function computeSuggestedEmail(firstNameEn, lastNameEn) {
@@ -290,11 +305,12 @@ async function take(payload, caller) {
   const row = existing.recordset[0];
   if (!row) return { ok: false, error: 'הבקשה לא נמצאה' };
   if (row.Status !== 'ממתינה') return { ok: false, error: 'הבקשה כבר נלקחה' };
+  const actor = await resolveActor(pool, payload, caller);
 
   await pool.request()
     .input('id', sql.Int, requestId)
-    .input('email', sql.NVarChar, caller.email)
-    .input('name', sql.NVarChar, caller.name || '')
+    .input('email', sql.NVarChar, actor.email)
+    .input('name', sql.NVarChar, actor.name)
     .query(`UPDATE UserRequests SET Status = N'בטיפול', AssignedToEmail = @email, AssignedToName = @name
       WHERE RequestId = @id`);
   return { ok: true };
@@ -308,10 +324,11 @@ async function markCompleted(payload, caller) {
   const row = existing.recordset[0];
   if (!row) return { ok: false, error: 'הבקשה לא נמצאה' };
   if (row.Status !== 'בטיפול') return { ok: false, error: 'יש לקחת את הבקשה לטיפול לפני סימון כהוקמה' };
+  const actor = await resolveActor(pool, payload, caller);
 
   await pool.request()
     .input('id', sql.Int, requestId)
-    .input('reviewer', sql.NVarChar, caller.email)
+    .input('reviewer', sql.NVarChar, actor.email)
     .query(`UPDATE UserRequests SET Status = N'הוקם', ReviewedByEmail = @reviewer, ReviewedAt = SYSUTCDATETIME()
       WHERE RequestId = @id`);
 

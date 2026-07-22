@@ -106,13 +106,21 @@
         }
         .ticket-card.request-card { background: #f4f0ff; }
 
-        .urgency-options-row { display: flex; gap: 8px; }
-        .urgency-pill { flex: 1; display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 10px; cursor: pointer; border: 1px solid transparent; }
-        .urgency-pill input { margin: 0; flex: 0 0 auto; }
-        .urgency-pill-text { display: flex; flex-direction: column; line-height: 1.25; }
-        .urgency-pill-text strong { font-size: 13px; }
-        .urgency-pill-text span { font-size: 10px; color: #5a5a5a; }
-        @media (max-width: 480px) { .urgency-options-row { flex-direction: column; } }
+        .urgency-track {
+            position: relative; display: flex; background: var(--background); border-radius: 20px;
+            padding: 4px; gap: 0;
+        }
+        .urgency-track-thumb {
+            position: absolute; top: 4px; bottom: 4px; border-radius: 16px;
+            transition: left 0.25s ease, width 0.25s ease, background-color 0.25s ease; z-index: 0;
+        }
+        .urgency-track-option {
+            position: relative; z-index: 1; flex: 1; text-align: center; padding: 9px 6px; border-radius: 16px;
+            cursor: pointer; font-size: 13px; font-weight: 700; color: var(--text); background: transparent;
+            border: none; font-family: inherit; transition: color 0.25s ease;
+        }
+        .urgency-track-option.selected { color: #fff; }
+        .urgency-track-description { margin-top: 8px; font-size: 12px; color: var(--muted); text-align: center; min-height: 15px; }
 
         .tc-category-card { border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--white); }
         .tc-category-card.tc-drag-over { border-color: var(--brand-pink); background: #fff5f9; }
@@ -251,7 +259,7 @@
         .wizard-step-line { flex: 1 1 auto; height: 3px; background: var(--border); margin: 13px 4px 0; }
         .wizard-step-line.done { background: var(--success); }
 
-        .ticket-summary-line { font-size: 17px; margin: 0; line-height: 2; }
+        .ticket-summary-line { font-size: 17px; margin: 0; line-height: 1.6; }
         .ticket-summary-line .icon-button { padding: 2px 6px; font-size: 13px; margin: 0 2px; vertical-align: middle; }
     </style>
 </head>
@@ -338,6 +346,11 @@
                 </div>
             </div>
 
+            <div id="hubOpenTicketsBanner" class="ticket-banner" style="display:none">
+                <div class="ticket-banner-title" id="hubOpenTicketsBannerTitle"></div>
+                <div class="ticket-banner-list" id="hubOpenTicketsBannerList"></div>
+            </div>
+
             <div class="hub-actions" id="hubActions"></div>
 
             <div id="hubAdminSection" style="display:none">
@@ -406,12 +419,11 @@
                 <h1 class="page-title">פתיחת קריאת שירות</h1>
                 <p class="page-subtitle">מלאו את פרטי התקלה ונחזור אליכם בהקדם.</p>
 
-                <section class="section">
+                <section class="section" style="padding:12px 16px;margin-bottom:14px">
                     <p class="ticket-summary-line">
                         פותח/ת קריאה בשם <strong id="tkNameDisplay"></strong><button type="button" class="icon-button" id="tkNameEditBtn" title="שינוי שם לקריאה זו">✏️</button>
                         על <strong id="tkComputerDisplay"></strong><button type="button" class="icon-button" id="tkComputerEditBtn" title="שינוי מחשב/מדפסת לקריאה זו">✏️</button>
                     </p>
-                    <p style="font-size:12px;color:var(--muted);margin:2px 0 10px">השינויים בעיפרונות משפיעים רק על הקריאה הזו.</p>
 
                     <div class="field" id="tkNameEditField" style="display:none">
                         <label for="tkName">שם (לקריאה זו בלבד)</label>
@@ -445,17 +457,20 @@
 
                 <section class="section">
                     <h2 class="section-title">פרטי התקלה</h2>
-                    <div class="field">
-                        <label for="tkCategory">סוג התקלה</label>
-                        <select id="tkCategory"></select>
-                    </div>
-                    <div class="field" id="tkSubcategoryField" style="display:none">
-                        <label for="tkSubcategory" id="tkSubcategoryLabel">פירוט</label>
-                        <select id="tkSubcategory"></select>
+                    <div class="grid-2">
+                        <div class="field">
+                            <label for="tkCategory">סוג התקלה</label>
+                            <select id="tkCategory"></select>
+                        </div>
+                        <div class="field" id="tkSubcategoryField" style="display:none">
+                            <label for="tkSubcategory" id="tkSubcategoryLabel">פירוט</label>
+                            <select id="tkSubcategory"></select>
+                        </div>
                     </div>
                     <div class="field">
                         <label>דחיפות</label>
-                        <div id="tkUrgencyOptions"></div>
+                        <div class="urgency-track" id="tkUrgencyTrack"></div>
+                        <div class="urgency-track-description" id="tkUrgencyDescription"></div>
                     </div>
                     <div class="field">
                         <label for="tkDescription">תיאור התקלה</label>
@@ -464,18 +479,7 @@
                 </section>
 
                 <div id="ticketSubmitError" style="display:none;color:var(--danger);font-size:13px;margin-bottom:12px"></div>
-                <button type="button" class="primary-button" style="width:100%" id="ticketSubmitBtn">שלח קריאה</button>
-            </div>
-
-            <div id="ticketConfirmation" style="display:none;text-align:center;padding:40px 20px">
-                <div style="font-size:44px">✅</div>
-                <h2 style="color:var(--success);margin:10px 0 6px">הקריאה נשלחה בהצלחה!</h2>
-                <div style="display:inline-block;padding:8px 20px;border-radius:30px;background:var(--success-bg);color:var(--success);font-weight:700;margin:6px 0 14px" id="confirmTicketNumber"></div>
-                <p style="color:var(--muted)">נשלח אליך מייל אישור עם הפרטים המלאים.</p>
-                <div style="display:flex;gap:10px;justify-content:center;margin-top:16px">
-                    <button type="button" class="primary-button" id="ticketNewBtn">פתח קריאה נוספת</button>
-                    <button type="button" class="secondary-button" id="ticketHomeBtn">חזור לדף הבית</button>
-                </div>
+                <button type="button" class="primary-button" style="width:100%" id="ticketSubmitBtn">פתח קריאה</button>
             </div>
 
             <div class="closed-tickets-toggle">
@@ -484,6 +488,16 @@
             <div id="closedTicketsList" style="display:none"></div>
         </div>
     </main>
+
+    <!-- Ticket submitted successfully — brief popup, no buttons, auto-returns to hub (item 7) -->
+    <div class="profile-modal-backdrop" id="ticketSuccessModalBackdrop">
+        <div class="profile-modal" style="max-width:340px;text-align:center;padding:34px 24px">
+            <div style="font-size:44px">✅</div>
+            <h2 style="color:var(--success);margin:10px 0 6px">הקריאה נשלחה בהצלחה!</h2>
+            <div style="display:inline-block;padding:8px 20px;border-radius:30px;background:var(--success-bg);color:var(--success);font-weight:700;margin:6px 0 14px" id="confirmTicketNumber"></div>
+            <p style="color:var(--muted);margin:0">נשלח אליך מייל אישור עם הפרטים המלאים.</p>
+        </div>
+    </div>
 
     <!-- Ticket detail modal -->
     <div class="profile-modal-backdrop" id="ticketDetailBackdrop">
@@ -1035,6 +1049,7 @@
         if (id === 'hub') {
             renderHubGreeting();
             renderHubActions();
+            refreshMyTickets();
             loadHubDashboard();
             startDashboardAutoRefresh();
         } else {
@@ -1268,16 +1283,38 @@
             categories.map(function (c) { return '<option>' + escapeHtml(c.name) + '</option>'; }).join('');
     }
 
+    // Item 2 (ticket-form follow-up): urgency is a single sliding control — a track with
+    // one segment per level and a colored thumb that moves to whichever is selected,
+    // with that level's description shown below the track (not one line per option).
+    var tkSelectedUrgencyName = null;
+
     function renderUrgencyOptions() {
-        var container = document.getElementById('tkUrgencyOptions');
-        container.className = 'urgency-options-row';
+        var container = document.getElementById('tkUrgencyTrack');
         var urgencies = ticketConfigCache ? ticketConfigCache.urgencies : [];
-        container.innerHTML = urgencies.map(function (u, i) {
-            var rgb = hexToRgb(u.colorHex);
-            var bg = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.16)';
-            return '<label class="urgency-pill" style="background:' + bg + ';border-color:' + escapeHtml(u.colorHex) + '"><input type="radio" name="tkUrgency" value="' + escapeHtml(u.name) + '"' + (i === 0 ? ' checked' : '') + '>' +
-                '<span class="urgency-pill-text"><strong>' + escapeHtml(u.name) + '</strong><span>' + escapeHtml(u.description) + '</span></span></label>';
-        }).join('');
+        container.innerHTML = '<div class="urgency-track-thumb" id="tkUrgencyThumb"></div>' +
+            urgencies.map(function (u, i) {
+                return '<button type="button" class="urgency-track-option" data-index="' + i + '">' + escapeHtml(u.name) + '</button>';
+            }).join('');
+        container.querySelectorAll('.urgency-track-option').forEach(function (btn) {
+            btn.addEventListener('click', function () { selectTkUrgency(Number(btn.getAttribute('data-index'))); });
+        });
+        if (urgencies.length) selectTkUrgency(0);
+    }
+
+    function selectTkUrgency(index) {
+        var urgencies = ticketConfigCache ? ticketConfigCache.urgencies : [];
+        var u = urgencies[index];
+        if (!u) return;
+        var n = urgencies.length;
+        var thumb = document.getElementById('tkUrgencyThumb');
+        thumb.style.width = 'calc(' + (100 / n) + '% - 4px)';
+        thumb.style.left = 'calc(' + (index * 100 / n) + '% + 2px)';
+        thumb.style.background = u.colorHex;
+        document.querySelectorAll('#tkUrgencyTrack .urgency-track-option').forEach(function (btn, i) {
+            btn.classList.toggle('selected', i === index);
+        });
+        document.getElementById('tkUrgencyDescription').textContent = u.description || '';
+        tkSelectedUrgencyName = u.name;
     }
 
     // Populates the subcategory <select> for the currently-chosen category. Static
@@ -1401,9 +1438,8 @@
         renderCategoryOptions();
         renderUrgencyOptions();
         document.getElementById('tkSubcategoryField').style.display = 'none';
-        document.getElementById('ticketFormContainer').style.display = 'block';
-        document.getElementById('ticketConfirmation').style.display = 'none';
         document.getElementById('closedTicketsList').style.display = 'none';
+        document.getElementById('tkDescription').value = ''; // item 6 fix — never start from a stale description
         resetForTypeToggle();
 
         var compRes = await apiGet('computers', 'getAssigned', {});
@@ -1448,11 +1484,15 @@
         return card;
     }
 
-    function renderOpenBanner() {
+    // Item 8 (ticket-form follow-up): the same blinking "open tickets" banner shows on
+    // both the hub and the ticket-submission page — two DOM instances kept in sync from
+    // the same myTickets state, so opening/closing one never affects the other.
+    function renderOpenBannerInto(prefix) {
+        var banner = document.getElementById(prefix + 'Banner');
+        if (!banner) return;
         var open = myTickets.filter(function (t) { return t.status !== 'סגורה'; });
-        var banner = document.getElementById('openTicketsBanner');
-        var title = document.getElementById('openTicketsBannerTitle');
-        var list = document.getElementById('openTicketsBannerList');
+        var title = document.getElementById(prefix + 'BannerTitle');
+        var list = document.getElementById(prefix + 'BannerList');
         if (!open.length) { banner.style.display = 'none'; list.classList.remove('expanded'); return; }
 
         banner.style.display = 'block';
@@ -1461,16 +1501,115 @@
         open.forEach(function (t) { list.appendChild(buildTicketCard(t)); });
     }
 
-    document.getElementById('openTicketsBanner').addEventListener('click', function (e) {
-        if (e.target.closest('.ticket-card')) return;
-        document.getElementById('openTicketsBannerList').classList.toggle('expanded');
+    function renderOpenBanner() {
+        renderOpenBannerInto('openTickets');
+        renderOpenBannerInto('hubOpenTickets');
+    }
+
+    ['openTickets', 'hubOpenTickets'].forEach(function (prefix) {
+        var banner = document.getElementById(prefix + 'Banner');
+        banner.addEventListener('click', function (e) {
+            if (e.target.closest('.ticket-card')) return;
+            document.getElementById(prefix + 'BannerList').classList.toggle('expanded');
+        });
     });
+
+    // Items 4+5 (ticket-form follow-up): closed tickets render as plain rows (same visual
+    // language as the dashboard's ticket table, not the button-like open-ticket cards),
+    // and clicking one expands inline — same timeline as the dashboard row — ending in a
+    // gray "פתרון" block pulled from the resolution note logged when IT closed it.
+    var employeeRowElements = {};
+    var openEmployeeTicketNumber = null;
+    var openEmployeeRow = null;
+
+    function employeeClosedRowInnerHtml(t) {
+        var titleParts = [escapeHtml(t.category)];
+        if (t.subcategory) titleParts.push(escapeHtml(t.subcategory));
+        titleParts.push(escapeHtml(t.ticketNumber));
+        var rgb = hexToRgb(URGENCY_COLOR[t.urgency] || '#cccccc');
+        var urgencyBg = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.2)';
+        return '<div class="ticket-card-header"><strong>' + titleParts.join(' | ') + '</strong></div>' +
+            '<div class="ticket-meta">' + formatDateTime(t.timestamp) + ' | <span class="dash-urgency-chip" style="background:' + urgencyBg + '">' + escapeHtml(t.urgency) + '</span></div>';
+    }
+
+    function closeEmployeeTicketDetail() {
+        if (openEmployeeRow) {
+            openEmployeeRow.detailEl.style.display = 'none';
+            openEmployeeRow.detailEl.innerHTML = '';
+            openEmployeeRow.cardEl.classList.remove('expanded');
+        }
+        openEmployeeTicketNumber = null;
+        openEmployeeRow = null;
+    }
+
+    function toggleEmployeeTicketDetail(t, cardEl, detailEl) {
+        if (openEmployeeTicketNumber === t.ticketNumber) { closeEmployeeTicketDetail(); return; }
+        if (openEmployeeRow) closeEmployeeTicketDetail();
+        openEmployeeTicketNumber = t.ticketNumber;
+        openEmployeeRow = { cardEl: cardEl, detailEl: detailEl };
+        loadEmployeeTicketDetail(t, cardEl, detailEl);
+    }
+
+    async function loadEmployeeTicketDetail(t, cardEl, detailEl) {
+        cardEl.classList.add('expanded');
+        detailEl.style.display = 'block';
+        detailEl.innerHTML = '<p style="color:var(--muted);font-size:13px">טוען...</p>';
+        var res = await apiGet('tickets', 'get', { ticketNumber: t.ticketNumber });
+        if (!res.ok) {
+            detailEl.innerHTML = '<p style="color:var(--danger);font-size:13px">' + escapeHtml(res.error || 'שגיאה בטעינה') + '</p>';
+            return;
+        }
+        renderEmployeeTicketDetail(detailEl, res.data.ticket, res.data.log);
+    }
+
+    function renderEmployeeTicketDetail(el, t, log) {
+        var resolutionNote = null;
+        for (var i = log.length - 1; i >= 0; i--) {
+            if (log[i].action === 'note') { resolutionNote = log[i]; break; }
+        }
+        el.innerHTML =
+            '<div class="dash-section-divider">תיאור הקריאה</div>' +
+            '<div style="font-size:14px;white-space:pre-wrap;margin-bottom:10px">' + escapeHtml(t.description) + '</div>' +
+            '<div class="dash-section-divider">היסטוריית הקריאה</div>' +
+            '<div class="dash-timeline">' +
+            (log.length ? log.map(function (entry) { return renderTimelineEntry(entry, t); }).join('') : '<span style="color:var(--muted);font-size:12px">אין רשומות</span>') +
+            '</div>' +
+            (resolutionNote ? '<div class="dash-section-divider">פתרון</div>' +
+                '<div style="background:var(--background);border-radius:10px;padding:10px 12px;font-size:14px;white-space:pre-wrap">' +
+                escapeHtml(resolutionNote.message) + '</div>' : '');
+    }
+
+    function buildEmployeeClosedRow(t) {
+        var wrap = document.createElement('div');
+        var card = document.createElement('div');
+        card.className = 'ticket-card dash-ticket-card';
+        card.innerHTML = employeeClosedRowInnerHtml(t);
+
+        var detail = document.createElement('div');
+        detail.className = 'dash-ticket-detail';
+        detail.style.display = 'none';
+        detail.addEventListener('click', function (e) { e.stopPropagation(); });
+
+        card.addEventListener('click', function () { toggleEmployeeTicketDetail(t, card, detail); });
+
+        wrap.appendChild(card);
+        wrap.appendChild(detail);
+        return { wrap: wrap, card: card, detail: detail };
+    }
 
     function renderClosedTickets() {
         var closed = myTickets.filter(function (t) { return t.status === 'סגורה'; });
         var container = document.getElementById('closedTicketsList');
+        if (openEmployeeTicketNumber && closed.every(function (t) { return t.ticketNumber !== openEmployeeTicketNumber; })) {
+            closeEmployeeTicketDetail();
+        }
+        employeeRowElements = {};
         container.innerHTML = closed.length ? '' : '<p style="color:var(--muted);font-size:13px">אין קריאות סגורות.</p>';
-        closed.forEach(function (t) { container.appendChild(buildTicketCard(t)); });
+        closed.forEach(function (t) {
+            var built = buildEmployeeClosedRow(t);
+            employeeRowElements[t.ticketNumber] = built;
+            container.appendChild(built.wrap);
+        });
     }
 
     document.getElementById('closedTicketsToggleBtn').addEventListener('click', function () {
@@ -1672,10 +1811,11 @@
         var closedCount = countRes.ok ? countRes.data.count : 0;
         var reqRes = await apiGet('userRequests', 'list', {});
         dashAllUserRequests = reqRes.ok ? reqRes.data : [];
-        if (dashFollowUpsLoaded) {
-            var followUpsRes = await apiGet('tickets', 'listFollowUps', {});
-            dashFollowUps = followUpsRes.ok ? followUpsRes.data : [];
-        }
+        // Always loaded now (item 1, follow-up) — the default ticket view merges in
+        // open/in-progress tasks too, not just whenever the dedicated tasks tab is open.
+        var followUpsRes = await apiGet('tickets', 'listFollowUps', {});
+        dashFollowUps = followUpsRes.ok ? followUpsRes.data : [];
+        dashFollowUpsLoaded = true;
         var pendingRequests = dashAllUserRequests.filter(function (r) { return r.status !== 'הוקם'; }).length;
         var openFollowUps = dashFollowUps.filter(function (f) { return f.status !== 'הושלם'; }).length;
         document.getElementById('dashFollowupsCount').textContent = pendingRequests + openFollowUps;
@@ -1808,6 +1948,7 @@
     }
 
     var TASK_KIND_LABELS = { request: 'הקמת משתמש', followup: 'משימת המשך' };
+    var TASK_KIND_COLOR = { request: '#4f46e5', followup: '#0aa1a3' };
 
     // Item 5 (tasks mode): user/branch aren't meaningful filters for the tasks tab —
     // replaced with a filter by task type, counted against whichever status sub-filter
@@ -1871,8 +2012,9 @@
         var tickets = getFilteredSortedTickets();
         tickets.forEach(function (t) { dashTicketsByNumber[t.ticketNumber] = t; });
         var visibleTickets = tickets.slice(0, dashDisplayLimit);
+        var mergedTasks = getMergedDefaultTasks();
 
-        if (!visibleTickets.length) {
+        if (!visibleTickets.length && !mergedTasks.length) {
             container.innerHTML = '<p style="color:var(--muted);font-size:13px">אין קריאות להצגה.</p>';
             document.getElementById('dashLoadMoreBtn').style.display = 'none';
             if (openDashboardTicketNumber) closeDashboardDetail();
@@ -1902,6 +2044,7 @@
 
         container.innerHTML = '';
         ticketNodes.forEach(function (n) { container.appendChild(n); });
+        mergedTasks.forEach(function (task) { container.appendChild(buildTaskCard(task)); });
         document.getElementById('dashLoadMoreBtn').style.display = tickets.length > dashDisplayLimit ? 'block' : 'none';
     }
 
@@ -1944,6 +2087,9 @@
     function buildTaskCard(task) {
         var card = document.createElement('div');
         card.className = 'dash-task-card';
+        card.style.borderRightWidth = '4px';
+        card.style.borderRightStyle = 'solid';
+        card.style.borderRightColor = TASK_KIND_COLOR[task.kind] || '#999';
         var statusClass = task.statusNorm === 'הושלם' ? 'status-closed' : (task.statusNorm === 'בטיפול' ? 'status-progress' : 'status-open');
         card.innerHTML =
             '<div class="ticket-card-header"><strong>' + escapeHtml(task.title) + '</strong>' +
@@ -1954,6 +2100,15 @@
             card.addEventListener('click', function () { openUserRequestDetail(task.raw); });
         }
         return card;
+    }
+
+    // Item 1 (dashboard follow-up): the default (unfiltered) ticket view also shows
+    // open/in-progress tasks mixed in, each colored by kind so they read apart from
+    // tickets at a glance — only when nothing narrows the view to a specific status.
+    function getMergedDefaultTasks() {
+        if (dashFocusedTicketNumber || dashStatusFilter !== null) return [];
+        return getAllTasks().filter(function (task) { return task.statusNorm !== 'הושלם'; })
+            .sort(function (a, b) { return new Date(b.timestamp) - new Date(a.timestamp); });
     }
 
     function renderDashboardTasksList() {
@@ -2755,14 +2910,13 @@
         errEl.style.display = 'none';
 
         var category = document.getElementById('tkCategory').value;
-        var urgencyEl = document.querySelector('input[name="tkUrgency"]:checked');
         var description = document.getElementById('tkDescription').value.trim();
         var isPrinterTicket = document.querySelector('input[name="tkForType"]:checked').value === 'printer';
         var printerName = isPrinterTicket ? document.getElementById('tkPrinterSelect').value : '';
         var subcategoryField = document.getElementById('tkSubcategoryField');
         var subcategory = subcategoryField.style.display !== 'none' ? document.getElementById('tkSubcategory').value : '';
         var subcategoryRequired = subcategoryField.style.display !== 'none';
-        if (!category || !urgencyEl || !description || (isPrinterTicket && !printerName) || (subcategoryRequired && !subcategory)) {
+        if (!category || !tkSelectedUrgencyName || !description || (isPrinterTicket && !printerName) || (subcategoryRequired && !subcategory)) {
             errEl.textContent = isPrinterTicket && !printerName ? 'יש לבחור מדפסת' :
                 (subcategoryRequired && !subcategory ? 'יש לבחור פירוט לסוג התקלה' : 'יש למלא את כל שדות החובה.');
             errEl.style.display = 'block';
@@ -2779,7 +2933,7 @@
             anyDeskId: document.getElementById('tkAnyDesk').value,
             category: category,
             subcategory: subcategory,
-            urgency: urgencyEl.value,
+            urgency: tkSelectedUrgencyName,
             description: description,
         };
 
@@ -2788,10 +2942,14 @@
             var res = await apiPost('tickets', 'create', payload);
             showLoading(false);
             if (res.ok) {
+                document.getElementById('tkDescription').value = ''; // item 6 fix — never leave old text sitting in the field
                 document.getElementById('confirmTicketNumber').textContent = res.data.ticketNumber;
-                document.getElementById('ticketFormContainer').style.display = 'none';
-                document.getElementById('ticketConfirmation').style.display = 'block';
+                document.getElementById('ticketSuccessModalBackdrop').classList.add('visible');
                 refreshMyTickets();
+                setTimeout(function () {
+                    document.getElementById('ticketSuccessModalBackdrop').classList.remove('visible');
+                    showView('hub');
+                }, 2500);
             } else {
                 errEl.textContent = res.error || 'שגיאה בשליחת הקריאה';
                 errEl.style.display = 'block';
@@ -2802,17 +2960,6 @@
             errEl.style.display = 'block';
         }
     });
-
-    document.getElementById('ticketNewBtn').addEventListener('click', function () {
-        document.getElementById('ticketFormContainer').style.display = 'block';
-        document.getElementById('ticketConfirmation').style.display = 'none';
-        document.getElementById('tkCategory').value = '';
-        document.getElementById('tkDescription').value = '';
-        document.getElementById('tkSubcategoryField').style.display = 'none';
-        resetForTypeToggle();
-        fillComputerFields(assignedComputer);
-    });
-    document.getElementById('ticketHomeBtn').addEventListener('click', function () { showView('hub'); });
 
     // ── PROCEDURES VIEW ───────────────────────────────────────
     var editingProcedureId = null;
