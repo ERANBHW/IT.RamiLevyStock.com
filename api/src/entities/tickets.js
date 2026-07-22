@@ -267,6 +267,20 @@ async function adminUpdateFields(payload, caller) {
       }
     }
   });
+
+  // Actually CHANGING the printer field to a non-empty value implies this is a printer
+  // ticket now — same inference the submission form applies when the dynamic
+  // "printers-by-branch" subcategory drives the printer selection. Gated on a real change
+  // (not just "the field happens to hold a value"): a plain computer ticket's Printer
+  // column often already holds its computer's default printer for context, so opening
+  // and re-saving the modal untouched must never flip this on by accident.
+  const printerChange = changes.find((c) => c.field === 'Printer');
+  if (printerChange && printerChange.newVal && !ticket.IsPrinterTicket) {
+    req.input('IsPrinterTicket', sql.Bit, true);
+    sets.push('IsPrinterTicket = @IsPrinterTicket');
+    changes.push({ field: 'IsPrinterTicket', oldVal: 'false', newVal: 'true' });
+  }
+
   if (!changes.length) return { ok: true };
 
   await req.query(`UPDATE Tickets SET ${sets.join(', ')} WHERE TicketNumber = @num`);

@@ -3033,9 +3033,11 @@
         }).join('');
         document.getElementById('tfComputerName').value = t.computerName || '';
 
-        // Printer only shown when the ticket actually was opened as a printer ticket —
-        // otherwise there's nothing meaningful to correct there.
-        document.getElementById('tfPrinterField').style.display = t.isPrinterTicket ? 'block' : 'none';
+        // Always available (not just for tickets already flagged as printer tickets) —
+        // this is also how a mis-categorized ticket (e.g. printer-related category picked
+        // without the separate toggle) gets corrected: assigning a printer here flips
+        // IsPrinterTicket server-side, same inference the submission form now applies.
+        document.getElementById('tfPrinterField').style.display = 'block';
         document.getElementById('tfPrinterOptions').innerHTML = (printersCache || []).map(function (p) {
             return '<option value="' + escapeHtml(p.printerName) + '">';
         }).join('');
@@ -3062,7 +3064,7 @@
             urgency: document.getElementById('tfUrgency').value,
             userName: document.getElementById('tfUserName').value.trim(),
             computerName: document.getElementById('tfComputerName').value.trim(),
-            printer: editingTicketFields.isPrinterTicket ? document.getElementById('tfPrinter').value.trim() : editingTicketFields.printer,
+            printer: document.getElementById('tfPrinter').value.trim(),
         };
         showLoading(true);
         var res = await apiPost('tickets', 'adminUpdateFields', payload);
@@ -3074,9 +3076,15 @@
         }
         ticketFieldsTracker.reset();
         closeTicketFieldsModal();
+        // Mirrors the server's own inference (adminUpdateFields): actually changing the
+        // printer field to a non-empty value flips isPrinterTicket, so the printer
+        // quick-tag can appear immediately without waiting for the next full refresh.
+        var printerChanged = payload.printer && payload.printer !== (editingTicketFields.printer || '');
+        var isPrinterTicket = (printerChanged && !editingTicketFields.isPrinterTicket) ? true : editingTicketFields.isPrinterTicket;
         patchDashboardTicket(payload.ticketNumber, {
             category: payload.category, subcategory: payload.subcategory, urgency: payload.urgency,
             userName: payload.userName, computerName: payload.computerName, printer: payload.printer,
+            isPrinterTicket: isPrinterTicket,
         });
         refreshOpenDashboardDetail();
     });
@@ -3099,11 +3107,24 @@
 
         var category = document.getElementById('tkCategory').value;
         var description = document.getElementById('tkDescription').value.trim();
-        var isPrinterTicket = document.querySelector('input[name="tkForType"]:checked').value === 'printer';
-        var printerName = isPrinterTicket ? document.getElementById('tkPrinterSelect').value : '';
         var subcategoryField = document.getElementById('tkSubcategoryField');
         var subcategory = subcategoryField.style.display !== 'none' ? document.getElementById('tkSubcategory').value : '';
         var subcategoryRequired = subcategoryField.style.display !== 'none';
+
+        // If the category's own subcategory is the dynamic "printers-by-branch" picker,
+        // choosing a printer there already unambiguously identifies this as a printer
+        // ticket — it drives isPrinterTicket/printer directly instead of also requiring
+        // the separate "for: מחשב/מדפסת" toggle below to be flipped by hand.
+        var categoryObj = categoryByName(category);
+        var dynamicPrinterSub = categoryObj
+            ? categoryObj.subcategories.filter(function (s) { return s.isDynamic && s.dynamicSource === 'printers-by-branch'; })[0]
+            : null;
+        var isPrinterTicket = dynamicPrinterSub
+            ? !!subcategory
+            : document.querySelector('input[name="tkForType"]:checked').value === 'printer';
+        var printerName = isPrinterTicket
+            ? (dynamicPrinterSub ? subcategory : document.getElementById('tkPrinterSelect').value)
+            : '';
         if (!category || !tkSelectedUrgencyName || !description || (isPrinterTicket && !printerName) || (subcategoryRequired && !subcategory)) {
             errEl.textContent = isPrinterTicket && !printerName ? 'יש לבחור מדפסת' :
                 (subcategoryRequired && !subcategory ? 'יש לבחור פירוט לסוג התקלה' : 'יש למלא את כל שדות החובה.');
