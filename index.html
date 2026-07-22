@@ -111,8 +111,8 @@
             padding: 4px; gap: 0;
         }
         .urgency-track-thumb {
-            position: absolute; top: 4px; bottom: 4px; border-radius: 16px;
-            transition: left 0.25s ease, width 0.25s ease, background-color 0.25s ease; z-index: 0;
+            position: absolute; top: 4px; bottom: 4px; right: 2px; border-radius: 16px;
+            transition: right 0.25s ease, width 0.25s ease, background-color 0.25s ease; z-index: 0;
         }
         .urgency-track-option {
             position: relative; z-index: 1; flex: 1; text-align: center; padding: 9px 6px; border-radius: 16px;
@@ -482,10 +482,9 @@
                 <button type="button" class="primary-button" style="width:100%" id="ticketSubmitBtn">פתח קריאה</button>
             </div>
 
-            <div class="closed-tickets-toggle">
-                <button type="button" class="secondary-button" id="closedTicketsToggleBtn">קריאות סגורות</button>
-            </div>
-            <div id="closedTicketsList" style="display:none"></div>
+            <h3 class="procedure-category-title">קריאות שטופלו</h3>
+            <div id="closedTicketsList" style="display:flex;flex-direction:column;gap:8px"></div>
+            <button type="button" class="secondary-button" id="closedTicketsLoadMoreBtn" style="display:none;margin-top:10px;width:100%">הצג עוד</button>
         </div>
     </main>
 
@@ -1307,8 +1306,10 @@
         if (!u) return;
         var n = urgencies.length;
         var thumb = document.getElementById('tkUrgencyThumb');
+        // RTL page: the track's flex row lays option 0 out on the right, so the thumb
+        // has to slide via `right`, not `left` — otherwise it lands under the wrong option.
         thumb.style.width = 'calc(' + (100 / n) + '% - 4px)';
-        thumb.style.left = 'calc(' + (index * 100 / n) + '% + 2px)';
+        thumb.style.right = 'calc(' + (index * 100 / n) + '% + 2px)';
         thumb.style.background = u.colorHex;
         document.querySelectorAll('#tkUrgencyTrack .urgency-track-option').forEach(function (btn, i) {
             btn.classList.toggle('selected', i === index);
@@ -1438,7 +1439,7 @@
         renderCategoryOptions();
         renderUrgencyOptions();
         document.getElementById('tkSubcategoryField').style.display = 'none';
-        document.getElementById('closedTicketsList').style.display = 'none';
+        closedTicketsDisplayLimit = 10;
         document.getElementById('tkDescription').value = ''; // item 6 fix — never start from a stale description
         resetForTypeToggle();
 
@@ -1498,7 +1499,11 @@
         banner.style.display = 'block';
         title.textContent = 'יש לך ' + open.length + ' קריאות פתוחות: ' + open.map(function (t) { return t.ticketNumber; }).join(', ') + ' (לחצו להצגה)';
         list.innerHTML = '';
-        open.forEach(function (t) { list.appendChild(buildTicketCard(t)); });
+        // Item 2 (ticket-page follow-up): open tickets expand inline (same accordion as
+        // "קריאות שטופלו"), not the old read-only popup — buildTicketCard/openTicketDetail
+        // stay in use elsewhere (e.g. the computer-history admin modal) where a plain
+        // read-only view of someone else's tickets is still the right thing to show.
+        open.forEach(function (t) { list.appendChild(buildEmployeeTicketRow(t).wrap); });
     }
 
     function renderOpenBanner() {
@@ -1522,13 +1527,24 @@
     var openEmployeeTicketNumber = null;
     var openEmployeeRow = null;
 
-    function employeeClosedRowInnerHtml(t) {
+    // Item 2 (ticket-page follow-up): an open ("פתוחה") ticket's title gets two pencils —
+    // one to correct the category/subcategory ("סוג קריאה"), one to correct the
+    // description ("תוכן הקריאה") — both call the same requester-edit endpoint the
+    // backend already restricts to status === STATUS_OPEN, so they naturally disappear
+    // (along with every other affordance to change facts) the moment IT takes the ticket.
+    function employeeTicketRowInnerHtml(t) {
         var titleParts = [escapeHtml(t.category)];
         if (t.subcategory) titleParts.push(escapeHtml(t.subcategory));
         titleParts.push(escapeHtml(t.ticketNumber));
+        var pencilsHtml = t.status === 'פתוחה'
+            ? '<button type="button" class="icon-button" data-edit-type title="שינוי סוג קריאה" data-stop>✏️</button>' +
+              '<button type="button" class="icon-button" data-edit-content title="שינוי תוכן הקריאה" data-stop>✏️</button>'
+            : '';
+        var statusClass = t.status === 'סגורה' ? 'status-closed' : (t.status === 'בטיפול' ? 'status-progress' : 'status-open');
         var rgb = hexToRgb(URGENCY_COLOR[t.urgency] || '#cccccc');
         var urgencyBg = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.2)';
-        return '<div class="ticket-card-header"><strong>' + titleParts.join(' | ') + '</strong></div>' +
+        return '<div class="ticket-card-header"><span><strong>' + titleParts.join(' | ') + '</strong>' + pencilsHtml + '</span>' +
+            '<span class="status-badge ' + statusClass + '">' + escapeHtml(t.status) + '</span></div>' +
             '<div class="ticket-meta">' + formatDateTime(t.timestamp) + ' | <span class="dash-urgency-chip" style="background:' + urgencyBg + '">' + escapeHtml(t.urgency) + '</span></div>';
     }
 
@@ -1564,8 +1580,10 @@
 
     function renderEmployeeTicketDetail(el, t, log) {
         var resolutionNote = null;
-        for (var i = log.length - 1; i >= 0; i--) {
-            if (log[i].action === 'note') { resolutionNote = log[i]; break; }
+        if (t.status === 'סגורה') {
+            for (var i = log.length - 1; i >= 0; i--) {
+                if (log[i].action === 'note') { resolutionNote = log[i]; break; }
+            }
         }
         el.innerHTML =
             '<div class="dash-section-divider">תיאור הקריאה</div>' +
@@ -1574,16 +1592,129 @@
             '<div class="dash-timeline">' +
             (log.length ? log.map(function (entry) { return renderTimelineEntry(entry, t); }).join('') : '<span style="color:var(--muted);font-size:12px">אין רשומות</span>') +
             '</div>' +
+            // Item 2: once IT has taken the ticket, the two pencils are gone (nothing left
+            // to correct via the requester-edit path) — instead the owner can still add a
+            // note, same "הוסף הערה" affordance the IT admin sees on their own dashboard row.
+            (t.status === 'בטיפול' ? '<div class="field" style="margin:10px 0 0"><label>הוסף הערה</label><div style="display:flex;gap:8px">' +
+                '<input data-emp-note-input type="text" style="flex:1" placeholder="הוסף הערה (Enter לשליחה)">' +
+                '<button type="button" class="secondary-button" data-emp-add-note>הוסף</button></div></div>' : '') +
             (resolutionNote ? '<div class="dash-section-divider">פתרון</div>' +
                 '<div style="background:var(--background);border-radius:10px;padding:10px 12px;font-size:14px;white-space:pre-wrap">' +
                 escapeHtml(resolutionNote.message) + '</div>' : '');
+
+        var noteInput = el.querySelector('[data-emp-note-input]');
+        var addNoteBtn = el.querySelector('[data-emp-add-note]');
+        function submitNote() {
+            var note = noteInput.value.trim();
+            if (note) employeeAddNote(t, note);
+        }
+        if (addNoteBtn) addNoteBtn.addEventListener('click', submitNote);
+        if (noteInput) {
+            noteInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') { e.preventDefault(); submitNote(); }
+            });
+        }
     }
 
-    function buildEmployeeClosedRow(t) {
+    async function employeeAddNote(t, message) {
+        showLoading(true);
+        var res = await apiPost('tickets', 'addNote', { ticketNumber: t.ticketNumber, message: message });
+        showLoading(false);
+        if (!res.ok) { alert(res.error || 'שגיאה'); return; }
+        if (openEmployeeRow) loadEmployeeTicketDetail(t, openEmployeeRow.cardEl, openEmployeeRow.detailEl);
+    }
+
+    function closeEmployeeEditForm(editForm) {
+        editForm.style.display = 'none';
+        editForm.innerHTML = '';
+        editForm.removeAttribute('data-mode');
+    }
+
+    function toggleEmployeeEditForm(editForm, t, mode) {
+        var alreadyOpenSameMode = editForm.style.display !== 'none' && editForm.getAttribute('data-mode') === mode;
+        if (alreadyOpenSameMode) { closeEmployeeEditForm(editForm); return; }
+        editForm.setAttribute('data-mode', mode);
+        editForm.style.display = 'block';
+        if (mode === 'type') renderEmployeeEditTypeForm(editForm, t);
+        else renderEmployeeEditContentForm(editForm, t);
+    }
+
+    function renderEmployeeEditTypeForm(editForm, t) {
+        var categories = ticketConfigCache ? ticketConfigCache.categories : [];
+        editForm.innerHTML =
+            '<div class="field"><label>סוג תקלה</label><select data-ef-category></select></div>' +
+            '<div class="field" data-ef-subcategory-field style="display:none"><label>פירוט</label><select data-ef-subcategory></select></div>' +
+            '<div data-ef-error style="display:none;color:var(--danger);font-size:13px;margin-bottom:6px"></div>' +
+            '<div style="display:flex;gap:8px"><button type="button" class="primary-button" data-ef-save style="flex:1">שמירה</button>' +
+            '<button type="button" class="secondary-button" data-ef-cancel>ביטול</button></div>';
+
+        var catSel = editForm.querySelector('[data-ef-category]');
+        catSel.innerHTML = categories.map(function (c) {
+            return '<option' + (c.name === t.category ? ' selected' : '') + '>' + escapeHtml(c.name) + '</option>';
+        }).join('');
+
+        function refreshSubOptions(selectedName) {
+            var category = categoryByName(catSel.value);
+            var subs = category ? category.subcategories : [];
+            var field = editForm.querySelector('[data-ef-subcategory-field]');
+            var subSel = editForm.querySelector('[data-ef-subcategory]');
+            if (!subs.length) { field.style.display = 'none'; subSel.innerHTML = ''; return; }
+            field.style.display = 'block';
+            subSel.innerHTML = subs.map(function (s) {
+                return '<option' + (s.name === selectedName ? ' selected' : '') + '>' + escapeHtml(s.name) + '</option>';
+            }).join('');
+        }
+        catSel.addEventListener('change', function () { refreshSubOptions(null); });
+        refreshSubOptions(t.subcategory);
+
+        editForm.querySelector('[data-ef-cancel]').addEventListener('click', function () { closeEmployeeEditForm(editForm); });
+        editForm.querySelector('[data-ef-save]').addEventListener('click', async function () {
+            var subField = editForm.querySelector('[data-ef-subcategory-field]');
+            var subVisible = subField.style.display !== 'none';
+            var subValue = subVisible ? editForm.querySelector('[data-ef-subcategory]').value : '';
+            var errEl = editForm.querySelector('[data-ef-error]');
+            if (subVisible && !subValue) {
+                errEl.textContent = 'יש לבחור פירוט לסוג התקלה'; errEl.style.display = 'block';
+                return;
+            }
+            showLoading(true);
+            var res = await apiPost('tickets', 'update', { ticketNumber: t.ticketNumber, category: catSel.value, subcategory: subValue });
+            showLoading(false);
+            if (res.ok) { closeEmployeeEditForm(editForm); refreshMyTickets(); }
+            else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
+        });
+    }
+
+    function renderEmployeeEditContentForm(editForm, t) {
+        editForm.innerHTML =
+            '<div class="field"><label>תיאור התקלה</label><textarea data-ef-description rows="4"></textarea></div>' +
+            '<div data-ef-error style="display:none;color:var(--danger);font-size:13px;margin-bottom:6px"></div>' +
+            '<div style="display:flex;gap:8px"><button type="button" class="primary-button" data-ef-save style="flex:1">שמירה</button>' +
+            '<button type="button" class="secondary-button" data-ef-cancel>ביטול</button></div>';
+        editForm.querySelector('[data-ef-description]').value = t.description || '';
+        editForm.querySelector('[data-ef-cancel]').addEventListener('click', function () { closeEmployeeEditForm(editForm); });
+        editForm.querySelector('[data-ef-save]').addEventListener('click', async function () {
+            var description = editForm.querySelector('[data-ef-description]').value.trim();
+            var errEl = editForm.querySelector('[data-ef-error]');
+            if (!description) { errEl.textContent = 'יש למלא תיאור התקלה'; errEl.style.display = 'block'; return; }
+            showLoading(true);
+            var res = await apiPost('tickets', 'update', { ticketNumber: t.ticketNumber, description: description });
+            showLoading(false);
+            if (res.ok) { closeEmployeeEditForm(editForm); refreshMyTickets(); }
+            else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
+        });
+    }
+
+    function buildEmployeeTicketRow(t) {
         var wrap = document.createElement('div');
         var card = document.createElement('div');
         card.className = 'ticket-card dash-ticket-card';
-        card.innerHTML = employeeClosedRowInnerHtml(t);
+        card.innerHTML = employeeTicketRowInnerHtml(t);
+
+        var editForm = document.createElement('div');
+        editForm.className = 'dash-ticket-detail';
+        editForm.style.display = 'none';
+        editForm.addEventListener('click', function (e) { e.stopPropagation(); });
 
         var detail = document.createElement('div');
         detail.className = 'dash-ticket-detail';
@@ -1591,11 +1722,23 @@
         detail.addEventListener('click', function (e) { e.stopPropagation(); });
 
         card.addEventListener('click', function () { toggleEmployeeTicketDetail(t, card, detail); });
+        card.querySelectorAll('[data-stop]').forEach(function (el) { el.addEventListener('click', function (e) { e.stopPropagation(); }); });
+
+        var editTypeBtn = card.querySelector('[data-edit-type]');
+        if (editTypeBtn) editTypeBtn.addEventListener('click', function () { toggleEmployeeEditForm(editForm, t, 'type'); });
+        var editContentBtn = card.querySelector('[data-edit-content]');
+        if (editContentBtn) editContentBtn.addEventListener('click', function () { toggleEmployeeEditForm(editForm, t, 'content'); });
 
         wrap.appendChild(card);
+        wrap.appendChild(editForm);
         wrap.appendChild(detail);
-        return { wrap: wrap, card: card, detail: detail };
+        return { wrap: wrap, card: card, detail: detail, editForm: editForm };
     }
+
+    // Item 1 (ticket-page follow-up): "קריאות שטופלו" is always visible now (no more
+    // show/hide toggle) — closed tickets load 10 at a time, "הצג עוד" reveals more
+    // instead of the whole (potentially long) history dumping in at once.
+    var closedTicketsDisplayLimit = 10;
 
     function renderClosedTickets() {
         var closed = myTickets.filter(function (t) { return t.status === 'סגורה'; });
@@ -1603,18 +1746,20 @@
         if (openEmployeeTicketNumber && closed.every(function (t) { return t.ticketNumber !== openEmployeeTicketNumber; })) {
             closeEmployeeTicketDetail();
         }
+        var visible = closed.slice(0, closedTicketsDisplayLimit);
         employeeRowElements = {};
-        container.innerHTML = closed.length ? '' : '<p style="color:var(--muted);font-size:13px">אין קריאות סגורות.</p>';
-        closed.forEach(function (t) {
-            var built = buildEmployeeClosedRow(t);
+        container.innerHTML = visible.length ? '' : '<p style="color:var(--muted);font-size:13px">אין קריאות סגורות.</p>';
+        visible.forEach(function (t) {
+            var built = buildEmployeeTicketRow(t);
             employeeRowElements[t.ticketNumber] = built;
             container.appendChild(built.wrap);
         });
+        document.getElementById('closedTicketsLoadMoreBtn').style.display = closed.length > visible.length ? 'block' : 'none';
     }
 
-    document.getElementById('closedTicketsToggleBtn').addEventListener('click', function () {
-        var el = document.getElementById('closedTicketsList');
-        el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+    document.getElementById('closedTicketsLoadMoreBtn').addEventListener('click', function () {
+        closedTicketsDisplayLimit += 10;
+        renderClosedTickets();
     });
 
     var TICKET_FIELD_LABELS = {

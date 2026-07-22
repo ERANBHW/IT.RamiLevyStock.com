@@ -218,6 +218,26 @@ async function update(payload, caller) {
   return { ok: true };
 }
 
+// Item 2 (ticket-page follow-up): once a ticket is "בטיפול" the requester can no longer
+// edit its facts (see update() above), but they can still add a note for whoever's
+// handling it — same 'note' log entry shape IT's own dashboard note box writes, so it
+// shows up identically in the timeline either way. Owner-only (not status-restricted);
+// IT admins keep using updateStatus's message param for their own notes.
+async function addNote(payload, caller) {
+  const pool = await getPool();
+  const ticketNumber = String(payload.ticketNumber || '');
+  const ticket = await getTicketOr404(pool, ticketNumber);
+  if (!ticket) return { ok: false, error: 'הקריאה לא נמצאה' };
+  const actor = await resolveActor(pool, payload, caller);
+  if (ticket.UserEmail.toLowerCase() !== actor.email && !caller.isITAdmin) return { ok: false, error: 'אין הרשאה' };
+
+  const message = String(payload.message || '').trim();
+  if (!message) return { ok: false, error: 'ההערה לא יכולה להיות ריקה' };
+
+  await writeLog(pool, ticketNumber, actor, 'note', { message });
+  return { ok: true };
+}
+
 // IT Admin correction of a ticket's core facts (item 5, dashboard follow-up) — e.g. the
 // employee picked the wrong category by mistake. Unlike REQUESTER_EDITABLE_FIELDS this
 // has no status restriction (a closed ticket's record can still be corrected) and always
@@ -445,6 +465,6 @@ async function updateNote(payload, caller) {
 }
 
 module.exports = {
-  create, listMine, list, closedCount, listClosed, get, update, adminUpdateFields, take, reassign, updateStatus,
-  updateNote, closeWithDetails, followUpCount, listFollowUps, rowToTicket,
+  create, listMine, list, closedCount, listClosed, get, update, addNote, adminUpdateFields, take, reassign,
+  updateStatus, updateNote, closeWithDetails, followUpCount, listFollowUps, rowToTicket,
 };

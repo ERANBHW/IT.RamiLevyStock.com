@@ -49,6 +49,7 @@ const ROUTES = {
     listClosed: tickets.listClosed,
     get: tickets.get,
     update: tickets.update,
+    addNote: tickets.addNote,
     adminUpdateFields: tickets.adminUpdateFields,
     take: tickets.take,
     reassign: tickets.reassign,
