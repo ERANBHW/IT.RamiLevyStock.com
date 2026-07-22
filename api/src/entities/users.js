@@ -6,6 +6,8 @@ function rowToUser(r) {
     email: r.Email,
     firstName: r.FirstName,
     lastName: r.LastName,
+    firstNameEn: r.FirstNameEn,
+    lastNameEn: r.LastNameEn,
     phone: r.Phone,
     branchNumber: r.BranchNumber,
     role: r.Role,
@@ -97,20 +99,22 @@ async function create(payload, caller) {
     .input('email', sql.NVarChar, email)
     .input('firstName', sql.NVarChar, String(payload.firstName || ''))
     .input('lastName', sql.NVarChar, String(payload.lastName || ''))
+    .input('firstNameEn', sql.NVarChar, payload.firstNameEn ? String(payload.firstNameEn) : null)
+    .input('lastNameEn', sql.NVarChar, payload.lastNameEn ? String(payload.lastNameEn) : null)
     .input('phone', sql.NVarChar, String(payload.phone || ''))
     .input('branchNumber', sql.Int, parseBranchNumber(payload.branchNumber) ?? null)
     .input('role', sql.NVarChar, String(payload.role || ''))
     .input('isITAdmin', sql.Bit, isITAdmin)
     .input('isProceduresAdmin', sql.Bit, isProceduresAdmin)
     .input('isUserRequestSubmitter', sql.Bit, isUserRequestSubmitter)
-    .query(`INSERT INTO Users (Email, FirstName, LastName, Phone, BranchNumber, Role, IsSuperAdmin, IsITAdmin, IsProceduresAdmin, IsUserRequestSubmitter)
-      VALUES (@email, @firstName, @lastName, @phone, @branchNumber, @role, 0, @isITAdmin, @isProceduresAdmin, @isUserRequestSubmitter)`);
+    .query(`INSERT INTO Users (Email, FirstName, LastName, FirstNameEn, LastNameEn, Phone, BranchNumber, Role, IsSuperAdmin, IsITAdmin, IsProceduresAdmin, IsUserRequestSubmitter)
+      VALUES (@email, @firstName, @lastName, @firstNameEn, @lastNameEn, @phone, @branchNumber, @role, 0, @isITAdmin, @isProceduresAdmin, @isUserRequestSubmitter)`);
 
   if (payload.assignedComputerName) await setAssignment(pool, payload.assignedComputerName, email);
   return { ok: true };
 }
 
-const EDITABLE_ADMIN_USER_FIELDS = ['FirstName', 'LastName', 'Phone', 'Role'];
+const EDITABLE_ADMIN_USER_FIELDS = ['FirstName', 'LastName', 'FirstNameEn', 'LastNameEn', 'Phone', 'Role'];
 
 async function adminUpdate(payload, caller) {
   if (!isAnyAdmin(caller)) return { ok: false, error: 'אין הרשאה' };

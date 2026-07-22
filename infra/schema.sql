@@ -426,3 +426,12 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ProcurementTasks_RequestId')
 CREATE INDEX IX_ProcurementTasks_RequestId ON ProcurementTasks(RequestId);
 GO
+
+-- The English name is only ever collected to compute the UPN at creation time — persist
+-- it so "ניהול משתמשים" (editing an existing user) doesn't show it as blank afterward.
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'FirstNameEn')
+ALTER TABLE Users ADD FirstNameEn NVARCHAR(100) NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'LastNameEn')
+ALTER TABLE Users ADD LastNameEn NVARCHAR(100) NULL;
+GO

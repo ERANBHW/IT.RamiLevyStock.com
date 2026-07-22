@@ -1054,13 +1054,7 @@
     <div class="profile-modal" style="max-width:560px">
         <div class="profile-modal-header"><h2 id="userRequestDetailTitle"></h2></div>
         <div class="profile-modal-body">
-            <div class="wizard-steps">
-                <div class="wizard-step" id="urdStepDot1"><span>1</span><label>פרטי עובד</label></div>
-                <div class="wizard-step-line" id="urdStepLine1"></div>
-                <div class="wizard-step" id="urdStepDot2"><span>2</span><label>סקריפט</label></div>
-                <div class="wizard-step-line" id="urdStepLine2"></div>
-                <div class="wizard-step" id="urdStepDot3"><span>3</span><label>שליחה</label></div>
-            </div>
+            <div class="wizard-steps" id="urdWizardSteps"></div>
 
             <div id="urdStep1">
                 <div class="grid-2">
@@ -1121,11 +1115,24 @@
             </div>
 
             <div id="urdStep3" style="display:none">
+                <p class="page-subtitle" style="margin:0 0 10px">הרשאות ניהול בתוך הפורטל (מנהל-על בלבד) - יוענקו למשתמש עם הקמתו</p>
+                <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+                    <input id="urdIsITAdmin" type="checkbox" style="width:auto"><label for="urdIsITAdmin" style="margin:0">הרשאת ניהול IT (מחשבים)</label>
+                </div>
+                <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+                    <input id="urdIsProceduresAdmin" type="checkbox" style="width:auto"><label for="urdIsProceduresAdmin" style="margin:0">הרשאת ניהול נהלים</label>
+                </div>
+                <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+                    <input id="urdIsUserRequestSubmitter" type="checkbox" style="width:auto"><label for="urdIsUserRequestSubmitter" style="margin:0">מורשה להקמת משתמשים</label>
+                </div>
+            </div>
+
+            <div id="urdStep4" style="display:none">
                 <div class="field"><label>הודעת ברוכים-הבאים למשתמש</label>
                     <textarea id="urdWelcomeMessage" class="script-box" rows="5" readonly></textarea>
                     <button type="button" class="secondary-button" id="urdCopyWelcomeBtn" style="margin-top:6px">העתק הודעה</button>
                 </div>
-                <p style="font-size:12px;color:var(--muted);margin:8px 0 0">בלחיצה על "סימון כהוקם" יישלח גם מייל אוטומטי אל <strong id="urdRequesterEmailNote"></strong> עם פרטי ההתחברות.</p>
+                <p style="font-size:12px;color:var(--muted);margin:8px 0 0">בלחיצה על "סימון כהוקם" יוקם המשתמש בפורטל (כמו בניהול משתמשים) ויישלח מייל אוטומטי אל <strong id="urdRequesterEmailNote"></strong> עם פרטי ההתחברות.</p>
             </div>
 
             <div id="userRequestDetailError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
@@ -3681,29 +3688,44 @@
     // request the review wizard below is open for.
     var openUserRequestId = null;
 
-    // v2.1, follow-up: the review modal is a 3-step wizard (פרטי עובד → סקריפט → שליחה)
-    // instead of one long flat form.
+    // v2.1, follow-up: the review modal is a wizard (פרטי עובד → סקריפט → [הרשאות פורטל] →
+    // שליחה) instead of one long flat form. The permissions step is SuperAdmin-only, same
+    // sequence-skip pattern as the users-admin wizard (uaStepSequence).
     var userRequestDetailTracker = makeDirtyTracker(document.getElementById('userRequestDetailBackdrop'));
     var currentUserRequestFull = null;
     var urdCurrentStep = 1;
+    var urdStepSequence = [1, 2, 4];
     var urdScriptPasswordManuallyEdited = false;
+
+    var URD_STEP_LABELS = { 1: 'פרטי עובד', 2: 'סקריפט', 3: 'הרשאות פורטל', 4: 'שליחה' };
+
+    function urdComputeStepSequence() {
+        return Portal.isSuperAdmin() ? [1, 2, 3, 4] : [1, 2, 4];
+    }
+
+    function renderUrdWizardDots() {
+        var seq = urdStepSequence;
+        var idx = seq.indexOf(urdCurrentStep);
+        var html = '';
+        seq.forEach(function (step, i) {
+            html += '<div class="wizard-step' + (i === idx ? ' active' : (i < idx ? ' done' : '')) + '"><span>' + (i + 1) + '</span><label>' + URD_STEP_LABELS[step] + '</label></div>';
+            if (i < seq.length - 1) html += '<div class="wizard-step-line' + (i < idx ? ' done' : '') + '"></div>';
+        });
+        document.getElementById('urdWizardSteps').innerHTML = html;
+    }
 
     function setUrdStep(step) {
         urdCurrentStep = step;
-        document.getElementById('urdStep1').style.display = step === 1 ? 'block' : 'none';
-        document.getElementById('urdStep2').style.display = step === 2 ? 'block' : 'none';
-        document.getElementById('urdStep3').style.display = step === 3 ? 'block' : 'none';
-        [1, 2, 3].forEach(function (i) {
-            var dot = document.getElementById('urdStepDot' + i);
-            dot.classList.toggle('done', i < step);
-            dot.classList.toggle('active', i === step);
+        [1, 2, 3, 4].forEach(function (n) {
+            document.getElementById('urdStep' + n).style.display = n === step ? 'block' : 'none';
         });
-        document.getElementById('urdStepLine1').classList.toggle('done', step > 1);
-        document.getElementById('urdStepLine2').classList.toggle('done', step > 2);
-        document.getElementById('urdBackBtn').style.display = step > 1 ? 'inline-block' : 'none';
+        renderUrdWizardDots();
+        var idx = urdStepSequence.indexOf(step);
+        var isLast = idx === urdStepSequence.length - 1;
         var isCompleted = currentUserRequestFull && currentUserRequestFull.status === 'הוקם';
-        document.getElementById('urdNextBtn').style.display = (step < 3 && !isCompleted) ? 'inline-block' : 'none';
-        document.getElementById('urdMarkCompletedBtn').style.display = (step === 3 && !isCompleted) ? 'inline-block' : 'none';
+        document.getElementById('urdBackBtn').style.display = idx > 0 ? 'inline-block' : 'none';
+        document.getElementById('urdNextBtn').style.display = (!isLast && !isCompleted) ? 'inline-block' : 'none';
+        document.getElementById('urdMarkCompletedBtn').style.display = (isLast && !isCompleted) ? 'inline-block' : 'none';
     }
 
     function urdAccessType() {
@@ -3780,6 +3802,12 @@
         document.getElementById('userRequestDetailTitle').textContent = r.requestNumber;
         document.getElementById('userRequestDetailError').style.display = 'none';
         document.getElementById('userRequestDetailBackdrop').classList.add('visible');
+        // Item 2 (follow-up): the request itself never stores portal-permission flags —
+        // they're chosen fresh each review, same starting point as adding a plain user.
+        document.getElementById('urdIsITAdmin').checked = false;
+        document.getElementById('urdIsProceduresAdmin').checked = false;
+        document.getElementById('urdIsUserRequestSubmitter').checked = false;
+        urdStepSequence = urdComputeStepSequence();
         setUrdStep(1);
 
         showLoading(true);
@@ -3822,7 +3850,7 @@
             document.getElementById('urdSuggestedEmail').value = req.suggestedEmail;
             document.getElementById('urdScriptPassword').value = req.tempPassword;
             document.getElementById('urdWelcomeMessage').value = buildWelcomeMessage(req);
-            setUrdStep(3);
+            setUrdStep(urdStepSequence[urdStepSequence.length - 1]);
         }
         userRequestDetailTracker.reset();
     }
@@ -3881,7 +3909,8 @@
     });
 
     document.getElementById('urdBackBtn').addEventListener('click', function () {
-        if (urdCurrentStep > 1) setUrdStep(urdCurrentStep - 1);
+        var idx = urdStepSequence.indexOf(urdCurrentStep);
+        if (idx > 0) setUrdStep(urdStepSequence[idx - 1]);
     });
 
     document.getElementById('urdNextBtn').addEventListener('click', async function () {
@@ -3921,21 +3950,28 @@
             showLoading(false);
             if (!res.ok) { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; return; }
             userRequestDetailTracker.reset();
-            setUrdStep(2);
+            setUrdStep(urdStepSequence[urdStepSequence.indexOf(1) + 1]);
         } else if (urdCurrentStep === 2) {
             document.getElementById('urdWelcomeMessage').value = buildWelcomeMessage({
                 firstNameHe: document.getElementById('urdFirstNameHe').value.trim(),
                 suggestedEmail: document.getElementById('urdSuggestedEmail').value,
                 tempPassword: document.getElementById('urdScriptPassword').value,
             });
-            setUrdStep(3);
+            setUrdStep(urdStepSequence[urdStepSequence.indexOf(2) + 1]);
+        } else if (urdCurrentStep === 3) {
+            setUrdStep(urdStepSequence[urdStepSequence.indexOf(3) + 1]);
         }
     });
 
     document.getElementById('urdMarkCompletedBtn').addEventListener('click', async function () {
-        if (!confirm('לסמן את הבקשה כהוקמה? ודא/י שהרצת את הסקריפט בפועל קודם. יישלח מייל אוטומטי למגיש הבקשה עם פרטי ההתחברות.')) return;
+        if (!confirm('לסמן את הבקשה כהוקמה? ודא/י שהרצת את הסקריפט בפועל קודם. הפעולה תקים את המשתמש בפורטל ותשלח מייל אוטומטי למגיש הבקשה עם פרטי ההתחברות.')) return;
         showLoading(true);
-        var res = await apiPost('userRequests', 'markCompleted', { requestId: openUserRequestId });
+        var res = await apiPost('userRequests', 'markCompleted', {
+            requestId: openUserRequestId,
+            isITAdmin: document.getElementById('urdIsITAdmin').checked,
+            isProceduresAdmin: document.getElementById('urdIsProceduresAdmin').checked,
+            isUserRequestSubmitter: document.getElementById('urdIsUserRequestSubmitter').checked,
+        });
         showLoading(false);
         if (res.ok) {
             userRequestDetailTracker.reset();
@@ -4191,8 +4227,8 @@
         document.getElementById('uaUsername').disabled = !!user;
         document.getElementById('uaFirstName').value = user ? user.firstName : '';
         document.getElementById('uaLastName').value = user ? user.lastName : '';
-        document.getElementById('uaFirstNameEn').value = '';
-        document.getElementById('uaLastNameEn').value = '';
+        document.getElementById('uaFirstNameEn').value = user ? (user.firstNameEn || '') : '';
+        document.getElementById('uaLastNameEn').value = user ? (user.lastNameEn || '') : '';
         document.getElementById('uaPhone').value = user ? user.phone : '';
         await ensureBranchesLoaded();
         populateBranchSelect(document.getElementById('uaBranch'), user ? user.branchNumber : '');
@@ -4239,6 +4275,8 @@
         var payload = {
             firstName: document.getElementById('uaFirstName').value.trim(),
             lastName: document.getElementById('uaLastName').value.trim(),
+            firstNameEn: document.getElementById('uaFirstNameEn').value.trim(),
+            lastNameEn: document.getElementById('uaLastNameEn').value.trim(),
             phone: document.getElementById('uaPhone').value.trim(),
             branchNumber: document.getElementById('uaBranch').value,
             role: document.getElementById('uaRole').value.trim(),

@@ -395,14 +395,21 @@ async function markCompleted(payload, caller) {
   // The portal's own User row is created automatically here, from exactly what was
   // collected on the request — no separate manual step in "ניהול משתמשים" afterward. A
   // mail-only request simply has no AssignedComputerName, so the new user naturally
-  // shows no computer/printer/AnyDesk anywhere else in the app.
+  // shows no computer/printer/AnyDesk anywhere else in the app. Portal permissions
+  // (SuperAdmin only — enforced again inside users.create) come from the wizard's
+  // "הרשאות פורטל" step, same fields as the plain "ניהול משתמשים" add flow.
   const createRes = await users.create({
     username: row.SuggestedEmail.split('@')[0],
     firstName: row.FirstNameHe,
     lastName: row.LastNameHe,
+    firstNameEn: row.FirstNameEn,
+    lastNameEn: row.LastNameEn,
     branchNumber: row.BranchNumber,
     role: row.Role,
     assignedComputerName: row.AssignedComputerName || '',
+    isITAdmin: payload.isITAdmin,
+    isProceduresAdmin: payload.isProceduresAdmin,
+    isUserRequestSubmitter: payload.isUserRequestSubmitter,
   }, caller);
   if (!createRes.ok) return createRes;
 
