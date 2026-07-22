@@ -52,6 +52,30 @@ async function listNames(_payload, _caller) {
   return { ok: true, data: result.recordset.map((r) => r.ComputerName) };
 }
 
+// User-request form's workstation picker — any authenticated submitter needs this, not
+// just IT admins, so unlike list() it's ungated and only exposes name + who (if anyone)
+// it's currently assigned to, none of the sensitive fields (IP-adjacent notes, etc.).
+async function listByBranch(payload, _caller) {
+  const branchNumber = parseBranchNumber(payload.branchNumber);
+  const pool = await getPool();
+  const req = pool.request();
+  let query = `SELECT c.ComputerName AS ComputerName, u.FirstName AS FirstName, u.LastName AS LastName
+    FROM Computers c LEFT JOIN Users u ON u.Email = c.AssignedUserEmail`;
+  if (branchNumber !== null && branchNumber !== undefined) {
+    req.input('branch', sql.Int, branchNumber);
+    query += ' WHERE c.BranchNumber = @branch';
+  }
+  query += ' ORDER BY c.ComputerName';
+  const result = await req.query(query);
+  return {
+    ok: true,
+    data: result.recordset.map((r) => ({
+      computerName: r.ComputerName,
+      assignedToName: [r.FirstName, r.LastName].filter(Boolean).join(' ') || null,
+    })),
+  };
+}
+
 const EDITABLE_COMPUTER_FIELDS = ['Type', 'RAM', 'AnyDeskId', 'AssignedUserEmail', 'DefaultPrinterName', 'Notes'];
 
 // AssignedUserEmail/DefaultPrinterName are nullable FKs — an empty selection has to become
@@ -139,4 +163,4 @@ async function ticketHistory(payload, caller) {
   return { ok: true, data: result.recordset.map(rowToTicket) };
 }
 
-module.exports = { getAssigned, list, listNames, create, update, remove, ticketHistory, rowToComputer };
+module.exports = { getAssigned, list, listNames, listByBranch, create, update, remove, ticketHistory, rowToComputer };

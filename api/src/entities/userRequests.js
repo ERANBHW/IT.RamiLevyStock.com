@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { sql, getPool } = require('../db');
 const { sendUserRequestEmail, sendUserRequestCompletedEmail } = require('../mail');
+const users = require('./users');
 
 function rowToUserRequest(r) {
   if (!r) return null;
@@ -23,6 +24,9 @@ function rowToUserRequest(r) {
     assignedToName: r.AssignedToName,
     reviewedByEmail: r.ReviewedByEmail,
     reviewedAt: r.ReviewedAt,
+    accessType: r.AccessType,
+    assignedComputerName: r.AssignedComputerName,
+    newComputerType: r.NewComputerType,
   };
 }
 
@@ -140,6 +144,9 @@ async function getFoldersForRequest(pool, requestId) {
   return res.recordset.map((r) => ({ id: r.Id, name: r.Name, entraGroupObjectId: r.EntraGroupObjectId }));
 }
 
+const ACCESS_TYPES = ['מחשב', 'מייל'];
+const COMPUTER_TYPES = ['נייח', 'נייד'];
+
 async function create(payload, caller) {
   if (!caller.isUserRequestSubmitter) return { ok: false, error: 'אין הרשאה' };
 
@@ -155,7 +162,20 @@ async function create(payload, caller) {
   const suggestedEmail = computeSuggestedEmail(firstNameEn, lastNameEn);
   if (!suggestedEmail) return { ok: false, error: 'שם באנגלית לא תקין ליצירת מייל' };
 
-  const folderIds = Array.isArray(payload.folderIds) ? payload.folderIds : [];
+  // Item 3 (user-request follow-up): "מחשב" needs either an existing workstation or a
+  // brand-new order (נייח/נייד) — never both, never neither.
+  const accessType = ACCESS_TYPES.includes(payload.accessType) ? payload.accessType : 'מחשב';
+  let assignedComputerName = null;
+  let newComputerType = null;
+  if (accessType === 'מחשב') {
+    assignedComputerName = String(payload.assignedComputerName || '').trim() || null;
+    if (!assignedComputerName) {
+      newComputerType = COMPUTER_TYPES.includes(payload.newComputerType) ? payload.newComputerType : null;
+      if (!newComputerType) return { ok: false, error: 'יש לבחור עמדת מחשב קיימת או סוג מחשב להזמנה' };
+    }
+  }
+
+  const folderIds = accessType === 'מחשב' && Array.isArray(payload.folderIds) ? payload.folderIds : [];
   const tempPassword = generateTempPassword();
 
   const pool = await getPool();
@@ -170,15 +190,26 @@ async function create(payload, caller) {
     .input('role', sql.NVarChar, role)
     .input('suggestedEmail', sql.NVarChar, suggestedEmail)
     .input('tempPassword', sql.NVarChar, tempPassword)
+    .input('accessType', sql.NVarChar, accessType)
+    .input('assignedComputerName', sql.NVarChar, assignedComputerName)
+    .input('newComputerType', sql.NVarChar, newComputerType)
     .query(`INSERT INTO UserRequests
-        (RequesterEmail, RequesterName, FirstNameHe, LastNameHe, FirstNameEn, LastNameEn, BranchNumber, Role, SuggestedEmail, TempPassword)
+        (RequesterEmail, RequesterName, FirstNameHe, LastNameHe, FirstNameEn, LastNameEn, BranchNumber, Role, SuggestedEmail, TempPassword, AccessType, AssignedComputerName, NewComputerType)
       OUTPUT INSERTED.*
-      VALUES (@requesterEmail, @requesterName, @firstNameHe, @lastNameHe, @firstNameEn, @lastNameEn, @branchNumber, @role, @suggestedEmail, @tempPassword)`);
+      VALUES (@requesterEmail, @requesterName, @firstNameHe, @lastNameHe, @firstNameEn, @lastNameEn, @branchNumber, @role, @suggestedEmail, @tempPassword, @accessType, @assignedComputerName, @newComputerType)`);
 
   const request = result.recordset[0];
   for (const folderId of folderIds) {
     await pool.request().input('reqId', sql.Int, request.RequestId).input('folderId', sql.UniqueIdentifier, folderId)
       .query('INSERT INTO UserRequestFolders (RequestId, SharedFolderId) VALUES (@reqId, @folderId)');
+  }
+
+  // Item 4 (user-request follow-up): ordering a new computer spawns a "רכש" task —
+  // IT procures/registers the actual hardware and links it here before the request
+  // itself can be marked "הוקם" (see markCompleted below).
+  if (newComputerType) {
+    await pool.request().input('reqId', sql.Int, request.RequestId).input('type', sql.NVarChar, newComputerType)
+      .query('INSERT INTO ProcurementTasks (RequestId, ComputerType) VALUES (@reqId, @type)');
   }
 
   sendUserRequestEmail(request).catch((err) => console.error('sendUserRequestEmail failed', err));
@@ -193,6 +224,19 @@ async function list(_payload, caller) {
   return { ok: true, data: result.recordset.map(rowToUserRequest) };
 }
 
+// Best-effort — ProcurementTasks may not exist yet on a DB that hasn't run the migration
+// in infra/schema.sql, and this lookup is a nice-to-have (the "create computer" button
+// in the review wizard), not core to reviewing/updating/completing the request itself.
+async function getOpenProcurementTaskId(pool, requestId) {
+  try {
+    const res = await pool.request().input('reqId', sql.Int, requestId)
+      .query("SELECT TOP 1 Id FROM ProcurementTasks WHERE RequestId = @reqId AND Status <> N'הושלם' ORDER BY CreatedAt DESC");
+    return res.recordset[0] ? res.recordset[0].Id : null;
+  } catch (err) {
+    return null;
+  }
+}
+
 async function get(payload, caller) {
   if (!canReview(caller)) return { ok: false, error: 'אין הרשאה' };
   const pool = await getPool();
@@ -201,7 +245,8 @@ async function get(payload, caller) {
   const row = result.recordset[0];
   if (!row) return { ok: false, error: 'הבקשה לא נמצאה' };
   const folders = await getFoldersForRequest(pool, requestId);
-  return { ok: true, data: { request: rowToUserRequest(row), folders } };
+  const procurementTaskId = await getOpenProcurementTaskId(pool, requestId);
+  return { ok: true, data: { request: rowToUserRequest(row), folders, procurementTaskId } };
 }
 
 const EDITABLE_REQUEST_FIELDS = ['FirstNameHe', 'LastNameHe', 'FirstNameEn', 'LastNameEn', 'Role'];
@@ -227,6 +272,21 @@ async function update(payload, caller) {
     const branchNumber = payload.branchNumber === '' || payload.branchNumber == null ? null : Number(payload.branchNumber);
     req.input('BranchNumber', sql.Int, branchNumber);
     sets.push('BranchNumber = @BranchNumber');
+  }
+  if (Object.prototype.hasOwnProperty.call(payload, 'accessType')) {
+    const accessType = ACCESS_TYPES.includes(payload.accessType) ? payload.accessType : 'מחשב';
+    req.input('AccessType', sql.NVarChar, accessType);
+    sets.push('AccessType = @AccessType');
+    // Switching access type or workstation source clears whichever half doesn't apply
+    // anymore — never leave a stale AssignedComputerName/NewComputerType behind.
+    const assignedComputerName = accessType === 'מחשב'
+      ? (String(payload.assignedComputerName || '').trim() || null) : null;
+    req.input('AssignedComputerName', sql.NVarChar, assignedComputerName);
+    sets.push('AssignedComputerName = @AssignedComputerName');
+    const newComputerType = (accessType === 'מחשב' && !assignedComputerName && COMPUTER_TYPES.includes(payload.newComputerType))
+      ? payload.newComputerType : null;
+    req.input('NewComputerType', sql.NVarChar, newComputerType);
+    sets.push('NewComputerType = @NewComputerType');
   }
 
   // Names drive the generated UPN — recompute and persist whenever either changes.
@@ -324,7 +384,27 @@ async function markCompleted(payload, caller) {
   const row = existing.recordset[0];
   if (!row) return { ok: false, error: 'הבקשה לא נמצאה' };
   if (row.Status !== 'בטיפול') return { ok: false, error: 'יש לקחת את הבקשה לטיפול לפני סימון כהוקמה' };
+  // Item 4 (user-request follow-up): a new-computer order has to actually become a real
+  // Computer record (via the linked procurement task) before the request can complete —
+  // otherwise there'd be nothing for the new user to be assigned to.
+  if (row.AccessType === 'מחשב' && row.NewComputerType && !row.AssignedComputerName) {
+    return { ok: false, error: 'יש לשייך קודם מחשב חדש (דרך משימת הרכש) לפני סימון הבקשה כהוקמה' };
+  }
   const actor = await resolveActor(pool, payload, caller);
+
+  // The portal's own User row is created automatically here, from exactly what was
+  // collected on the request — no separate manual step in "ניהול משתמשים" afterward. A
+  // mail-only request simply has no AssignedComputerName, so the new user naturally
+  // shows no computer/printer/AnyDesk anywhere else in the app.
+  const createRes = await users.create({
+    username: row.SuggestedEmail.split('@')[0],
+    firstName: row.FirstNameHe,
+    lastName: row.LastNameHe,
+    branchNumber: row.BranchNumber,
+    role: row.Role,
+    assignedComputerName: row.AssignedComputerName || '',
+  }, caller);
+  if (!createRes.ok) return createRes;
 
   await pool.request()
     .input('id', sql.Int, requestId)

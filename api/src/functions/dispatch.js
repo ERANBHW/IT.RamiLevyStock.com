@@ -23,6 +23,7 @@ const userRequests = require('../entities/userRequests');
 const printers = require('../entities/printers');
 const ticketConfig = require('../entities/ticketConfig');
 const emailSettings = require('../entities/emailSettings');
+const procurementTasks = require('../entities/procurementTasks');
 
 const ROUTES = {
   users: {
@@ -37,6 +38,7 @@ const ROUTES = {
     getAssigned: computers.getAssigned,
     list: computers.list,
     listNames: computers.listNames,
+    listByBranch: computers.listByBranch,
     create: computers.create,
     update: computers.update,
     delete: computers.remove,
@@ -105,6 +107,10 @@ const ROUTES = {
   emailSettings: {
     get: emailSettings.get,
     update: emailSettings.update,
+  },
+  procurementTasks: {
+    list: procurementTasks.list,
+    linkComputer: procurementTasks.linkComputer,
   },
 };
 

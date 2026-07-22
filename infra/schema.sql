@@ -389,3 +389,40 @@ CREATE TABLE EmailSettings (
     UpdatedAt           DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME()
 );
 GO
+
+-- User-request form redesign (section: user-request follow-up) — what kind of access the
+-- new hire needs, and (if a workstation) either an existing one or a brand-new order.
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('UserRequests') AND name = 'AccessType')
+ALTER TABLE UserRequests ADD AccessType NVARCHAR(20) NOT NULL DEFAULT N'מחשב';
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('UserRequests') AND name = 'AssignedComputerName')
+ALTER TABLE UserRequests ADD AssignedComputerName NVARCHAR(100) NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_UserRequests_AssignedComputer')
+ALTER TABLE UserRequests ADD CONSTRAINT FK_UserRequests_AssignedComputer
+    FOREIGN KEY (AssignedComputerName) REFERENCES Computers(ComputerName) ON DELETE SET NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('UserRequests') AND name = 'NewComputerType')
+ALTER TABLE UserRequests ADD NewComputerType NVARCHAR(20) NULL;
+GO
+
+-- A "הזמנת מחשב חדש" choice on the request spawns one of these — IT procures/registers
+-- the actual Computer record, links it here, and only then can the request itself be
+-- marked "הוקם" (see userRequests.markCompleted).
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ProcurementTasks')
+CREATE TABLE ProcurementTasks (
+    Id                  INT IDENTITY(1,1)  NOT NULL PRIMARY KEY,
+    RequestId           INT                 NOT NULL,
+    ComputerType        NVARCHAR(20)        NOT NULL DEFAULT N'נייח',
+    Status              NVARCHAR(20)        NOT NULL DEFAULT N'פתוחה',
+    CreatedAt           DATETIME2           NOT NULL DEFAULT SYSUTCDATETIME(),
+    CompletedAt         DATETIME2           NULL,
+    CreatedComputerName NVARCHAR(100)       NULL,
+    CONSTRAINT FK_ProcurementTasks_Request FOREIGN KEY (RequestId) REFERENCES UserRequests(RequestId) ON DELETE CASCADE,
+    CONSTRAINT FK_ProcurementTasks_Computer FOREIGN KEY (CreatedComputerName) REFERENCES Computers(ComputerName) ON DELETE SET NULL,
+    CONSTRAINT CK_ProcurementTasks_Status CHECK (Status IN (N'פתוחה', N'בטיפול', N'הושלם'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_ProcurementTasks_RequestId')
+CREATE INDEX IX_ProcurementTasks_RequestId ON ProcurementTasks(RequestId);
+GO

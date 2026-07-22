@@ -360,6 +360,11 @@
 
             <div class="hub-actions" id="hubActions"></div>
 
+            <div id="hubGeneralSection" style="display:none">
+                <h3 class="procedure-category-title">ניהול כללי</h3>
+                <div class="hub-actions" id="hubGeneralActions"></div>
+            </div>
+
             <div id="hubAdminSection" style="display:none">
                 <h3 class="procedure-category-title">ניהול</h3>
                 <div class="hub-actions" id="hubAdminActions"></div>
@@ -595,7 +600,29 @@
                     <h2 class="section-title">פרטים נוספים</h2>
                     <div class="field"><label for="urBranch">סניף</label><select id="urBranch"></select></div>
                     <div class="field"><label for="urRole">תפקיד</label><input id="urRole" type="text"></div>
-                    <div class="field"><label>תיקיות משותפות</label><div id="urFolders" class="folder-checkbox-list"></div></div>
+
+                    <div class="field">
+                        <label>סוג גישה</label>
+                        <div style="display:flex;gap:16px">
+                            <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="urAccessType" value="מחשב" checked style="width:auto">עמדת מחשב</label>
+                            <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="urAccessType" value="מייל" style="width:auto">תיבת מייל בלבד</label>
+                        </div>
+                    </div>
+
+                    <div id="urComputerBlock">
+                        <div class="field">
+                            <label for="urComputerSelect">עמדת מחשב</label>
+                            <select id="urComputerSelect"></select>
+                        </div>
+                        <div class="field" id="urNewComputerTypeField" style="display:none">
+                            <label>סוג המחשב המוזמן</label>
+                            <div style="display:flex;gap:16px">
+                                <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="urNewComputerType" value="נייח" checked style="width:auto">נייח</label>
+                                <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="urNewComputerType" value="נייד" style="width:auto">נייד</label>
+                            </div>
+                        </div>
+                        <div class="field"><label>תיקיות משותפות</label><div id="urFolders" class="folder-checkbox-list"></div></div>
+                    </div>
                 </section>
 
                 <div id="userRequestSubmitError" style="display:none;color:var(--danger);font-size:13px;margin-bottom:12px"></div>
@@ -609,19 +636,6 @@
                 <p style="color:var(--muted)">צוות ה-IT יקים את המשתמש בהקדם.</p>
                 <button type="button" class="secondary-button" id="userRequestHomeBtn">חזור לדף הבית</button>
             </div>
-        </div>
-    </main>
-
-    <!-- VIEW: admin user requests queue -->
-    <main class="app" id="view-admin-user-requests">
-        <div class="content">
-            <h1 class="page-title">בקשות הקמת משתמש</h1>
-            <p class="page-subtitle">בקשות ממתינות; לחיצה פותחת עריכה + סקריפט הקמה</p>
-            <div id="userRequestsQueueList" style="display:flex;flex-direction:column;gap:10px"></div>
-            <div class="closed-tickets-toggle">
-                <button type="button" class="secondary-button" id="userRequestsCompletedToggleBtn">בקשות שהוקמו</button>
-            </div>
-            <div id="userRequestsCompletedList" style="display:none"></div>
         </div>
     </main>
 
@@ -780,7 +794,26 @@
                 <div class="field"><label for="uaBranch">סניף</label><select id="uaBranch"></select></div>
             </div>
             <div class="field"><label for="uaRole">תפקיד</label><input id="uaRole" type="text"></div>
-            <div class="field"><label for="uaComputer">מחשב משוייך</label><select id="uaComputer"></select></div>
+
+            <div class="field">
+                <label>סוג גישה</label>
+                <div style="display:flex;gap:16px">
+                    <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="uaAccessType" value="מחשב" checked style="width:auto">עמדת מחשב</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="uaAccessType" value="מייל" style="width:auto">תיבת מייל בלבד</label>
+                </div>
+            </div>
+
+            <div id="uaComputerBlock">
+                <div class="field"><label for="uaComputer">עמדת מחשב</label><select id="uaComputer"></select></div>
+                <div class="field" id="uaNewComputerTypeField" style="display:none">
+                    <label>סוג המחשב החדש</label>
+                    <div style="display:flex;gap:16px">
+                        <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="uaNewComputerType" value="נייח" checked style="width:auto">נייח</label>
+                        <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="uaNewComputerType" value="נייד" style="width:auto">נייד</label>
+                    </div>
+                </div>
+            </div>
+
             <div id="uaAdminFlagsSection">
                 <div class="field" style="flex-direction:row;align-items:center;gap:8px">
                     <input id="uaIsITAdmin" type="checkbox" style="width:auto"><label for="uaIsITAdmin" style="margin:0">הרשאת ניהול IT (מחשבים)</label>
@@ -796,7 +829,7 @@
 
             <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
                 <p class="page-subtitle" style="margin:0 0 10px">הכנת סקריפט הקמה ב-365 (תיקיות משותפות)</p>
-                <div class="field"><label>תיקיות משותפות</label><div id="uaFolders" class="folder-checkbox-list"></div></div>
+                <div class="field" id="uaFoldersField"><label>תיקיות משותפות</label><div id="uaFolders" class="folder-checkbox-list"></div></div>
                 <button type="button" class="secondary-button" id="uaGenerateScriptBtn">הכן סקריפט הקמה</button>
                 <div id="uaScriptResult" style="display:none;margin-top:10px">
                     <div class="field"><label>מייל מחושב</label><input id="uaScriptEmail" readonly dir="ltr"></div>
@@ -987,7 +1020,33 @@
                 </div>
                 <div class="field"><label for="urdBranch">סניף</label><select id="urdBranch"></select></div>
                 <div class="field"><label for="urdRole">תפקיד</label><input id="urdRole" type="text"></div>
-                <div class="field"><label>תיקיות משותפות</label><div id="urdFolders" class="folder-checkbox-list"></div></div>
+
+                <div class="field">
+                    <label>סוג גישה</label>
+                    <div style="display:flex;gap:16px">
+                        <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="urdAccessType" value="מחשב" checked style="width:auto">עמדת מחשב</label>
+                        <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="urdAccessType" value="מייל" style="width:auto">תיבת מייל בלבד</label>
+                    </div>
+                </div>
+
+                <div id="urdComputerBlock">
+                    <div id="urdProcurementStatus" style="display:none;font-size:13px;background:#fff7e6;border:1px solid #f59e0b;color:#92400e;border-radius:8px;padding:10px;margin-bottom:10px">
+                        <span id="urdProcurementStatusText"></span><br>
+                        <button type="button" class="secondary-button" id="urdCreateComputerBtn" style="margin-top:8px">רשום מחשב שהתקבל</button>
+                    </div>
+                    <div class="field">
+                        <label for="urdComputerSelect">עמדת מחשב</label>
+                        <select id="urdComputerSelect"></select>
+                    </div>
+                    <div class="field" id="urdNewComputerTypeField" style="display:none">
+                        <label>סוג המחשב המוזמן</label>
+                        <div style="display:flex;gap:16px">
+                            <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="urdNewComputerType" value="נייח" checked style="width:auto">נייח</label>
+                            <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="urdNewComputerType" value="נייד" style="width:auto">נייד</label>
+                        </div>
+                    </div>
+                    <div class="field"><label>תיקיות משותפות</label><div id="urdFolders" class="folder-checkbox-list"></div></div>
+                </div>
             </div>
 
             <div id="urdStep2" style="display:none">
@@ -1062,7 +1121,6 @@
         if (id === 'admin-sharedfolders') loadSharedFoldersAdminPage();
         if (id === 'admin-email-settings') loadEmailSettingsAdminPage();
         if (id === 'user-request') loadUserRequestFormPage();
-        if (id === 'admin-user-requests') loadUserRequestsAdminPage();
         if (id === 'admin-printers') loadPrintersAdminPage();
         if (id === 'admin-ticket-config') loadTicketConfigAdminPage();
         if (id === 'admin-view-as') loadViewAsPage();
@@ -1144,11 +1202,38 @@
         selectEl.innerHTML = '<option value="">ללא</option>' + options;
     }
 
+    // ── BRANCH-SCOPED COMPUTER PICKER: shared by the user-request form, the admin review
+    // wizard and the unified users-admin modal (all three need "pick an existing workstation
+    // in this branch, or order a new one"). ─────────────────────────────────────────────
+    var ORDER_NEW_COMPUTER_VALUE = '__order_new__';
+
+    async function loadComputersByBranch(branchNumber) {
+        if (branchNumber === '' || branchNumber === null || branchNumber === undefined) return [];
+        var res = await apiGet('computers', 'listByBranch', { branchNumber: branchNumber });
+        return res.ok ? res.data : [];
+    }
+
+    function populateBranchComputerSelect(selectEl, list, selectedName) {
+        var options = (list || []).map(function (c) {
+            var label = c.computerName + (c.assignedToName ? ' (משוייך ל-' + c.assignedToName + ')' : '');
+            return '<option value="' + escapeHtml(c.computerName) + '"' + (c.computerName === selectedName ? ' selected' : '') + '>' + escapeHtml(label) + '</option>';
+        }).join('');
+        var orderSelected = !selectedName ? '' : (selectedName === ORDER_NEW_COMPUTER_VALUE ? ' selected' : '');
+        selectEl.innerHTML = '<option value="">בחר עמדה</option>' + options +
+            '<option value="' + ORDER_NEW_COMPUTER_VALUE + '"' + orderSelected + '>🖥️ הזמנת מחשב חדש</option>';
+    }
+
     // ── HUB VIEW ──────────────────────────────────────────────
     var HUB_BUTTONS = [
         { id: 'ticket', icon: '📋', label: 'פתיחת קריאה' },
         { id: 'signature', icon: '✍️', label: 'יצירת חתימה' },
         { id: 'procedures', icon: '📖', label: 'נהלי עבודה' },
+    ];
+
+    // Section for anyone with the user-request-submitter permission — separate from the
+    // main grid so it reads as its own tier, and separate from HUB_ADMIN_BUTTONS since
+    // submitters aren't necessarily IT/Procedures/SuperAdmins.
+    var HUB_GENERAL_BUTTONS = [
         { id: 'user-request', icon: '🧑‍💼', label: 'בקשת הקמת משתמש', check: function () { return Portal.isUserRequestSubmitter(); } },
     ];
 
@@ -1157,7 +1242,6 @@
             return Portal.isSuperAdmin() || Portal.isITAdmin() || Portal.isProceduresAdmin();
         } },
         { id: 'admin-computers', icon: '💻', label: 'ניהול מחשבים', check: function () { return Portal.isITAdmin(); } },
-        { id: 'admin-user-requests', icon: '🧑‍💼', label: 'בקשות הקמת משתמש', check: function () { return Portal.isITAdmin(); } },
         { id: 'admin-printers', icon: '🖨️', label: 'קטלוג מדפסות', check: function () { return Portal.isITAdmin(); } },
         { id: 'admin-ticket-config', icon: '🏷️', label: 'סוגי קריאות', check: function () { return Portal.isITAdmin(); } },
         { id: 'admin-view-as', icon: '👁️', label: 'התחזות למשתמש', check: function () { return Portal.isITAdmin(); } },
@@ -1184,6 +1268,10 @@
     function renderHubActions() {
         var mainButtons = HUB_BUTTONS.filter(function (b) { return !b.check || b.check(); });
         renderHubButtons(document.getElementById('hubActions'), mainButtons);
+
+        var generalButtons = HUB_GENERAL_BUTTONS.filter(function (b) { return b.check(); });
+        document.getElementById('hubGeneralSection').style.display = generalButtons.length ? 'block' : 'none';
+        renderHubButtons(document.getElementById('hubGeneralActions'), generalButtons);
 
         var adminButtons = HUB_ADMIN_BUTTONS.filter(function (b) { return b.check(); });
         var superAdminButtons = HUB_SUPERADMIN_BUTTONS.filter(function (b) { return b.check(); });
@@ -1964,6 +2052,7 @@
     var dashAllUserRequests = []; // ALL user-creation requests (every status) — the "משימות" tab needs חדש/בטיפול/הושלם, not just pending
     var dashFollowUps = []; // TicketFollowUps — lazy-loaded, same "משימות" tab
     var dashFollowUpsLoaded = false;
+    var dashProcurementTasks = []; // ProcurementTasks (new-computer orders) — 3rd task kind, same "משימות" tab
     var dashboardClosedTickets = null; // null = not fetched yet (lazy, behind the "סגורות" cube)
     var dashboardRefreshTimer = null;
     var dashStatusFilter = null; // null = open+in-progress (default) | 'פתוחה' | 'בטיפול' | 'סגורה' — set by clicking a cube
@@ -1996,6 +2085,10 @@
         var followUpsRes = await apiGet('tickets', 'listFollowUps', {});
         dashFollowUps = followUpsRes.ok ? followUpsRes.data : [];
         dashFollowUpsLoaded = true;
+        // Best-effort — empty (not an error banner) on a DB that hasn't run the
+        // ProcurementTasks migration yet (infra/schema.sql).
+        var procRes = await apiGet('procurementTasks', 'list', {});
+        dashProcurementTasks = procRes.ok ? procRes.data : [];
         // Live computer records (item, dashboard follow-up) — a ticket's own AnyDeskId
         // is only a creation-time snapshot; if the computer's AnyDesk ID was added or
         // changed afterward, the ticket's copy stays stale. The AnyDesk tag reads the
@@ -2007,7 +2100,8 @@
         }
         var pendingRequests = dashAllUserRequests.filter(function (r) { return r.status !== 'הוקם'; }).length;
         var openFollowUps = dashFollowUps.filter(function (f) { return f.status !== 'הושלם'; }).length;
-        document.getElementById('dashFollowupsCount').textContent = pendingRequests + openFollowUps;
+        var openProcurements = dashProcurementTasks.filter(function (p) { return p.status !== 'הושלם'; }).length;
+        document.getElementById('dashFollowupsCount').textContent = pendingRequests + openFollowUps + openProcurements;
 
         renderDashboardCounts(closedCount);
         renderDashboardUserFilter();
@@ -2136,8 +2230,8 @@
         updateDashFilterButtonLabel('dashBranchFilterBtn', 'סניף', dashBranchFilterSelection.length);
     }
 
-    var TASK_KIND_LABELS = { request: 'הקמת משתמש', followup: 'משימת המשך' };
-    var TASK_KIND_COLOR = { request: '#4f46e5', followup: '#0aa1a3' };
+    var TASK_KIND_LABELS = { request: 'הקמת משתמש', followup: 'משימת המשך', procurement: 'רכש' };
+    var TASK_KIND_COLOR = { request: '#4f46e5', followup: '#0aa1a3', procurement: '#f59e0b' };
 
     // Item 5 (tasks mode): user/branch aren't meaningful filters for the tasks tab —
     // replaced with a filter by task type, counted against whichever status sub-filter
@@ -2252,6 +2346,15 @@
                 userName: raw.requesterName, branch: branchName(raw.branchNumber),
             };
         }
+        if (kind === 'procurement') {
+            var reqName = [raw.firstNameHe, raw.lastNameHe].filter(Boolean).join(' ');
+            return {
+                kind: 'procurement', raw: raw, id: raw.id,
+                title: 'רכש מחשב ' + raw.computerType + ' - ' + (reqName || raw.suggestedEmail),
+                statusNorm: raw.status === 'הושלם' ? 'הושלם' : (raw.status === 'בטיפול' ? 'בטיפול' : 'חדש'),
+                timestamp: raw.createdAt, userName: raw.requestNumber, branch: branchName(raw.branchNumber),
+            };
+        }
         return {
             kind: 'followup', raw: raw, id: raw.id,
             title: 'משימת המשך: קריאה ' + raw.ticketNumber,
@@ -2262,7 +2365,8 @@
 
     function getAllTasks() {
         return dashAllUserRequests.map(function (r) { return normalizeTask('request', r); })
-            .concat(dashFollowUps.map(function (f) { return normalizeTask('followup', f); }));
+            .concat(dashFollowUps.map(function (f) { return normalizeTask('followup', f); }))
+            .concat(dashProcurementTasks.map(function (p) { return normalizeTask('procurement', p); }));
     }
 
     function getFilteredTasks() {
@@ -2287,8 +2391,27 @@
             (task.userName ? ' | ' + escapeHtml(task.userName) : '') + (task.branch ? ' | ' + escapeHtml(task.branch) : '') + '</div>';
         if (task.kind === 'request') {
             card.addEventListener('click', function () { openUserRequestDetail(task.raw); });
+        } else if (task.kind === 'procurement' && task.statusNorm !== 'הושלם') {
+            card.addEventListener('click', function () { openProcurementTaskComputerModal(task.raw); });
         }
         return card;
+    }
+
+    // Clicking an open "רכש" task lets IT register the computer that arrived, reusing
+    // the same computer-admin create modal — on save it links back to both the task and
+    // the originating request (see procurementTasks.linkComputer), unblocking markCompleted.
+    function openProcurementTaskComputerModal(procTask) {
+        openComputerAdminModal(null, {
+            prefillType: procTask.computerType,
+            prefillBranchNumber: procTask.branchNumber,
+            onSaved: async function (computerName) {
+                showLoading(true);
+                var linkRes = await apiPost('procurementTasks', 'linkComputer', { taskId: procTask.id, computerName: computerName });
+                showLoading(false);
+                if (!linkRes.ok) { alert(linkRes.error || 'שגיאה בשיוך המחשב למשימה'); return; }
+                if (isHubActive()) loadHubDashboard();
+            },
+        });
     }
 
     // Item 1 (dashboard follow-up): the default (unfiltered) ticket view also shows
@@ -3322,6 +3445,19 @@
     }
 
     // ── USER REQUEST FORM (v2.1, section 4ב) ───────────────────
+    function urAccessType() {
+        return document.querySelector('input[name="urAccessType"]:checked').value;
+    }
+
+    function refreshUrComputerBlockVisibility() {
+        document.getElementById('urComputerBlock').style.display = urAccessType() === 'מחשב' ? 'block' : 'none';
+    }
+
+    function refreshUrNewComputerTypeVisibility() {
+        var isOrderNew = document.getElementById('urComputerSelect').value === ORDER_NEW_COMPUTER_VALUE;
+        document.getElementById('urNewComputerTypeField').style.display = isOrderNew ? 'block' : 'none';
+    }
+
     async function loadUserRequestFormPage() {
         document.getElementById('userRequestFormContainer').style.display = 'block';
         document.getElementById('userRequestConfirmation').style.display = 'none';
@@ -3329,16 +3465,38 @@
         ['urFirstNameHe', 'urLastNameHe', 'urFirstNameEn', 'urLastNameEn', 'urRole'].forEach(function (id) {
             document.getElementById(id).value = '';
         });
+        document.querySelector('input[name="urAccessType"][value="מחשב"]').checked = true;
+        document.querySelector('input[name="urNewComputerType"][value="נייח"]').checked = true;
         showLoading(true);
         await ensureBranchesLoaded();
         populateBranchSelect(document.getElementById('urBranch'), '');
+        populateBranchComputerSelect(document.getElementById('urComputerSelect'), [], '');
         await ensureSharedFoldersLoaded();
         renderFolderCheckboxes(document.getElementById('urFolders'), []);
         showLoading(false);
+        refreshUrComputerBlockVisibility();
+        refreshUrNewComputerTypeVisibility();
     }
+
+    document.querySelectorAll('input[name="urAccessType"]').forEach(function (radio) {
+        radio.addEventListener('change', refreshUrComputerBlockVisibility);
+    });
+
+    document.getElementById('urComputerSelect').addEventListener('change', refreshUrNewComputerTypeVisibility);
+
+    document.getElementById('urBranch').addEventListener('change', async function () {
+        var branchNumber = this.value;
+        showLoading(true);
+        var list = await loadComputersByBranch(branchNumber);
+        showLoading(false);
+        populateBranchComputerSelect(document.getElementById('urComputerSelect'), list, '');
+        refreshUrNewComputerTypeVisibility();
+    });
 
     document.getElementById('userRequestSubmitBtn').addEventListener('click', async function () {
         var errEl = document.getElementById('userRequestSubmitError');
+        var accessType = urAccessType();
+        var computerSelectValue = document.getElementById('urComputerSelect').value;
         var payload = {
             firstNameHe: document.getElementById('urFirstNameHe').value.trim(),
             lastNameHe: document.getElementById('urLastNameHe').value.trim(),
@@ -3346,10 +3504,23 @@
             lastNameEn: document.getElementById('urLastNameEn').value.trim(),
             branchNumber: document.getElementById('urBranch').value,
             role: document.getElementById('urRole').value.trim(),
-            folderIds: getSelectedFolderIds(document.getElementById('urFolders')),
+            accessType: accessType,
         };
+        if (accessType === 'מחשב') {
+            if (computerSelectValue === ORDER_NEW_COMPUTER_VALUE) {
+                payload.newComputerType = document.querySelector('input[name="urNewComputerType"]:checked').value;
+            } else {
+                payload.assignedComputerName = computerSelectValue;
+            }
+            payload.folderIds = getSelectedFolderIds(document.getElementById('urFolders'));
+        }
         if (!payload.firstNameHe || !payload.lastNameHe || !payload.firstNameEn || !payload.lastNameEn) {
             errEl.textContent = 'יש למלא שם פרטי ומשפחה בעברית ובאנגלית';
+            errEl.style.display = 'block';
+            return;
+        }
+        if (accessType === 'מחשב' && !payload.assignedComputerName && !payload.newComputerType) {
+            errEl.textContent = 'יש לבחור עמדת מחשב קיימת או להזמין מחשב חדש';
             errEl.style.display = 'block';
             return;
         }
@@ -3368,72 +3539,10 @@
 
     document.getElementById('userRequestHomeBtn').addEventListener('click', function () { showView('hub'); });
 
-    // ── ADMIN: USER REQUESTS QUEUE (v2.1, section 4ב) ───────────
-    var userRequestsCache = [];
+    // Requests now surface only via the dashboard's unified tasks tab (see getAllTasks) —
+    // there's no separate admin queue page anymore; openUserRequestId still tracks which
+    // request the review wizard below is open for.
     var openUserRequestId = null;
-
-    async function loadUserRequestsAdminPage() {
-        showLoading(true);
-        var res = await apiGet('userRequests', 'list', {});
-        showLoading(false);
-        userRequestsCache = res.ok ? res.data : [];
-        renderUserRequestsQueue();
-    }
-
-    var REQUEST_CARD_COLOR = '#8b5cf6';
-
-    function buildUserRequestCard(r) {
-        var card = document.createElement('div');
-        card.className = 'ticket-card request-card';
-        if (r.status !== 'הוקם') applyOpenRowBlink(card, REQUEST_CARD_COLOR);
-        var statusClass = r.status === 'הוקם' ? 'status-closed' : (r.status === 'בטיפול' ? 'status-progress' : 'status-open');
-        card.innerHTML =
-            '<div class="ticket-card-header"><strong>' + escapeHtml(r.requestNumber) + ' · הקמת משתמש</strong>' +
-            '<span class="status-badge ' + statusClass + '">' + escapeHtml(r.status) + '</span></div>' +
-            '<div class="ticket-meta">' + formatDateTime(r.timestamp) + ' | ' + escapeHtml(r.firstNameHe + ' ' + r.lastNameHe) +
-            ' | ' + escapeHtml(r.suggestedEmail) + '</div>';
-        card.addEventListener('click', function () { openUserRequestDetail(r); });
-        if (r.status === 'ממתינה') {
-            var takeBtn = document.createElement('button');
-            takeBtn.type = 'button';
-            takeBtn.className = 'primary-button';
-            takeBtn.textContent = 'קח משימה';
-            takeBtn.style.marginTop = '8px';
-            takeBtn.addEventListener('click', function (e) { e.stopPropagation(); takeUserRequestQuick(r); });
-            card.appendChild(takeBtn);
-        }
-        return card;
-    }
-
-    async function takeUserRequestQuick(r) {
-        showLoading(true);
-        var res = await apiPost('userRequests', 'take', { requestId: r.requestId });
-        showLoading(false);
-        if (res.ok) {
-            loadUserRequestsAdminPage();
-            if (isHubActive() && Portal.isITAdmin()) loadHubDashboard();
-        } else {
-            alert(res.error || 'שגיאה');
-        }
-    }
-
-    function renderUserRequestsQueue() {
-        var pending = userRequestsCache.filter(function (r) { return r.status !== 'הוקם'; });
-        var completed = userRequestsCache.filter(function (r) { return r.status === 'הוקם'; });
-
-        var pendingEl = document.getElementById('userRequestsQueueList');
-        pendingEl.innerHTML = pending.length ? '' : '<p style="color:var(--muted);font-size:13px">אין בקשות ממתינות.</p>';
-        pending.forEach(function (r) { pendingEl.appendChild(buildUserRequestCard(r)); });
-
-        var completedEl = document.getElementById('userRequestsCompletedList');
-        completedEl.innerHTML = completed.length ? '' : '<p style="color:var(--muted);font-size:13px">אין בקשות שהוקמו עדיין.</p>';
-        completed.forEach(function (r) { completedEl.appendChild(buildUserRequestCard(r)); });
-    }
-
-    document.getElementById('userRequestsCompletedToggleBtn').addEventListener('click', function () {
-        var el = document.getElementById('userRequestsCompletedList');
-        el.style.display = el.style.display === 'none' ? 'flex' : 'none';
-    });
 
     // v2.1, follow-up: the review modal is a 3-step wizard (פרטי עובד → סקריפט → שליחה)
     // instead of one long flat form.
@@ -3460,7 +3569,33 @@
         document.getElementById('urdMarkCompletedBtn').style.display = (step === 3 && !isCompleted) ? 'inline-block' : 'none';
     }
 
+    function urdAccessType() {
+        return document.querySelector('input[name="urdAccessType"]:checked').value;
+    }
+
+    function refreshUrdComputerBlockVisibility() {
+        document.getElementById('urdComputerBlock').style.display = urdAccessType() === 'מחשב' ? 'block' : 'none';
+    }
+
+    function refreshUrdNewComputerTypeVisibility() {
+        var isOrderNew = document.getElementById('urdComputerSelect').value === ORDER_NEW_COMPUTER_VALUE;
+        document.getElementById('urdNewComputerTypeField').style.display = isOrderNew ? 'block' : 'none';
+    }
+
+    // Shows the "רשום מחשב שהתקבל" banner only while the request is waiting on an
+    // ordered-but-not-yet-registered computer (see markCompleted's gate on the server).
+    function refreshUrdProcurementStatus(req) {
+        var needsComputer = req && req.accessType === 'מחשב' && req.newComputerType && !req.assignedComputerName;
+        document.getElementById('urdProcurementStatus').style.display = needsComputer ? 'block' : 'none';
+        if (needsComputer) {
+            document.getElementById('urdProcurementStatusText').textContent =
+                'הוזמן מחשב ' + req.newComputerType + ' חדש - יש לרשום אותו במערכת לפני שניתן יהיה להשלים את הבקשה.';
+        }
+    }
+
     function currentUserRequestFieldPayload() {
+        var accessType = urdAccessType();
+        var computerSelectValue = document.getElementById('urdComputerSelect').value;
         var payload = {
             requestId: openUserRequestId,
             firstNameHe: document.getElementById('urdFirstNameHe').value.trim(),
@@ -3469,8 +3604,18 @@
             lastNameEn: document.getElementById('urdLastNameEn').value.trim(),
             branchNumber: document.getElementById('urdBranch').value,
             role: document.getElementById('urdRole').value.trim(),
-            folderIds: getSelectedFolderIds(document.getElementById('urdFolders')),
+            accessType: accessType,
         };
+        if (accessType === 'מחשב') {
+            if (computerSelectValue === ORDER_NEW_COMPUTER_VALUE) {
+                payload.newComputerType = document.querySelector('input[name="urdNewComputerType"]:checked').value;
+            } else {
+                payload.assignedComputerName = computerSelectValue;
+            }
+            payload.folderIds = getSelectedFolderIds(document.getElementById('urdFolders'));
+        } else {
+            payload.folderIds = [];
+        }
         if (urdScriptPasswordManuallyEdited) payload.tempPassword = document.getElementById('urdScriptPassword').value;
         return payload;
     }
@@ -3513,6 +3658,7 @@
         }
         var req = res.data.request;
         currentUserRequestFull = req;
+        currentUserRequestFull.procurementTaskId = res.data.procurementTaskId || null;
         document.getElementById('urdFirstNameHe').value = req.firstNameHe;
         document.getElementById('urdLastNameHe').value = req.lastNameHe;
         document.getElementById('urdFirstNameEn').value = req.firstNameEn;
@@ -3523,6 +3669,17 @@
         await ensureSharedFoldersLoaded();
         renderFolderCheckboxes(document.getElementById('urdFolders'), res.data.folders.map(function (f) { return f.id; }));
         document.getElementById('urdRequesterEmailNote').textContent = req.requesterEmail || '';
+
+        document.querySelector('input[name="urdAccessType"][value="' + (req.accessType || 'מחשב') + '"]').checked = true;
+        var branchComputers = await loadComputersByBranch(req.branchNumber);
+        var computerSelectValue = req.assignedComputerName || (req.newComputerType ? ORDER_NEW_COMPUTER_VALUE : '');
+        populateBranchComputerSelect(document.getElementById('urdComputerSelect'), branchComputers, computerSelectValue);
+        if (req.newComputerType) {
+            document.querySelector('input[name="urdNewComputerType"][value="' + req.newComputerType + '"]').checked = true;
+        }
+        refreshUrdComputerBlockVisibility();
+        refreshUrdNewComputerTypeVisibility();
+        refreshUrdProcurementStatus(req);
 
         if (req.status === 'הוקם') {
             document.getElementById('urdSuggestedEmail').value = req.suggestedEmail;
@@ -3550,6 +3707,42 @@
     document.getElementById('urdScriptPassword').addEventListener('input', function () { urdScriptPasswordManuallyEdited = true; });
     document.getElementById('urdScriptPassword').addEventListener('change', refreshUserRequestScriptPreview);
 
+    document.querySelectorAll('input[name="urdAccessType"]').forEach(function (radio) {
+        radio.addEventListener('change', refreshUrdComputerBlockVisibility);
+    });
+    document.getElementById('urdComputerSelect').addEventListener('change', refreshUrdNewComputerTypeVisibility);
+    document.getElementById('urdBranch').addEventListener('change', async function () {
+        var list = await loadComputersByBranch(this.value);
+        populateBranchComputerSelect(document.getElementById('urdComputerSelect'), list, '');
+        refreshUrdNewComputerTypeVisibility();
+    });
+
+    document.getElementById('urdCreateComputerBtn').addEventListener('click', function () {
+        openComputerAdminModal(null, {
+            prefillType: currentUserRequestFull ? currentUserRequestFull.newComputerType : 'נייח',
+            prefillBranchNumber: document.getElementById('urdBranch').value,
+            onSaved: async function (computerName) {
+                if (currentUserRequestFull && currentUserRequestFull.procurementTaskId) {
+                    showLoading(true);
+                    var linkRes = await apiPost('procurementTasks', 'linkComputer', {
+                        taskId: currentUserRequestFull.procurementTaskId, computerName: computerName,
+                    });
+                    showLoading(false);
+                    if (!linkRes.ok) { alert(linkRes.error || 'שגיאה בשיוך המחשב לבקשה'); return; }
+                }
+                var res = await apiGet('userRequests', 'get', { requestId: openUserRequestId });
+                if (res.ok) {
+                    currentUserRequestFull = res.data.request;
+                    currentUserRequestFull.procurementTaskId = res.data.procurementTaskId || null;
+                    var branchComputers = await loadComputersByBranch(currentUserRequestFull.branchNumber);
+                    populateBranchComputerSelect(document.getElementById('urdComputerSelect'), branchComputers, currentUserRequestFull.assignedComputerName);
+                    refreshUrdNewComputerTypeVisibility();
+                    refreshUrdProcurementStatus(currentUserRequestFull);
+                }
+            },
+        });
+    });
+
     document.getElementById('urdBackBtn').addEventListener('click', function () {
         if (urdCurrentStep > 1) setUrdStep(urdCurrentStep - 1);
     });
@@ -3562,6 +3755,11 @@
             var payload = currentUserRequestFieldPayload();
             if (!payload.firstNameHe || !payload.lastNameHe || !payload.firstNameEn || !payload.lastNameEn) {
                 errEl.textContent = 'יש למלא שם פרטי ומשפחה בעברית ובאנגלית';
+                errEl.style.display = 'block';
+                return;
+            }
+            if (payload.accessType === 'מחשב' && !payload.assignedComputerName && !payload.newComputerType) {
+                errEl.textContent = 'יש לבחור עמדת מחשב קיימת או להזמין מחשב חדש';
                 errEl.style.display = 'block';
                 return;
             }
@@ -3590,7 +3788,6 @@
         if (res.ok) {
             userRequestDetailTracker.reset();
             closeUserRequestDetail();
-            loadUserRequestsAdminPage();
             if (isHubActive() && Portal.isITAdmin()) loadHubDashboard();
         } else {
             document.getElementById('userRequestDetailError').textContent = res.error || 'שגיאה';
@@ -3649,13 +3846,52 @@
         });
     }
 
-    function populateComputerSelect(selectedComputerName) {
-        var sel = document.getElementById('uaComputer');
-        sel.innerHTML = '<option value="">ללא מחשב</option>' +
-            computersCache.map(function (c) {
-                return '<option value="' + escapeHtml(c.computerName) + '"' + (c.computerName === selectedComputerName ? ' selected' : '') + '>' + escapeHtml(c.computerName) + '</option>';
-            }).join('');
+    // Branch-scoped, with an "order new" sentinel — same picker used by the user-request
+    // form and its review wizard (item 5, follow-up: "בדיוק כמו" the request screen).
+    async function populateUaComputerSelect(branchNumber, selectedName) {
+        var list = await loadComputersByBranch(branchNumber);
+        populateBranchComputerSelect(document.getElementById('uaComputer'), list, selectedName || '');
     }
+
+    function uaAccessType() {
+        return document.querySelector('input[name="uaAccessType"]:checked').value;
+    }
+
+    function refreshUaComputerBlockVisibility() {
+        var isComputer = uaAccessType() === 'מחשב';
+        document.getElementById('uaComputerBlock').style.display = isComputer ? 'block' : 'none';
+        document.getElementById('uaFoldersField').style.display = isComputer ? 'block' : 'none';
+    }
+
+    function refreshUaNewComputerTypeVisibility() {
+        var isOrderNew = document.getElementById('uaComputer').value === ORDER_NEW_COMPUTER_VALUE;
+        document.getElementById('uaNewComputerTypeField').style.display = isOrderNew ? 'block' : 'none';
+    }
+
+    // Choosing "הזמנת מחשב חדש" here creates the computer right away (unlike the request
+    // flow's procurement task) — this modal has no approval queue to defer it through.
+    document.getElementById('uaComputer').addEventListener('change', function () {
+        if (this.value !== ORDER_NEW_COMPUTER_VALUE) { refreshUaNewComputerTypeVisibility(); return; }
+        var newType = document.querySelector('input[name="uaNewComputerType"]:checked').value;
+        var branchNumber = document.getElementById('uaBranch').value;
+        openComputerAdminModal(null, {
+            prefillType: newType,
+            prefillBranchNumber: branchNumber,
+            onSaved: async function (computerName) {
+                await populateUaComputerSelect(branchNumber, computerName);
+                refreshUaNewComputerTypeVisibility();
+            },
+        });
+        refreshUaNewComputerTypeVisibility();
+    });
+
+    document.querySelectorAll('input[name="uaAccessType"]').forEach(function (radio) {
+        radio.addEventListener('change', refreshUaComputerBlockVisibility);
+    });
+
+    document.getElementById('uaBranch').addEventListener('change', function () {
+        populateUaComputerSelect(this.value, '');
+    });
 
     var userAdminTracker = makeDirtyTracker(document.getElementById('userAdminModalBackdrop'));
     maskPhoneInput(document.getElementById('uaPhone'));
@@ -3705,7 +3941,13 @@
         // a user never sees this section (matches server-side enforcement).
         document.getElementById('uaAdminFlagsSection').style.display = Portal.isSuperAdmin() ? 'block' : 'none';
         var assignedComp = user ? computerAssignedTo(user.email) : null;
-        populateComputerSelect(assignedComp ? assignedComp.computerName : '');
+        // Editing an existing mail-only user (no computer today) defaults to מייל; a new
+        // user, or one who already has a computer, defaults to מחשב.
+        var defaultAccessType = (user && !assignedComp) ? 'מייל' : 'מחשב';
+        document.querySelector('input[name="uaAccessType"][value="' + defaultAccessType + '"]').checked = true;
+        await populateUaComputerSelect(user ? user.branchNumber : '', assignedComp ? assignedComp.computerName : '');
+        refreshUaComputerBlockVisibility();
+        refreshUaNewComputerTypeVisibility();
         document.getElementById('userAdminModalError').style.display = 'none';
         document.getElementById('userAdminModalBackdrop').classList.add('visible');
         userAdminTracker.reset();
@@ -3720,6 +3962,13 @@
 
     document.getElementById('userAdminSaveBtn').addEventListener('click', async function () {
         var errEl = document.getElementById('userAdminModalError');
+        var isComputerAccess = uaAccessType() === 'מחשב';
+        var computerSelectValue = document.getElementById('uaComputer').value;
+        if (isComputerAccess && computerSelectValue === ORDER_NEW_COMPUTER_VALUE) {
+            errEl.textContent = 'יש לסיים את יצירת המחשב החדש (או לבחור עמדה קיימת) לפני השמירה';
+            errEl.style.display = 'block';
+            return;
+        }
         var payload = {
             firstName: document.getElementById('uaFirstName').value.trim(),
             lastName: document.getElementById('uaLastName').value.trim(),
@@ -3729,7 +3978,7 @@
             isITAdmin: document.getElementById('uaIsITAdmin').checked,
             isProceduresAdmin: document.getElementById('uaIsProceduresAdmin').checked,
             isUserRequestSubmitter: document.getElementById('uaIsUserRequestSubmitter').checked,
-            assignedComputerName: document.getElementById('uaComputer').value,
+            assignedComputerName: isComputerAccess ? computerSelectValue : '',
         };
         if (editingUserEmail) {
             payload.email = editingUserEmail;
@@ -3757,7 +4006,7 @@
             lastNameEn: document.getElementById('uaLastNameEn').value.trim(),
             role: document.getElementById('uaRole').value.trim(),
             branchNumber: document.getElementById('uaBranch').value,
-            folderIds: getSelectedFolderIds(document.getElementById('uaFolders')),
+            folderIds: uaAccessType() === 'מחשב' ? getSelectedFolderIds(document.getElementById('uaFolders')) : [],
         };
         if (uaScriptPasswordManuallyEdited) scriptPayload.tempPassword = document.getElementById('uaScriptPassword').value;
         if (!scriptPayload.firstNameHe || !scriptPayload.lastNameHe || !scriptPayload.firstNameEn || !scriptPayload.lastNameEn) {
@@ -3851,7 +4100,14 @@
     }
     document.getElementById('caAnyDesk').addEventListener('input', updateAnyDeskConnectLink);
 
-    async function openComputerAdminModal(comp) {
+    // opts.onSaved lets other flows (e.g. the user-request wizard's procurement step)
+    // hijack what happens after a successful save instead of the default admin-table
+    // refresh — used to link the freshly-created computer back to its ProcurementTask.
+    var computerAdminModalOnSaved = null;
+
+    async function openComputerAdminModal(comp, opts) {
+        opts = opts || {};
+        computerAdminModalOnSaved = opts.onSaved || null;
         editingComputerName = comp ? comp.computerName : null;
         document.getElementById('computerAdminModalTitle').textContent = comp ? 'עריכת מחשב' : 'מחשב חדש';
         document.getElementById('caComputerName').value = comp ? comp.computerName : '';
@@ -3865,13 +4121,13 @@
             legacyOpt.textContent = comp.type + ' (ערך קודם)';
             typeSelect.appendChild(legacyOpt);
         }
-        typeSelect.value = comp ? comp.type : 'נייח';
+        typeSelect.value = comp ? comp.type : (opts.prefillType || 'נייח');
         document.getElementById('caRam').value = comp ? String(comp.ram || '').replace(/\D/g, '') : '';
         await ensurePrintersLoaded();
         populatePrinterSelect(document.getElementById('caPrinter'), comp ? comp.defaultPrinterName : '');
         document.getElementById('caAnyDesk').value = comp ? comp.anyDeskId : '';
         updateAnyDeskConnectLink();
-        populateBranchSelect(document.getElementById('caBranch'), comp ? comp.branchNumber : '');
+        populateBranchSelect(document.getElementById('caBranch'), comp ? comp.branchNumber : (opts.prefillBranchNumber != null ? opts.prefillBranchNumber : ''));
         document.getElementById('caNotes').value = comp ? comp.notes : '';
         document.getElementById('computerAdminModalError').style.display = 'none';
         document.getElementById('computerAdminModalBackdrop').classList.add('visible');
@@ -3905,8 +4161,16 @@
         showLoading(true);
         var res = await apiPost('computers', editingComputerName ? 'update' : 'create', payload);
         showLoading(false);
-        if (res.ok) { computerAdminTracker.reset(); closeComputerAdminModal(); loadComputersAdminPage(); }
-        else { errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block'; }
+        if (res.ok) {
+            computerAdminTracker.reset();
+            var onSaved = computerAdminModalOnSaved;
+            computerAdminModalOnSaved = null;
+            closeComputerAdminModal();
+            if (onSaved) await onSaved(payload.computerName);
+            else loadComputersAdminPage();
+        } else {
+            errEl.textContent = res.error || 'שגיאה בשמירה'; errEl.style.display = 'block';
+        }
     });
 
     async function deleteAdminComputer(comp) {
