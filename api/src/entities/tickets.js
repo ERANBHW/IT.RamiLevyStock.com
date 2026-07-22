@@ -204,7 +204,7 @@ async function update(payload, caller) {
 // employee picked the wrong category by mistake. Unlike REQUESTER_EDITABLE_FIELDS this
 // has no status restriction (a closed ticket's record can still be corrected) and always
 // logs a 'field_updated' entry per changed field, same as the requester's own edit path.
-const ADMIN_EDITABLE_FIELDS = ['Category', 'Urgency', 'UserName', 'ComputerName', 'Printer'];
+const ADMIN_EDITABLE_FIELDS = ['Category', 'Subcategory', 'Urgency', 'UserName', 'ComputerName', 'Printer'];
 
 async function adminUpdateFields(payload, caller) {
   if (!caller.isITAdmin) return { ok: false, error: 'אין הרשאה' };

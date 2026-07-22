@@ -196,6 +196,8 @@
         .dash-header-right-group { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
         .status-select { border: none; cursor: pointer; font-family: inherit; -webkit-appearance: auto; appearance: auto; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 700; }
         .dash-anydesk-btn, .dash-quick-tag { text-decoration: none; font-size: 12px; padding: 2px 8px; border-radius: 10px; background: var(--background); color: var(--text); cursor: pointer; border: none; font-family: inherit; }
+        .dash-take-btn { background: #fff; color: #7c3aed; border: 1.5px solid #7c3aed; font-weight: 700; padding: 2px 10px; border-radius: 10px; }
+        .dash-take-btn:hover { background: #f5f0ff; }
         .dash-link-field { color: var(--brand-pink); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
         .dash-whatsapp-link { text-decoration: none; margin-right: 4px; display: inline-flex; align-items: center; vertical-align: middle; }
         .dash-assigned-tag { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 10px; background: rgba(222, 57, 149, 0.12); color: var(--brand-pink); font-size: 11px; font-weight: 700; }
@@ -278,10 +280,20 @@
         <div class="profile-modal-header"><h2>תיקון פרטי קריאה <span id="tfTicketNumber" dir="ltr" style="unicode-bidi:embed"></span></h2></div>
         <div class="profile-modal-body">
             <div class="field"><label for="tfCategory">סוג קריאה</label><select id="tfCategory"></select></div>
+            <div class="field" id="tfSubcategoryField" style="display:none"><label for="tfSubcategory">פירוט</label><select id="tfSubcategory"></select></div>
             <div class="field"><label for="tfUrgency">דרגת חשיבות</label><select id="tfUrgency"></select></div>
-            <div class="field"><label for="tfUserName">שם עובד</label><input id="tfUserName" type="text"></div>
-            <div class="field"><label for="tfComputerName">שם מחשב</label><input id="tfComputerName" type="text" dir="ltr"></div>
-            <div class="field"><label for="tfPrinter">שם מדפסת</label><input id="tfPrinter" type="text" dir="ltr"></div>
+            <div class="field"><label for="tfUserName">שם עובד</label>
+                <input id="tfUserName" type="text" list="tfUserNameOptions" autocomplete="off">
+                <datalist id="tfUserNameOptions"></datalist>
+            </div>
+            <div class="field"><label for="tfComputerName">שם מחשב</label>
+                <input id="tfComputerName" type="text" dir="ltr" list="tfComputerNameOptions" autocomplete="off">
+                <datalist id="tfComputerNameOptions"></datalist>
+            </div>
+            <div class="field" id="tfPrinterField" style="display:none"><label for="tfPrinter">שם מדפסת</label>
+                <input id="tfPrinter" type="text" dir="ltr" list="tfPrinterOptions" autocomplete="off">
+                <datalist id="tfPrinterOptions"></datalist>
+            </div>
             <div id="ticketFieldsModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
         </div>
         <div class="profile-modal-actions">
@@ -342,28 +354,32 @@
                     <div id="dashFocusTagContainer" style="display:none;margin-top:10px"></div>
                     <div class="dashboard-charts" id="dashboardCharts" style="display:none"></div>
                     <div id="dashTicketsToolbar" style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin:14px 0 8px;flex-wrap:wrap">
-                        <div class="dash-toolbar-group">
+                        <div class="dash-toolbar-group" id="dashFilterGroup">
                             <span class="dash-toolbar-icon" title="סינון">▼</span>
-                            <div style="position:relative">
+                            <div style="position:relative" id="dashUserFilterWrap">
                                 <button type="button" class="sort-btn" id="dashUserFilterBtn">משתמש</button>
                                 <div id="dashUserFilterPopover" class="filter-popover" style="display:none"></div>
                             </div>
-                            <div style="position:relative">
+                            <div style="position:relative" id="dashBranchFilterWrap">
                                 <button type="button" class="sort-btn" id="dashBranchFilterBtn">סניף</button>
                                 <div id="dashBranchFilterPopover" class="filter-popover" style="display:none"></div>
                             </div>
+                            <div style="position:relative;display:none" id="dashTaskTypeFilterWrap">
+                                <button type="button" class="sort-btn" id="dashTaskTypeFilterBtn">סוג משימה</button>
+                                <div id="dashTaskTypeFilterPopover" class="filter-popover" style="display:none"></div>
+                            </div>
                         </div>
-                        <div class="dash-toolbar-group sort-buttons">
+                        <div class="dash-toolbar-group sort-buttons" id="dashSortGroup">
                             <span class="dash-toolbar-icon" title="מיון">⇅</span>
                             <button type="button" class="sort-btn active" id="dashSortUrgency" data-sort="urgency">דרגה</button>
                             <button type="button" class="sort-btn" id="dashSortDate" data-sort="date">תאריך</button>
                             <button type="button" class="sort-btn" id="dashSortBranch" data-sort="branch">סניף</button>
                         </div>
-                    </div>
-                    <div id="dashTaskStatusRow" class="dash-toolbar-group" style="display:none;margin-bottom:10px">
-                        <button type="button" class="sort-btn active" id="dashTaskStatusNew" data-task-status="חדש">חדש</button>
-                        <button type="button" class="sort-btn" id="dashTaskStatusProgress" data-task-status="בטיפול">בטיפול</button>
-                        <button type="button" class="sort-btn" id="dashTaskStatusDone" data-task-status="הושלם">הושלם</button>
+                        <div class="dash-toolbar-group" id="dashTaskStatusRow" style="display:none">
+                            <button type="button" class="sort-btn" id="dashTaskStatusNew" data-task-status="חדש">חדש</button>
+                            <button type="button" class="sort-btn" id="dashTaskStatusProgress" data-task-status="בטיפול">בטיפול</button>
+                            <button type="button" class="sort-btn" id="dashTaskStatusDone" data-task-status="הושלם">הושלם</button>
+                        </div>
                     </div>
                     <div id="dashTicketsList" style="display:flex;flex-direction:column;gap:8px"></div>
                     <button type="button" class="secondary-button" id="dashLoadMoreBtn" style="display:none;margin-top:10px;width:100%">הצג עוד</button>
@@ -1628,7 +1644,7 @@
     var dashboardRefreshTimer = null;
     var dashStatusFilter = null; // null = open+in-progress (default) | 'פתוחה' | 'בטיפול' | 'סגורה' — set by clicking a cube
     var dashViewMode = 'tickets'; // 'tickets' | 'tasks' — the 4th cube switches the whole table to a different data source
-    var dashTaskStatusFilter = 'חדש'; // 'חדש' | 'בטיפול' | 'הושלם' — sub-filter inside tasks mode
+    var dashTaskStatusFilter = null; // null = show all statuses (default) | 'חדש' | 'בטיפול' | 'הושלם'
     var dashSortBy = 'urgency'; // 'urgency' | 'date' | 'branch'
     var dashDisplayLimit = 30; // pagination — "הצג עוד" adds 30 more, client-side only
     var openDashboardTicketNumber = null; // survives re-renders; the reused DOM node keeps its content untouched
@@ -1661,6 +1677,7 @@
         renderDashboardCounts(closedCount);
         renderDashboardUserFilter();
         renderDashboardBranchFilter();
+        if (dashViewMode === 'tasks') renderDashboardTaskTypeFilter();
         renderDashboardCharts();
         updateDashCubeActiveClasses();
         if (dashViewMode === 'tasks') renderDashboardTasksList(); else renderDashboardTicketsList();
@@ -1737,6 +1754,7 @@
     // scoped to whichever status-cube is currently active (item 5).
     var dashUserFilterSelection = [];
     var dashBranchFilterSelection = [];
+    var dashTaskTypeFilterSelection = []; // 'request' | 'followup' — tasks-mode filter (item 5)
 
     function updateDashFilterButtonLabel(btnId, base, count) {
         document.getElementById(btnId).textContent = base + (count ? ' (' + count + ')' : '');
@@ -1781,6 +1799,36 @@
             }).join('')
             : '<span style="color:var(--muted);font-size:12px">אין נתונים</span>';
         updateDashFilterButtonLabel('dashBranchFilterBtn', 'סניף', dashBranchFilterSelection.length);
+    }
+
+    var TASK_KIND_LABELS = { request: 'הקמת משתמש', followup: 'משימת המשך' };
+
+    // Item 5 (tasks mode): user/branch aren't meaningful filters for the tasks tab —
+    // replaced with a filter by task type, counted against whichever status sub-filter
+    // is currently active (same "counts scoped to the active status" pattern as the
+    // ticket table's own user/branch popovers).
+    function getStatusFilteredTasksSource() {
+        return getAllTasks().filter(function (task) {
+            return !dashTaskStatusFilter || task.statusNorm === dashTaskStatusFilter;
+        });
+    }
+
+    function renderDashboardTaskTypeFilter() {
+        var popover = document.getElementById('dashTaskTypeFilterPopover');
+        if (popover.style.display !== 'none') return;
+        var counts = {};
+        getStatusFilteredTasksSource().forEach(function (task) {
+            counts[task.kind] = (counts[task.kind] || 0) + 1;
+        });
+        var kinds = Object.keys(counts);
+        dashTaskTypeFilterSelection = dashTaskTypeFilterSelection.filter(function (k) { return kinds.indexOf(k) !== -1; });
+        popover.innerHTML = kinds.length
+            ? kinds.map(function (k) {
+                var checked = dashTaskTypeFilterSelection.indexOf(k) !== -1 ? ' checked' : '';
+                return '<label><input type="checkbox" value="' + escapeHtml(k) + '"' + checked + '>' + escapeHtml(TASK_KIND_LABELS[k] || k) + ' (' + counts[k] + ')</label>';
+            }).join('')
+            : '<span style="color:var(--muted);font-size:12px">אין נתונים</span>';
+        updateDashFilterButtonLabel('dashTaskTypeFilterBtn', 'סוג משימה', dashTaskTypeFilterSelection.length);
     }
 
     // Single source of truth for what the table below shows: the status-cube source,
@@ -1881,10 +1929,9 @@
 
     function getFilteredTasks() {
         return getAllTasks().filter(function (task) {
-            var statusOk = task.statusNorm === dashTaskStatusFilter;
-            var userOk = !dashUserFilterSelection.length || dashUserFilterSelection.indexOf(task.userName) !== -1;
-            var branchOk = !dashBranchFilterSelection.length || dashBranchFilterSelection.indexOf(task.branch || 'ללא סניף') !== -1;
-            return statusOk && userOk && branchOk;
+            var statusOk = !dashTaskStatusFilter || task.statusNorm === dashTaskStatusFilter;
+            var typeOk = !dashTaskTypeFilterSelection.length || dashTaskTypeFilterSelection.indexOf(task.kind) !== -1;
+            return statusOk && typeOk;
         }).sort(function (a, b) { return new Date(b.timestamp) - new Date(a.timestamp); });
     }
 
@@ -1942,7 +1989,7 @@
         // The dropdown (uncolored — item 1) only appears once the ticket has an actual
         // in-progress/closed state to move between.
         var statusControlHtml = t.status === 'פתוחה'
-            ? '<button type="button" class="dash-quick-tag" data-take-and-focus>קח קריאה</button>'
+            ? '<button type="button" class="dash-quick-tag dash-take-btn" data-take-and-focus>קח קריאה ←</button>'
             : '<select class="dash-quick-tag status-select" data-status-select>' +
                 DASHBOARD_STATUS_OPTIONS.map(function (s) {
                     return '<option value="' + s + '"' + (s === t.status ? ' selected' : '') + '>' + s + '</option>';
@@ -2392,6 +2439,7 @@
     document.addEventListener('click', function () {
         document.getElementById('dashUserFilterPopover').style.display = 'none';
         document.getElementById('dashBranchFilterPopover').style.display = 'none';
+        document.getElementById('dashTaskTypeFilterPopover').style.display = 'none';
     });
     document.getElementById('dashUserFilterPopover').addEventListener('click', function (e) { e.stopPropagation(); });
     document.getElementById('dashBranchFilterPopover').addEventListener('click', function (e) { e.stopPropagation(); });
@@ -2434,11 +2482,23 @@
         document.getElementById('dashCubeTasks').classList.toggle('dc-active', dashViewMode === 'tasks');
     }
 
+    // Toolbar layout swaps by mode (items 4+5): tickets mode shows the משתמש/סניף
+    // filters + urgency/date/branch sort tags; tasks mode replaces them with a single
+    // "סוג משימה" filter + the חדש/בטיפול/הושלם status filter, in the very same slots.
+    function setDashToolbarMode(mode) {
+        var tasksMode = mode === 'tasks';
+        document.getElementById('dashUserFilterWrap').style.display = tasksMode ? 'none' : '';
+        document.getElementById('dashBranchFilterWrap').style.display = tasksMode ? 'none' : '';
+        document.getElementById('dashTaskTypeFilterWrap').style.display = tasksMode ? '' : 'none';
+        document.getElementById('dashSortGroup').style.display = tasksMode ? 'none' : 'flex';
+        document.getElementById('dashTaskStatusRow').style.display = tasksMode ? 'flex' : 'none';
+    }
+
     function setDashStatusFilter(status) {
         dashViewMode = 'tickets';
         dashFocusedTicketNumber = null;
         renderDashFocusTag();
-        document.getElementById('dashTaskStatusRow').style.display = 'none';
+        setDashToolbarMode('tickets');
         dashStatusFilter = (dashStatusFilter === status) ? null : status;
         dashDisplayLimit = 30;
         updateDashCubeActiveClasses();
@@ -2461,7 +2521,8 @@
     });
 
     // "משימות" (item 2) is a MODE, not a status filter — clicking it again returns to
-    // the normal tickets view (mirrors how the other three cubes toggle off).
+    // the normal tickets view (mirrors how the other three cubes toggle off). Default
+    // status sub-filter is "show all" (item 3) — no button starts active.
     document.getElementById('dashCubeTasks').addEventListener('click', async function () {
         if (dashViewMode === 'tasks') { setDashStatusFilter(null); return; }
         dashViewMode = 'tasks';
@@ -2476,24 +2537,40 @@
             showLoading(false);
         }
         updateDashCubeActiveClasses();
-        document.getElementById('dashTaskStatusRow').style.display = 'flex';
+        setDashToolbarMode('tasks');
         renderDashboardCharts();
-        renderDashboardUserFilter();
-        renderDashboardBranchFilter();
+        renderDashboardTaskTypeFilter();
         renderDashboardTasksList();
     });
 
     function setDashTaskStatusFilter(status) {
-        dashTaskStatusFilter = status;
+        dashTaskStatusFilter = (dashTaskStatusFilter === status) ? null : status;
         ['dashTaskStatusNew', 'dashTaskStatusProgress', 'dashTaskStatusDone'].forEach(function (id) {
             var btn = document.getElementById(id);
-            btn.classList.toggle('active', btn.getAttribute('data-task-status') === status);
+            btn.classList.toggle('active', btn.getAttribute('data-task-status') === dashTaskStatusFilter);
         });
+        renderDashboardTaskTypeFilter();
         renderDashboardTasksList();
     }
     document.getElementById('dashTaskStatusNew').addEventListener('click', function () { setDashTaskStatusFilter('חדש'); });
     document.getElementById('dashTaskStatusProgress').addEventListener('click', function () { setDashTaskStatusFilter('בטיפול'); });
     document.getElementById('dashTaskStatusDone').addEventListener('click', function () { setDashTaskStatusFilter('הושלם'); });
+
+    document.getElementById('dashTaskTypeFilterBtn').addEventListener('click', function (e) {
+        e.stopPropagation();
+        toggleFilterPopover('dashTaskTypeFilterPopover', 'dashUserFilterPopover');
+        document.getElementById('dashBranchFilterPopover').style.display = 'none';
+    });
+    document.getElementById('dashTaskTypeFilterPopover').addEventListener('click', function (e) { e.stopPropagation(); });
+    document.getElementById('dashTaskTypeFilterPopover').addEventListener('change', function (e) {
+        if (e.target.type !== 'checkbox') return;
+        var v = e.target.value;
+        dashTaskTypeFilterSelection = e.target.checked
+            ? dashTaskTypeFilterSelection.concat([v])
+            : dashTaskTypeFilterSelection.filter(function (x) { return x !== v; });
+        updateDashFilterButtonLabel('dashTaskTypeFilterBtn', 'סוג משימה', dashTaskTypeFilterSelection.length);
+        renderDashboardTasksList();
+    });
 
     function setDashSortBy(sortBy) {
         dashSortBy = sortBy;
@@ -2540,23 +2617,81 @@
     var ticketFieldsError = document.getElementById('ticketFieldsModalError');
     var ticketFieldsTracker = makeDirtyTracker(ticketFieldsModal);
     var editingTicketFields = null;
+    var tfUsersCache = null;
+    var tfComputerNamesCache = null;
 
-    function openTicketEditFieldsModal(t) {
+    async function ensureTfAutocompleteData() {
+        if (!tfUsersCache) {
+            var uRes = await apiGet('users', 'list', {});
+            tfUsersCache = uRes.ok ? uRes.data : [];
+        }
+        if (!tfComputerNamesCache) {
+            var cRes = await apiGet('computers', 'listNames', {});
+            tfComputerNamesCache = cRes.ok ? cRes.data : [];
+        }
+        await ensurePrintersLoaded();
+    }
+
+    // Populates the subcategory <select> for whichever category is currently chosen in
+    // the modal — same source (ticketConfigCache) as the ticket-submission form's own
+    // subcategory field, so an admin correction offers exactly the same options.
+    function populateTfSubcategoryOptions(categoryName, selectedSubcategory) {
+        var field = document.getElementById('tfSubcategoryField');
+        var sel = document.getElementById('tfSubcategory');
+        var category = categoryByName(categoryName);
+        var subs = category ? category.subcategories : [];
+        if (!subs.length) { field.style.display = 'none'; sel.innerHTML = ''; return; }
+        field.style.display = 'block';
+        sel.innerHTML = subs.map(function (s) {
+            return '<option' + (s.name === selectedSubcategory ? ' selected' : '') + '>' + escapeHtml(s.name) + '</option>';
+        }).join('');
+    }
+
+    document.getElementById('tfCategory').addEventListener('change', function () {
+        populateTfSubcategoryOptions(this.value, null);
+    });
+
+    async function openTicketEditFieldsModal(t) {
         editingTicketFields = t;
         document.getElementById('tfTicketNumber').textContent = t.ticketNumber;
+        showLoading(true);
+        await ensureTfAutocompleteData();
+        showLoading(false);
+
         var catSel = document.getElementById('tfCategory');
         var categories = ticketConfigCache ? ticketConfigCache.categories : [];
         catSel.innerHTML = categories.map(function (c) {
             return '<option' + (c.name === t.category ? ' selected' : '') + '>' + escapeHtml(c.name) + '</option>';
         }).join('');
+        populateTfSubcategoryOptions(catSel.value, t.subcategory);
+
         var urgSel = document.getElementById('tfUrgency');
         var urgencies = ticketConfigCache ? ticketConfigCache.urgencies : [];
         urgSel.innerHTML = urgencies.map(function (u) {
             return '<option' + (u.name === t.urgency ? ' selected' : '') + '>' + escapeHtml(u.name) + '</option>';
         }).join('');
+
+        // Text inputs paired with a <datalist> (item 2): typing filters the native
+        // browser suggestion dropdown against the real users/computers/printers lists.
+        document.getElementById('tfUserNameOptions').innerHTML = tfUsersCache.map(function (u) {
+            var name = [u.firstName, u.lastName].filter(Boolean).join(' ');
+            return name ? '<option value="' + escapeHtml(name) + '">' : '';
+        }).join('');
         document.getElementById('tfUserName').value = t.userName || '';
+
+        document.getElementById('tfComputerNameOptions').innerHTML = tfComputerNamesCache.map(function (n) {
+            return '<option value="' + escapeHtml(n) + '">';
+        }).join('');
         document.getElementById('tfComputerName').value = t.computerName || '';
+
+        // Printer only shown when the ticket actually was opened as a printer ticket —
+        // otherwise there's nothing meaningful to correct there.
+        document.getElementById('tfPrinterField').style.display = t.isPrinterTicket ? 'block' : 'none';
+        document.getElementById('tfPrinterOptions').innerHTML = (printersCache || []).map(function (p) {
+            return '<option value="' + escapeHtml(p.printerName) + '">';
+        }).join('');
         document.getElementById('tfPrinter').value = t.printer || '';
+
         ticketFieldsError.style.display = 'none';
         ticketFieldsModal.classList.add('visible');
         ticketFieldsTracker.reset();
@@ -2570,13 +2705,15 @@
 
     document.getElementById('ticketFieldsSaveBtn').addEventListener('click', async function () {
         if (!editingTicketFields) return;
+        var subcategoryVisible = document.getElementById('tfSubcategoryField').style.display !== 'none';
         var payload = {
             ticketNumber: editingTicketFields.ticketNumber,
             category: document.getElementById('tfCategory').value,
+            subcategory: subcategoryVisible ? document.getElementById('tfSubcategory').value : '',
             urgency: document.getElementById('tfUrgency').value,
             userName: document.getElementById('tfUserName').value.trim(),
             computerName: document.getElementById('tfComputerName').value.trim(),
-            printer: document.getElementById('tfPrinter').value.trim(),
+            printer: editingTicketFields.isPrinterTicket ? document.getElementById('tfPrinter').value.trim() : editingTicketFields.printer,
         };
         showLoading(true);
         var res = await apiPost('tickets', 'adminUpdateFields', payload);
@@ -2589,8 +2726,8 @@
         ticketFieldsTracker.reset();
         closeTicketFieldsModal();
         patchDashboardTicket(payload.ticketNumber, {
-            category: payload.category, urgency: payload.urgency, userName: payload.userName,
-            computerName: payload.computerName, printer: payload.printer,
+            category: payload.category, subcategory: payload.subcategory, urgency: payload.urgency,
+            userName: payload.userName, computerName: payload.computerName, printer: payload.printer,
         });
         refreshOpenDashboardDetail();
     });
