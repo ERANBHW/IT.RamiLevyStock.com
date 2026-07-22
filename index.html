@@ -3111,19 +3111,17 @@
         var subcategory = subcategoryField.style.display !== 'none' ? document.getElementById('tkSubcategory').value : '';
         var subcategoryRequired = subcategoryField.style.display !== 'none';
 
-        // If the category's own subcategory is the dynamic "printers-by-branch" picker,
-        // choosing a printer there already unambiguously identifies this as a printer
-        // ticket — it drives isPrinterTicket/printer directly instead of also requiring
-        // the separate "for: מחשב/מדפסת" toggle below to be flipped by hand.
-        var categoryObj = categoryByName(category);
-        var dynamicPrinterSub = categoryObj
-            ? categoryObj.subcategories.filter(function (s) { return s.isDynamic && s.dynamicSource === 'printers-by-branch'; })[0]
-            : null;
-        var isPrinterTicket = dynamicPrinterSub
-            ? !!subcategory
+        // Whenever the chosen "פירוט" (subcategory) value is itself a real printer name
+        // (whether that dropdown is the dynamic "printers-by-branch" catalog picker or a
+        // plain static list an admin filled with printer names), the user has already
+        // told us exactly which printer this is about — that alone marks the ticket as a
+        // printer ticket, no need to also flip the separate "for: מחשב/מדפסת" toggle.
+        var subcategoryIsPrinterName = !!subcategory && (printersCache || []).some(function (p) { return p.printerName === subcategory; });
+        var isPrinterTicket = subcategoryIsPrinterName
+            ? true
             : document.querySelector('input[name="tkForType"]:checked').value === 'printer';
         var printerName = isPrinterTicket
-            ? (dynamicPrinterSub ? subcategory : document.getElementById('tkPrinterSelect').value)
+            ? (subcategoryIsPrinterName ? subcategory : document.getElementById('tkPrinterSelect').value)
             : '';
         if (!category || !tkSelectedUrgencyName || !description || (isPrinterTicket && !printerName) || (subcategoryRequired && !subcategory)) {
             errEl.textContent = isPrinterTicket && !printerName ? 'יש לבחור מדפסת' :
