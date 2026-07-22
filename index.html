@@ -1960,6 +1960,7 @@
     var dashRowElements = {}; // ticketNumber -> { wrap, card, detail } — reused across refreshes so an open row never gets torn down
     var dashTicketsByNumber = {}; // ticketNumber -> latest ticket object, so click handlers never act on stale data
     var dashFocusedTicketNumber = null; // item 4 — isolates the table on one ticket right after taking it
+    var dashComputersByName = {}; // computerName -> live Computers row — AnyDesk tag reads from here, not the ticket's own (possibly stale) snapshot
 
     function isHubActive() { return document.getElementById('view-hub').classList.contains('active'); }
 
@@ -1979,6 +1980,15 @@
         var followUpsRes = await apiGet('tickets', 'listFollowUps', {});
         dashFollowUps = followUpsRes.ok ? followUpsRes.data : [];
         dashFollowUpsLoaded = true;
+        // Live computer records (item, dashboard follow-up) — a ticket's own AnyDeskId
+        // is only a creation-time snapshot; if the computer's AnyDesk ID was added or
+        // changed afterward, the ticket's copy stays stale. The AnyDesk tag reads the
+        // CURRENT value from here instead.
+        var dashComputersRes = await apiGet('computers', 'list', {});
+        dashComputersByName = {};
+        if (dashComputersRes.ok) {
+            dashComputersRes.data.forEach(function (c) { dashComputersByName[c.computerName] = c; });
+        }
         var pendingRequests = dashAllUserRequests.filter(function (r) { return r.status !== 'הוקם'; }).length;
         var openFollowUps = dashFollowUps.filter(function (f) { return f.status !== 'הושלם'; }).length;
         document.getElementById('dashFollowupsCount').textContent = pendingRequests + openFollowUps;
@@ -2323,9 +2333,12 @@
         // is also flagged as a printer ticket. If the AnyDeskId snapshot is missing,
         // still show the tag — clicking it opens the computer's record to set one,
         // instead of just disappearing with no way to fix it.
+        var liveAnyDeskId = t.computerName && dashComputersByName[t.computerName]
+            ? dashComputersByName[t.computerName].anyDeskId
+            : t.anyDeskId;
         var anydeskHtml = t.computerName
-            ? (t.anyDeskId
-                ? '<a class="dash-anydesk-btn" href="anydesk:' + encodeURIComponent(t.anyDeskId) + '" title="התחברות למחשב דרך AnyDesk" data-stop>🖥️</a>'
+            ? (liveAnyDeskId
+                ? '<a class="dash-anydesk-btn" href="anydesk:' + encodeURIComponent(liveAnyDeskId) + '" title="התחברות למחשב דרך AnyDesk" data-stop>🖥️</a>'
                 : '<button type="button" class="dash-anydesk-btn" data-assign-anydesk title="אין AnyDesk מוגדר - לחץ להוספה" data-stop>🖥️ אין AnyDesk</button>')
             : '';
         // Printer only shows up as its own tag when the ticket actually WAS a printer
