@@ -18,7 +18,7 @@ export function renderHeader(containerEl, opts) {
   var backBtn = containerEl.querySelector('[data-nav-back]');
   if (backBtn) {
     backBtn.addEventListener('click', opts.onBack || function () {
-      window.location.href = opts.backHref || 'app.html';
+      window.location.href = opts.backHref || 'index.html';
     });
   }
 }

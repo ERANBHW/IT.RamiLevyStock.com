@@ -18,7 +18,7 @@ var msalInstance = new msal.PublicClientApplication({
   auth: {
     clientId: MSAL_SPA_CLIENT_ID,
     authority: 'https://login.microsoftonline.com/' + MSAL_TENANT_ID,
-    redirectUri: window.location.origin + '/app.html',
+    redirectUri: window.location.origin + '/index.html',
   },
   cache: { cacheLocation: 'sessionStorage' },
 });
@@ -47,25 +47,6 @@ export var Portal = (function () {
   }
 
   var REDIRECT_ATTEMPT_KEY = 'portalAuthRedirectAttempted';
-
-  // The Static Web App's own built-in auth gate has already identified the user by the
-  // time this code runs (it's what let app.html load at all) — reuse that identity as
-  // MSAL's loginHint so the silent/redirect requests are unambiguous. Without it, a
-  // browser signed into more than one Microsoft account (e.g. Edge's own work-profile
-  // sign-in alongside the tenant session) can make AAD render an actual account-picker
-  // page for a "silent" request instead of failing cleanly — and that page can't display
-  // inside ssoSilent's hidden iframe (blocked by X-Frame-Options), which is what was
-  // turning every failed silent check into a broken redirect loop.
-  async function getSwaLoginHint() {
-    try {
-      var res = await fetch('/.auth/me');
-      var data = await res.json();
-      var principal = data && data.clientPrincipal;
-      return (principal && principal.userDetails) || null;
-    } catch (e) {
-      return null;
-    }
-  }
 
   async function loadIdentity() {
     await msalInstance.initialize();
@@ -99,15 +80,13 @@ export var Portal = (function () {
         sessionStorage.removeItem(REDIRECT_ATTEMPT_KEY);
         throw new Error('ההתחברות לא הושלמה. רענן/י את הדף ונסה/י שוב.');
       }
-      var loginHint = await getSwaLoginHint();
-      var authRequest = loginHint ? { scopes: [API_SCOPE], loginHint: loginHint } : { scopes: [API_SCOPE] };
       try {
-        var ssoResult = await msalInstance.ssoSilent(authRequest);
+        var ssoResult = await msalInstance.ssoSilent({ scopes: [API_SCOPE] });
         account = ssoResult.account;
         sessionStorage.removeItem(REDIRECT_ATTEMPT_KEY);
       } catch (e) {
         sessionStorage.setItem(REDIRECT_ATTEMPT_KEY, '1');
-        await msalInstance.loginRedirect(authRequest);
+        await msalInstance.loginRedirect({ scopes: [API_SCOPE] });
         return null; // navigates away
       }
     }

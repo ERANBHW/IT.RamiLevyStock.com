@@ -1,6 +1,7 @@
 {
   "routes": [
-    { "route": "/app.html", "headers": { "Cache-Control": "no-cache" } }
+    { "route": "/index.html", "headers": { "Cache-Control": "no-cache" } },
+    { "route": "/", "headers": { "Cache-Control": "no-cache" } }
   ],
   "globalHeaders": {
     "X-Frame-Options": "DENY",

@@ -3,12 +3,1296 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>IT Portal</title>
     <link rel="icon" href="data:,">
+
+    <!-- Block search engines -->
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <meta name="googlebot" content="noindex, nofollow">
+    <meta name="bingbot" content="noindex, nofollow">
+
+    <link rel="canonical" href="https://it.ramilevystock.com/">
+    <link rel="stylesheet" href="common.css">
+
+    <style>
+        .app { display: none; }
+        .app.active { display: block; }
+
+        .hub-content { padding: 32px; display: flex; flex-direction: column; gap: 24px; }
+        .hub-greeting-row { display: flex; align-items: center; gap: 14px; }
+        .hub-user-icon {
+            width: 52px; height: 52px; border-radius: 50%; background: var(--brand-pink-soft);
+            color: var(--brand-pink-dark); display: flex; align-items: center; justify-content: center;
+            font-size: 24px; font-weight: 700; cursor: pointer; border: 2px solid transparent; flex: 0 0 auto;
+        }
+        .hub-user-icon:hover { border-color: var(--brand-pink); }
+        .hub-greeting-text h1 { margin: 0; font-size: 24px; }
+        .hub-greeting-text p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+        .hub-edit-pencil { background: none; border: none; cursor: pointer; font-size: 16px; margin-inline-start: 6px; }
+
+        .hub-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
+        .hub-btn {
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+            padding: 26px 16px; border: 2px solid var(--border); border-radius: 14px; background: var(--white);
+            color: var(--text); font-size: 15px; font-weight: 700; cursor: pointer; transition: 0.15s ease;
+        }
+        .hub-btn:hover { border-color: var(--brand-pink); background: var(--brand-pink-soft); color: var(--brand-pink-dark); }
+        .hub-btn-icon { font-size: 30px; }
+
+        body.viewing-as-active .app-shell {
+            border: 5px solid var(--danger);
+            box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.18), 0 18px 54px rgba(20, 20, 30, 0.10);
+        }
+        #viewAsBanner {
+            display: none; align-items: center; justify-content: center; gap: 10px;
+            background: var(--danger); color: #fff; font-weight: 700; font-size: 14px;
+            padding: 10px 16px; text-align: center;
+        }
+        body.viewing-as-active #viewAsBanner { display: flex; }
+        #viewAsBanner button {
+            background: #fff; color: var(--danger); border: none; border-radius: 8px;
+            padding: 6px 14px; font-weight: 700; font-size: 13px; cursor: pointer;
+        }
+
+        .profile-modal-backdrop {
+            display: none; position: fixed; inset: 0; z-index: 1000; align-items: center; justify-content: center;
+            padding: 18px; background: rgba(17,17,22,0.55);
+        }
+        .profile-modal-backdrop.visible { display: flex; }
+        .profile-modal {
+            width: 100%; max-width: 420px; max-height: 88vh; background: var(--white); border-radius: 16px;
+            box-shadow: 0 24px 70px rgba(0,0,0,0.28); display: flex; flex-direction: column;
+        }
+        .profile-modal-header { padding: 14px 20px; border-bottom: 4px solid var(--brand-pink); flex-shrink: 0; }
+        .profile-modal-header h2 { margin: 0; font-size: 18px; }
+        .profile-modal-body { padding: 16px 20px; overflow-y: auto; }
+        .profile-modal-actions { display: flex; gap: 10px; padding: 12px 20px; flex-shrink: 0; border-top: 1px solid var(--border); }
+
+        .placeholder-view { padding: 60px 40px; text-align: center; color: var(--muted); }
+        .placeholder-view .icon { font-size: 44px; margin-bottom: 14px; }
+
+        .not-found-view { padding: 60px 40px; text-align: center; }
+        .not-found-view .icon { font-size: 44px; margin-bottom: 14px; }
+
+        .page-title { margin: 0 0 4px; font-size: 22px; }
+        .page-subtitle { margin: 0 0 20px; color: var(--muted); font-size: 13px; }
+        .section { margin-bottom: 20px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; }
+        .section-title { margin: 0 0 14px; padding-right: 10px; border-right: 4px solid var(--brand-pink); font-size: 16px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        @media (max-width: 560px) { .grid-2 { grid-template-columns: 1fr; } }
+
+        .ticket-banner {
+            border: 2px solid #f59e0b; background: #fff8e6; border-radius: 12px;
+            padding: 14px 16px; margin-bottom: 20px; cursor: pointer;
+            animation: blink-border 1.4s ease-in-out infinite;
+        }
+        @keyframes blink-border {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.35); }
+            50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+        }
+        .ticket-banner-title { font-weight: 700; font-size: 14px; }
+        .ticket-banner-list { margin-top: 10px; display: none; flex-direction: column; gap: 8px; }
+        .ticket-banner-list.expanded { display: flex; }
+
+        .ticket-card { padding: 14px; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; background: var(--white); }
+        .ticket-card:hover { border-color: var(--brand-pink); }
+        .ticket-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 10px; }
+        .ticket-meta { font-size: 12px; color: var(--muted); }
+
+        .ticket-card.urgency-blink { animation: blink-border-urgent 1.4s ease-in-out infinite; }
+        @keyframes blink-border-urgent {
+            0%, 100% { box-shadow: 0 0 0 0 var(--urgency-glow-start, rgba(217, 78, 78, 0.35)); }
+            50% { box-shadow: 0 0 0 5px var(--urgency-glow-end, rgba(217, 78, 78, 0)); }
+        }
+        .ticket-card.request-card { background: #f4f0ff; }
+
+        .urgency-track {
+            position: relative; display: flex; background: var(--background); border-radius: 20px;
+            padding: 4px; gap: 0;
+        }
+        .urgency-track-thumb {
+            position: absolute; top: 4px; bottom: 4px; right: 2px; border-radius: 16px;
+            transition: right 0.25s ease, width 0.25s ease, background-color 0.25s ease; z-index: 0;
+        }
+        .urgency-track-option {
+            position: relative; z-index: 1; flex: 1; text-align: center; padding: 9px 6px; border-radius: 16px;
+            cursor: pointer; font-size: 13px; font-weight: 700; color: var(--text); background: transparent;
+            border: none; font-family: inherit; transition: color 0.25s ease;
+        }
+        .urgency-track-option.selected { color: #fff; }
+        .urgency-track-description { margin-top: 8px; font-size: 12px; color: var(--muted); text-align: center; min-height: 15px; }
+
+        .tc-category-card { border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--white); }
+        .tc-category-card.tc-drag-over { border-color: var(--brand-pink); background: #fff5f9; }
+        .tc-category-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .tc-category-header-left { display: flex; align-items: center; gap: 8px; }
+        .tc-sub-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-top: 1px solid var(--border); font-size: 13px; }
+        .tc-sub-row.tc-drag-over { background: #fff5f9; }
+        /* The whole row is red, not just a small tag — unmistakable at a glance. */
+        .tc-sub-row.procedure-row-draft { background: #fdecec; border-radius: 8px; padding: 7px 10px; border-top: none; }
+        .tc-sub-row-left { display: flex; align-items: center; gap: 8px; }
+        .tc-urgency-row { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; }
+        .tc-urgency-row.tc-drag-over { border-color: var(--brand-pink); background: #fff5f9; }
+        .tc-urgency-row-left { display: flex; align-items: center; gap: 8px; }
+        .tc-color-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: middle; }
+        .tc-drag-handle { cursor: grab; color: var(--muted); font-size: 15px; user-select: none; touch-action: none; }
+        .tc-drag-handle:active { cursor: grabbing; }
+
+        .closed-tickets-toggle { margin-bottom: 16px; }
+        #closedTicketsList { display: flex; flex-direction: column; gap: 10px; }
+
+        .procedure-category-title { margin: 22px 0 10px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+        .procedure-category-title:first-child { margin-top: 0; }
+        .procedure-card { border: 1px solid var(--border); border-right-width: 4px; border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
+        .procedure-card-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; cursor: pointer; background: var(--white); }
+        .procedure-card-header:hover { background: var(--background); }
+        .procedure-card-title { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+        .procedure-actions { display: flex; gap: 6px; }
+        .procedure-card-content { display: none; padding: 0 14px 14px; font-size: 13px; color: #333; white-space: pre-wrap; line-height: 1.6; }
+        .procedure-card.expanded .procedure-card-content { display: block; }
+        .procedure-draft-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; background: #fdecec; color: var(--danger); }
+        /* The whole card is red for a draft, not just the small badge above. */
+        .procedure-card.is-draft .procedure-card-header,
+        .procedure-card.is-draft .procedure-card-content { background: #fdecec; }
+        .procedure-card.is-draft .procedure-card-header:hover { background: #fbd5d5; }
+        .procedure-card-content.rich { white-space: normal; }
+
+        /* A small "mini-Word" — a plain toolbar over a contenteditable page, no external
+           library/build step (matches this app's plain-script-tags rule). */
+        .rte-toolbar {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+            border: 1px solid #cfd1d6; border-bottom: none; border-radius: 9px 9px 0 0;
+            padding: 6px; background: var(--background);
+        }
+        .rte-btn {
+            min-width: 30px; height: 30px; padding: 0 6px; border: 1px solid transparent; border-radius: 6px;
+            background: transparent; cursor: pointer; font-size: 13px; color: #333;
+        }
+        .rte-btn:hover { background: var(--white); border-color: var(--border); }
+        .rte-sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+        .rte-color-label {
+            display: inline-flex; align-items: center; gap: 2px; font-size: 13px; cursor: pointer;
+            padding: 0 4px; height: 30px; border-radius: 6px;
+        }
+        .rte-color-label:hover { background: var(--white); }
+        .rte-color-label input[type="color"] { width: 20px; height: 20px; padding: 0; border: none; cursor: pointer; }
+        .rte-content {
+            min-height: 50vh; max-height: 65vh; overflow: auto; border: 1px solid #cfd1d6; border-radius: 0 0 9px 9px;
+            padding: 20px; background: var(--white); font-size: 14px; line-height: 1.7;
+        }
+        .rte-content:focus { outline: none; border-color: var(--brand-pink); }
+        .rte-content h2 { font-size: 18px; margin: 10px 0; }
+        .rte-content ul, .rte-content ol { margin: 8px 20px; }
+
+        .admin-table-scroll { max-height: 65vh; overflow: auto; border: 1px solid var(--border); border-radius: 10px; }
+        .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .admin-table th, .admin-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+        .admin-table th { background: var(--background); position: sticky; top: 0; z-index: 1; }
+        .admin-table th.sortable { cursor: pointer; user-select: none; }
+        .admin-table th.sortable:hover { color: var(--brand-pink-dark); }
+        .admin-table th.sortable .sort-arrow { font-size: 10px; margin-inline-start: 4px; color: var(--muted); }
+        .admin-table tbody tr.admin-row-clickable { cursor: pointer; }
+        .admin-table tbody tr.admin-row-clickable:hover { background: var(--background); }
+        .role-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; background: var(--brand-pink-soft); color: var(--brand-pink-dark); margin-inline-end: 4px; }
+        .admin-row-actions { display: flex; gap: 4px; }
+        .anydesk-link { color: var(--brand-pink-dark); text-decoration: none; font-weight: 700; }
+
+        .folder-checkbox-list { display: none; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; padding: 8px 10px; border: 1px solid #cfd1d6; border-radius: 9px; margin-top: 8px; }
+        .folder-checkbox-list.expanded { display: flex; }
+        .folder-checkbox-list label { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 400; cursor: pointer; }
+        .folder-checkbox-list input { width: auto; margin: 0; }
+        .folder-collapse-header {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer;
+            border: 1px solid #cfd1d6; border-radius: 9px; padding: 9px 12px; background: var(--white);
+        }
+        .folder-collapse-header:hover { border-color: var(--brand-pink); }
+        .folder-collapse-header label { cursor: pointer; font-weight: 600; font-size: 13px; margin: 0; flex-shrink: 0; }
+        .folder-collapse-summary { color: var(--muted); font-size: 12.5px; flex: 1; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .folder-collapse-arrow { color: var(--muted); font-size: 11px; transition: transform 0.15s ease; flex-shrink: 0; }
+        .folder-collapse-header.expanded .folder-collapse-arrow { transform: rotate(180deg); }
+
+        .choice-btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        .choice-btn {
+            flex: 1; min-width: 130px; padding: 10px 14px; border: 2px solid var(--border); border-radius: 10px;
+            background: var(--white); font-family: inherit; font-size: 14px; font-weight: 600; color: var(--text);
+            cursor: pointer; transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+        }
+        .choice-btn:hover { border-color: var(--brand-pink); }
+        .choice-btn.selected { border-color: var(--brand-pink); background: var(--brand-pink-soft); color: var(--brand-pink-dark); }
+        .script-box { width: 100%; font-family: Consolas, Menlo, monospace; font-size: 12px; direction: ltr; text-align: left; resize: vertical; }
+        .email-suffix-row { display: flex; align-items: center; gap: 8px; }
+        .email-suffix-row input { flex: 1; }
+        .email-suffix { color: var(--muted); font-size: 13px; white-space: nowrap; }
+
+        .dashboard-counters { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        @media (max-width: 480px) { .dashboard-counters { grid-template-columns: repeat(2, 1fr); } }
+        .dashboard-counter { border-radius: 12px; padding: 14px 10px; text-align: center; border: 1px solid var(--border); cursor: pointer; font-family: inherit; }
+        .dashboard-counter span { display: block; font-size: 26px; font-weight: 700; }
+        .dashboard-counter label { font-size: 12px; color: var(--muted); }
+        .dashboard-counter.dc-open { background: #fff8e6; }
+        .dashboard-counter.dc-progress { background: #e8f1ff; }
+        .dashboard-counter.dc-closed { background: #f0fdf6; }
+        .dashboard-counter.dc-followups { background: #f4f0ff; cursor: default; }
+        .dashboard-counter.dc-active { box-shadow: 0 0 0 2px var(--brand-pink) inset; }
+        .dashboard-branch-breakdown { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .dashboard-branch-chip { padding: 4px 10px; border-radius: 20px; background: var(--background); font-size: 12px; border: 1px solid var(--border); }
+
+        .dashboard-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+        @media (max-width: 700px) { .dashboard-charts { grid-template-columns: 1fr; } }
+        .dash-chart { border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+        .dash-chart-title { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+        .dash-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12px; }
+        .dash-bar-row:last-child { margin-bottom: 0; }
+        .dash-bar-label { width: 44%; flex: 0 0 auto; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dash-bar-track { flex: 1; background: var(--background); border-radius: 4px; height: 10px; overflow: hidden; }
+        .dash-bar-fill { display: block; height: 100%; background: var(--brand-pink); border-radius: 4px; }
+        .dash-bar-value { width: 26px; flex: 0 0 auto; font-weight: 700; }
+        .dash-chart-empty { color: var(--muted); font-size: 12px; }
+
+        .sort-buttons { display: flex; gap: 6px; }
+        .sort-btn { border: 1px solid var(--border); background: var(--white); border-radius: 20px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: inherit; }
+        .sort-btn.active { background: var(--brand-pink); border-color: var(--brand-pink); color: #fff; }
+        .dash-toolbar-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .dash-toolbar-icon { font-size: 13px; }
+
+        .dash-ticket-card { cursor: pointer; }
+        .dash-ticket-card.expanded { border-radius: 12px 12px 0 0; border-bottom: none; }
+        .dash-ticket-meta-top { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+        .dash-ticket-detail { border: 1px solid var(--border); border-top: none; border-radius: 0 0 12px 12px; padding: 14px; background: var(--white); }
+        .dash-elapsed-row { font-size: 11px; color: var(--muted); margin-top: 3px; }
+        .dash-urgency-chip { padding: 1px 8px; border-radius: 10px; }
+        .dash-header-right-group { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+        .dash-anydesk-btn, .dash-quick-tag { text-decoration: none; font-size: 12px; padding: 2px 8px; border-radius: 10px; background: var(--background); color: var(--text); cursor: pointer; border: none; font-family: inherit; }
+        .dash-quick-tag.status-select {
+            border: 1.5px solid var(--brand-pink) !important; cursor: pointer; font-family: inherit;
+            -webkit-appearance: none; -moz-appearance: none; appearance: none;
+            padding: 2px 10px; border-radius: 10px; font-size: 12px; font-weight: 700;
+            background: #fff !important; color: var(--brand-pink);
+        }
+        .status-select::-ms-expand { display: none; }
+        .dash-take-btn { background: #fff; color: var(--brand-pink); border: 1.5px solid var(--brand-pink); font-weight: 700; padding: 2px 10px; border-radius: 10px; }
+        .dash-take-btn:hover { background: var(--brand-pink-soft); }
+        .dash-link-field { color: var(--brand-pink); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+        .dash-title-link { color: var(--text); cursor: pointer; }
+        .icon-button-plain {
+            border: none; background: none; padding: 0 3px; font-size: 12px; cursor: pointer;
+            line-height: 1; vertical-align: middle; opacity: 0.7;
+        }
+        .icon-button-plain:hover { opacity: 1; }
+        .dash-whatsapp-link { text-decoration: none; margin-right: 4px; display: inline-flex; align-items: center; vertical-align: middle; }
+        .dash-assigned-tag { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 10px; background: rgba(222, 57, 149, 0.12); color: var(--brand-pink); font-size: 11px; font-weight: 700; }
+        .dash-it-actor { color: var(--brand-pink); font-weight: 700; }
+        .dash-user-actor { color: #3b82f6; font-weight: 700; }
+        .dash-focus-tag { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; border-radius: 20px; background: var(--brand-pink); color: #fff; font-size: 12px; font-weight: 700; }
+        .dash-focus-tag button { border: none; background: rgba(255,255,255,0.25); color: #fff; border-radius: 50%; width: 18px; height: 18px; cursor: pointer; font-size: 11px; line-height: 1; }
+        .dash-task-card { border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--white); }
+        .dash-task-meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+        .dash-section-divider { display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px; }
+        .dash-section-divider::before, .dash-section-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+        .dash-timeline { position: relative; padding-right: 18px; margin: 10px 0; }
+        .dash-timeline::before { content: ''; position: absolute; right: 4px; top: 4px; bottom: 4px; width: 2px; background: var(--border); }
+        .dash-timeline-item { position: relative; padding-bottom: 12px; }
+        .dash-timeline-item:last-child { padding-bottom: 0; }
+        .dash-timeline-dot { position: absolute; right: -14px; top: 3px; width: 8px; height: 8px; border-radius: 50%; background: #3b82f6; display: block; box-shadow: 0 0 0 2px var(--white); }
+        .dash-timeline-dot.editable { cursor: pointer; width: 12px; height: 12px; right: -16px; top: 1px; }
+        .dash-timeline-time { font-size: 11px; color: var(--muted); }
+        .dash-timeline-internal-tag { font-size: 10px; color: #3b82f6; font-weight: 700; margin-right: 4px; }
+        .dash-timeline-text { font-size: 12px; margin-top: 2px; }
+        .dash-note-edit-row { display: flex; gap: 6px; align-items: center; }
+        .dash-note-edit-row input { flex: 1; font-size: 12px; padding: 4px 8px; }
+        .dash-stat-tile { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; }
+        .dash-linechart-tile { grid-column: 1 / -1; }
+        .dash-linechart-subtitle { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+        .dash-linechart-svg { width: 100%; height: 120px; display: block; }
+        .dash-stat-value { font-size: 20px; font-weight: 700; }
+
+        .filter-popover {
+            position: absolute; top: calc(100% + 6px); right: 0; z-index: 60; min-width: 200px; max-height: 240px;
+            overflow-y: auto; background: var(--white); border: 1px solid var(--border); border-radius: 10px;
+            box-shadow: 0 10px 28px rgba(0,0,0,0.16); padding: 10px;
+        }
+        .filter-popover label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 400; padding: 4px 2px; cursor: pointer; }
+        .filter-popover input { width: auto; margin: 0; }
+
+        .wizard-steps { display: flex; align-items: flex-start; margin-bottom: 20px; }
+        .wizard-step { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 0 0 auto; }
+        .wizard-step span {
+            width: 28px; height: 28px; border-radius: 50%; background: var(--border); color: var(--white);
+            display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;
+        }
+        .wizard-step label { font-size: 11px; color: var(--muted); white-space: nowrap; }
+        .wizard-step.active span, .wizard-step.done span { background: var(--success); }
+        .wizard-step.active label, .wizard-step.done label { color: var(--success); font-weight: 700; }
+        .wizard-step-line { flex: 1 1 auto; height: 3px; background: var(--border); margin: 13px 4px 0; }
+        .wizard-step-line.done { background: var(--success); }
+
+        .ticket-summary-line { font-size: 17px; margin: 0; line-height: 1.6; }
+        .ticket-summary-line .icon-button { padding: 2px 6px; font-size: 13px; margin: 0 2px; vertical-align: middle; }
+    </style>
 </head>
+
 <body>
-    <script>window.location.replace('app.html');</script>
-    <noscript>יש להפעיל JavaScript בדפדפן. <a href="app.html">להמשך לפורטל</a></noscript>
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-box"><div class="spinner"></div><p style="margin:0;font-size:14px;color:#444">טוען...</p></div>
+</div>
+
+<!-- Edit profile modal -->
+<div class="profile-modal-backdrop" id="profileModalBackdrop">
+    <div class="profile-modal">
+        <div class="profile-modal-header"><h2>עריכת פרטים אישיים</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="pfFirstName">שם פרטי</label><input id="pfFirstName" type="text"></div>
+            <div class="field"><label for="pfLastName">שם משפחה</label><input id="pfLastName" type="text"></div>
+            <div class="field"><label for="pfPhone">טלפון</label><input id="pfPhone" type="tel" dir="ltr"></div>
+            <div class="field"><label for="pfBranch">סניף</label><select id="pfBranch"></select></div>
+            <div class="field"><label for="pfRole">תפקיד</label><input id="pfRole" type="text"></div>
+            <div id="profileModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="profileSaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="profileCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit ticket fields modal (IT Admin — item 5: correct mis-entered ticket details) -->
+<div class="profile-modal-backdrop" id="ticketFieldsModalBackdrop">
+    <div class="profile-modal">
+        <div class="profile-modal-header"><h2>תיקון פרטי קריאה <span id="tfTicketNumber" dir="ltr" style="unicode-bidi:embed"></span></h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="tfCategory">סוג קריאה</label><select id="tfCategory"></select></div>
+            <div class="field" id="tfSubcategoryField" style="display:none"><label for="tfSubcategory">פירוט</label><select id="tfSubcategory"></select></div>
+            <div class="field"><label for="tfUrgency">דרגת חשיבות</label><select id="tfUrgency"></select></div>
+            <div class="field"><label for="tfUserName">שם עובד</label>
+                <input id="tfUserName" type="text" list="tfUserNameOptions" autocomplete="off">
+                <datalist id="tfUserNameOptions"></datalist>
+            </div>
+            <div class="field"><label for="tfComputerName">שם מחשב</label>
+                <input id="tfComputerName" type="text" dir="ltr" list="tfComputerNameOptions" autocomplete="off">
+                <datalist id="tfComputerNameOptions"></datalist>
+            </div>
+            <div class="field" id="tfPrinterField" style="display:none"><label for="tfPrinter">שם מדפסת</label>
+                <input id="tfPrinter" type="text" dir="ltr" list="tfPrinterOptions" autocomplete="off">
+                <datalist id="tfPrinterOptions"></datalist>
+            </div>
+            <div id="ticketFieldsModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="ticketFieldsSaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="ticketFieldsCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<div class="app-shell">
+    <div id="viewAsBanner">
+        <span id="viewAsBannerText"></span>
+        <button type="button" id="viewAsExitBtn">יציאה מהתחזות</button>
+    </div>
+    <div id="headerContainer"></div>
+
+    <!-- VIEW: user not found -->
+    <main class="app" id="view-notfound">
+        <div class="content">
+            <div class="not-found-view">
+                <div class="icon">🔒</div>
+                <h2>לא נמצאת ברשימת המשתמשים</h2>
+                <p style="color:var(--muted)">פנה לצוות ה-IT כדי לשייך את המשתמש שלך למערכת.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- VIEW: hub -->
+    <main class="app" id="view-hub">
+        <div class="hub-content">
+            <div class="hub-greeting-row">
+                <div class="hub-user-icon" id="hubUserIcon" title="עריכת פרטים">👤</div>
+                <div class="hub-greeting-text">
+                    <h1 id="hubGreeting">שלום!<button type="button" class="hub-edit-pencil" id="hubEditPencil" title="עריכת פרטים">✏️</button></h1>
+                    <p id="hubUserInfo"></p>
+                </div>
+            </div>
+
+            <div id="hubOpenTicketsBanner" class="ticket-banner" style="display:none">
+                <div class="ticket-banner-title" id="hubOpenTicketsBannerTitle"></div>
+                <div class="ticket-banner-list" id="hubOpenTicketsBannerList"></div>
+            </div>
+
+            <div class="hub-actions" id="hubActions"></div>
+
+            <div id="hubGeneralSection" style="display:none">
+                <h3 class="procedure-category-title">ניהול כללי</h3>
+                <div class="hub-actions" id="hubGeneralActions"></div>
+            </div>
+
+            <div id="hubAdminSection" style="display:none">
+                <h3 class="procedure-category-title">ניהול</h3>
+                <div class="hub-actions" id="hubAdminActions"></div>
+
+                <div id="hubSuperAdminSection" style="display:none;margin-top:20px">
+                    <h3 class="procedure-category-title">ניהול גלובלי</h3>
+                    <div class="hub-actions" id="hubSuperAdminActions"></div>
+                </div>
+
+                <div id="hubTicketsDashboard" style="display:none;margin-top:32px">
+                    <h3 class="procedure-category-title">קריאות שירות</h3>
+                    <div class="dashboard-counters">
+                        <button type="button" class="dashboard-counter dc-open" id="dashCubeOpen"><span id="dashOpenCount">0</span><label>פתוחות</label></button>
+                        <button type="button" class="dashboard-counter dc-progress" id="dashCubeProgress"><span id="dashProgressCount">0</span><label>בטיפול</label></button>
+                        <button type="button" class="dashboard-counter dc-closed" id="dashCubeClosed"><span id="dashClosedCount">0</span><label>סגורות</label></button>
+                        <button type="button" class="dashboard-counter dc-followups" id="dashCubeTasks"><span id="dashFollowupsCount">0</span><label>משימות</label></button>
+                    </div>
+                    <div id="dashFocusTagContainer" style="display:none;margin-top:10px"></div>
+                    <div class="dashboard-charts" id="dashboardCharts" style="display:none"></div>
+                    <div id="dashTicketsToolbar" style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin:14px 0 8px;flex-wrap:wrap">
+                        <div class="dash-toolbar-group" id="dashFilterGroup">
+                            <span class="dash-toolbar-icon" title="סינון">▼</span>
+                            <div style="position:relative" id="dashUserFilterWrap">
+                                <button type="button" class="sort-btn" id="dashUserFilterBtn">משתמש</button>
+                                <div id="dashUserFilterPopover" class="filter-popover" style="display:none"></div>
+                            </div>
+                            <div style="position:relative" id="dashBranchFilterWrap">
+                                <button type="button" class="sort-btn" id="dashBranchFilterBtn">סניף</button>
+                                <div id="dashBranchFilterPopover" class="filter-popover" style="display:none"></div>
+                            </div>
+                            <div style="position:relative" id="dashUrgencyFilterWrap">
+                                <button type="button" class="sort-btn" id="dashUrgencyFilterBtn">דרגה</button>
+                                <div id="dashUrgencyFilterPopover" class="filter-popover" style="display:none"></div>
+                            </div>
+                            <div style="position:relative;display:none" id="dashTaskTypeFilterWrap">
+                                <button type="button" class="sort-btn" id="dashTaskTypeFilterBtn">סוג משימה</button>
+                                <div id="dashTaskTypeFilterPopover" class="filter-popover" style="display:none"></div>
+                            </div>
+                        </div>
+                        <div class="dash-toolbar-group sort-buttons" id="dashSortGroup">
+                            <span class="dash-toolbar-icon" title="מיון">⇅</span>
+                            <button type="button" class="sort-btn active" id="dashSortUrgency" data-sort="urgency">דרגה</button>
+                            <button type="button" class="sort-btn" id="dashSortDate" data-sort="date">תאריך</button>
+                            <button type="button" class="sort-btn" id="dashSortBranch" data-sort="branch">סניף</button>
+                        </div>
+                        <div class="dash-toolbar-group" id="dashTaskStatusRow" style="display:none">
+                            <button type="button" class="sort-btn" id="dashTaskStatusNew" data-task-status="חדש">חדש</button>
+                            <button type="button" class="sort-btn" id="dashTaskStatusProgress" data-task-status="בטיפול">בטיפול</button>
+                            <button type="button" class="sort-btn" id="dashTaskStatusDone" data-task-status="הושלם">הושלם</button>
+                        </div>
+                    </div>
+                    <div id="dashTicketsList" style="display:flex;flex-direction:column;gap:8px"></div>
+                    <button type="button" class="secondary-button" id="dashLoadMoreBtn" style="display:none;margin-top:10px;width:100%">הצג עוד</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- VIEW: ticket -->
+    <main class="app" id="view-ticket">
+        <div class="content">
+            <div id="openTicketsBanner" class="ticket-banner" style="display:none">
+                <div class="ticket-banner-title" id="openTicketsBannerTitle"></div>
+                <div class="ticket-banner-list" id="openTicketsBannerList"></div>
+            </div>
+
+            <div id="ticketFormContainer">
+                <h1 class="page-title">פתיחת קריאת שירות</h1>
+                <p class="page-subtitle">מלאו את פרטי התקלה ונחזור אליכם בהקדם.</p>
+
+                <section class="section" style="padding:12px 16px;margin-bottom:14px">
+                    <p class="ticket-summary-line">
+                        פותח/ת קריאה בשם <strong id="tkNameDisplay"></strong><button type="button" class="icon-button" id="tkNameEditBtn" title="שינוי שם לקריאה זו">✏️</button>
+                        על <strong id="tkComputerDisplay"></strong><button type="button" class="icon-button" id="tkComputerEditBtn" title="שינוי מחשב/מדפסת לקריאה זו">✏️</button>
+                    </p>
+
+                    <div class="field" id="tkNameEditField" style="display:none">
+                        <label for="tkName">שם (לקריאה זו בלבד)</label>
+                        <input id="tkName" type="text">
+                    </div>
+
+                    <div id="tkComputerEditSection" style="display:none">
+                        <div class="field">
+                            <label>עבור</label>
+                            <div style="display:flex;gap:16px">
+                                <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="tkForType" value="computer" checked style="width:auto">מחשב</label>
+                                <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="tkForType" value="printer" style="width:auto">מדפסת</label>
+                            </div>
+                        </div>
+                        <div class="field" id="tkComputerSelectField">
+                            <label for="tkComputerSelect">מחשב</label>
+                            <select id="tkComputerSelect"></select>
+                        </div>
+                        <div class="field" id="tkPrinterSelectField" style="display:none">
+                            <label for="tkPrinterSelect">מדפסת</label>
+                            <select id="tkPrinterSelect"></select>
+                        </div>
+                    </div>
+
+                    <input id="tkPhone" type="hidden">
+                    <input id="tkBranch" type="hidden">
+                    <input id="tkComputerName" type="hidden">
+                    <input id="tkPrinter" type="hidden">
+                    <input id="tkAnyDesk" type="hidden">
+                </section>
+
+                <section class="section">
+                    <h2 class="section-title">פרטי התקלה</h2>
+                    <div class="grid-2">
+                        <div class="field">
+                            <label for="tkCategory">סוג התקלה</label>
+                            <select id="tkCategory"></select>
+                        </div>
+                        <div class="field" id="tkSubcategoryField" style="display:none">
+                            <label for="tkSubcategory" id="tkSubcategoryLabel">פירוט</label>
+                            <select id="tkSubcategory"></select>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>דחיפות</label>
+                        <div class="urgency-track" id="tkUrgencyTrack"></div>
+                        <div class="urgency-track-description" id="tkUrgencyDescription"></div>
+                    </div>
+                    <div class="field">
+                        <label for="tkDescription">תיאור התקלה</label>
+                        <textarea id="tkDescription" rows="5" placeholder="תארו מה קרה, ומתי התחילה התקלה."></textarea>
+                    </div>
+                </section>
+
+                <div id="ticketSubmitError" style="display:none;color:var(--danger);font-size:13px;margin-bottom:12px"></div>
+                <button type="button" class="primary-button" style="width:100%" id="ticketSubmitBtn">פתח קריאה</button>
+            </div>
+
+            <h3 class="procedure-category-title">קריאות שטופלו</h3>
+            <div id="closedTicketsList" style="display:flex;flex-direction:column;gap:8px"></div>
+            <button type="button" class="secondary-button" id="closedTicketsLoadMoreBtn" style="display:none;margin-top:10px;width:100%">הצג עוד</button>
+        </div>
+    </main>
+
+    <!-- Ticket submitted successfully — brief popup, no buttons, auto-returns to hub (item 7) -->
+    <div class="profile-modal-backdrop" id="ticketSuccessModalBackdrop">
+        <div class="profile-modal" style="max-width:340px;text-align:center;padding:34px 24px">
+            <div style="font-size:44px">✅</div>
+            <h2 style="color:var(--success);margin:10px 0 6px">הקריאה נשלחה בהצלחה!</h2>
+            <div style="display:inline-block;padding:8px 20px;border-radius:30px;background:var(--success-bg);color:var(--success);font-weight:700;margin:6px 0 14px" id="confirmTicketNumber"></div>
+            <p style="color:var(--muted);margin:0">נשלח אליך מייל אישור עם הפרטים המלאים.</p>
+        </div>
+    </div>
+
+    <!-- Ticket detail modal -->
+    <div class="profile-modal-backdrop" id="ticketDetailBackdrop">
+        <div class="profile-modal" style="max-width:520px">
+            <div class="profile-modal-header"><h2 id="ticketDetailTitle"></h2></div>
+            <div class="profile-modal-body" id="ticketDetailBody"></div>
+            <div class="profile-modal-actions">
+                <button type="button" class="secondary-button" style="flex:1" id="ticketDetailCloseBtn">סגור</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generic read-only quick-view modal (dashboard: employee/computer/printer tags) -->
+    <div class="profile-modal-backdrop" id="quickViewModalBackdrop">
+        <div class="profile-modal" style="max-width:380px">
+            <div class="profile-modal-header"><h2 id="quickViewTitle"></h2></div>
+            <div class="profile-modal-body" id="quickViewBody"></div>
+            <div class="profile-modal-actions">
+                <button type="button" class="primary-button" id="quickViewEditBtn">ערוך</button>
+                <button type="button" class="secondary-button" id="quickViewCloseBtn">סגור</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ticket close modal (dashboard) -->
+    <div class="profile-modal-backdrop" id="ticketCloseModalBackdrop">
+        <div class="profile-modal" style="max-width:480px">
+            <div class="profile-modal-header"><h2>סגירת קריאה</h2></div>
+            <div class="profile-modal-body">
+                <p class="page-subtitle" id="ticketCloseTimingInfo" style="margin:0 0 12px"></p>
+                <div class="field"><label for="tcmResolution">תיאור הפתרון (יוצג לעובד)</label>
+                    <textarea id="tcmResolution" rows="3"></textarea></div>
+                <div class="field"><label for="tcmInternalNote">תיעוד פנימי (לא יוצג לעובד)</label>
+                    <textarea id="tcmInternalNote" rows="2"></textarea></div>
+                <div class="field"><label style="display:flex;align-items:center;gap:8px;font-weight:400">
+                    <input type="checkbox" id="tcmFlagged" style="width:auto">סמן דגל לשמירה להמשך</label></div>
+                <div class="field"><label for="tcmFollowUp">משימת המשך (אופציונלי)</label>
+                    <textarea id="tcmFollowUp" rows="2" placeholder="מה נדרש לעשות בהמשך?"></textarea></div>
+                <div id="ticketCloseModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+            </div>
+            <div class="profile-modal-actions">
+                <button type="button" class="primary-button" style="flex:1" id="ticketCloseSaveBtn">סגור קריאה</button>
+                <button type="button" class="secondary-button" id="ticketCloseCancelBtn">ביטול</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW: signature (placeholder - built in a later phase) -->
+    <main class="app" id="view-signature">
+        <div class="content">
+            <div class="placeholder-view">
+                <div class="icon">✍️</div>
+                <h2>יצירת חתימה</h2>
+                <p>בקרוב</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- VIEW: procedures -->
+    <main class="app" id="view-procedures">
+        <div class="content">
+            <h1 class="page-title" style="margin:0 0 16px">נהלי עבודה</h1>
+            <div id="proceduresList"></div>
+        </div>
+    </main>
+
+    <!-- VIEW: user request form -->
+    <main class="app" id="view-user-request">
+        <div class="content">
+            <div id="userRequestFormContainer">
+                <h1 class="page-title">בקשת הקמת משתמש</h1>
+                <p class="page-subtitle">הפרטים יישלחו לצוות ה-IT להקמה ב-365. הכתובת מחושבת אוטומטית משם באנגלית.</p>
+
+                <section class="section">
+                    <h2 class="section-title">שם</h2>
+                    <div class="grid-2">
+                        <div class="field"><label for="urFirstNameHe">שם פרטי (עברית)</label><input id="urFirstNameHe" type="text"></div>
+                        <div class="field"><label for="urLastNameHe">שם משפחה (עברית)</label><input id="urLastNameHe" type="text"></div>
+                        <div class="field"><label for="urFirstNameEn">שם פרטי (אנגלית)</label><input id="urFirstNameEn" type="text" dir="ltr"></div>
+                        <div class="field"><label for="urLastNameEn">שם משפחה (אנגלית)</label><input id="urLastNameEn" type="text" dir="ltr"></div>
+                    </div>
+                </section>
+
+                <section class="section">
+                    <h2 class="section-title">פרטים נוספים</h2>
+                    <div class="field"><label for="urBranch">סניף</label><select id="urBranch"></select></div>
+                    <div class="field"><label for="urRole">תפקיד</label><input id="urRole" type="text"></div>
+
+                    <div class="field">
+                        <label>סוג גישה</label>
+                        <div class="choice-btn-group" data-toggle-group="urAccessType">
+                            <button type="button" class="choice-btn" data-value="מחשב">עמדת מחשב</button>
+                            <button type="button" class="choice-btn" data-value="מייל">תיבת מייל בלבד</button>
+                        </div>
+                    </div>
+
+                    <div id="urComputerBlock" style="display:none">
+                        <div class="field">
+                            <label for="urComputerSelect">עמדת מחשב</label>
+                            <select id="urComputerSelect"></select>
+                        </div>
+                        <div class="field" id="urNewComputerTypeField" style="display:none">
+                            <label>סוג המחשב המוזמן</label>
+                            <div class="choice-btn-group" data-toggle-group="urNewComputerType">
+                                <button type="button" class="choice-btn" data-value="נייח">נייח</button>
+                                <button type="button" class="choice-btn" data-value="נייד">נייד</button>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <div class="folder-collapse-header" id="urFoldersHeader">
+                                <label>תיקיות משותפות</label>
+                                <span class="folder-collapse-summary" id="urFoldersSummary">לא נבחרו תיקיות</span>
+                                <span class="folder-collapse-arrow">▾</span>
+                            </div>
+                            <div id="urFolders" class="folder-checkbox-list"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <div id="userRequestSubmitError" style="display:none;color:var(--danger);font-size:13px;margin-bottom:12px"></div>
+                <button type="button" class="primary-button" style="width:100%" id="userRequestSubmitBtn">שלח בקשה</button>
+            </div>
+
+            <div id="userRequestConfirmation" style="display:none;text-align:center;padding:40px 20px">
+                <div style="font-size:44px">✅</div>
+                <h2 style="color:var(--success);margin:10px 0 6px">הבקשה נשלחה בהצלחה!</h2>
+                <div style="display:inline-block;padding:8px 20px;border-radius:30px;background:var(--success-bg);color:var(--success);font-weight:700;margin:6px 0 14px" id="confirmUserRequestNumber"></div>
+                <p style="color:var(--muted)">צוות ה-IT יקים את המשתמש בהקדם.</p>
+                <button type="button" class="secondary-button" id="userRequestHomeBtn">חזור לדף הבית</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- VIEW: admin users -->
+    <main class="app" id="view-admin-users">
+        <div class="content">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h1 class="page-title" style="margin:0">ניהול משתמשים</h1>
+                <button type="button" class="primary-button" id="userAdminAddBtn">+ הוסף משתמש</button>
+            </div>
+            <div class="admin-table-scroll">
+                <table class="admin-table" id="usersTable">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-sort="email">מייל</th>
+                            <th class="sortable" data-sort="name">שם</th>
+                            <th class="sortable" data-sort="branch">סניף</th>
+                            <th class="sortable" data-sort="role">תפקיד</th>
+                            <th>הרשאות</th>
+                            <th class="sortable" data-sort="computer">מחשב</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- VIEW: admin computers -->
+    <main class="app" id="view-admin-computers">
+        <div class="content">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h1 class="page-title" style="margin:0">ניהול מחשבים</h1>
+                <button type="button" class="primary-button" id="computerAdminAddBtn">+ הוסף מחשב</button>
+            </div>
+            <div class="admin-table-scroll">
+                <table class="admin-table" id="computersTable">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-sort="computerName">שם מחשב</th>
+                            <th class="sortable" data-sort="type">סוג</th>
+                            <th class="sortable" data-sort="branch">סניף</th>
+                            <th class="sortable" data-sort="printer">מדפסת</th>
+                            <th>AnyDesk</th>
+                            <th class="sortable" data-sort="user">משתמש</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="computersTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- VIEW: admin branches -->
+    <main class="app" id="view-admin-branches">
+        <div class="content">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h1 class="page-title" style="margin:0">ניהול סניפים</h1>
+                <button type="button" class="primary-button" id="branchAdminAddBtn">+ הוסף סניף</button>
+            </div>
+            <div style="overflow-x:auto">
+                <table class="admin-table" id="branchesTable">
+                    <thead><tr><th>מספר</th><th>שם</th><th></th></tr></thead>
+                    <tbody id="branchesTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- VIEW: admin shared folders -->
+    <main class="app" id="view-admin-sharedfolders">
+        <div class="content">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h1 class="page-title" style="margin:0">ניהול תיקיות משותפות</h1>
+                <button type="button" class="primary-button" id="sharedFolderAdminAddBtn">+ הוסף תיקייה</button>
+            </div>
+            <p class="page-subtitle">Object ID = קבוצת Entra ID / אתר SharePoint המשויך (Entra ID → Groups)</p>
+            <div style="overflow-x:auto">
+                <table class="admin-table" id="sharedFoldersTable">
+                    <thead><tr><th>שם</th><th>Entra Group Object ID</th><th></th></tr></thead>
+                    <tbody id="sharedFoldersTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- VIEW: admin email settings -->
+    <main class="app" id="view-admin-email-settings">
+        <div class="content">
+            <h1 class="page-title">ניהול כתובות מייל</h1>
+            <p class="page-subtitle">כתובות אלה קובעות לאן נשלחות ההתראות האוטומטיות על קריאות שירות חדשות.</p>
+            <div class="field"><label for="esItCompanyEmail">מייל חברת המחשוב (קריאות מחשב)</label><input id="esItCompanyEmail" type="email" dir="ltr"></div>
+            <div class="field"><label for="esPrinterCompanyEmail">מייל חברת המדפסות (קריאות מדפסת)</label><input id="esPrinterCompanyEmail" type="email" dir="ltr"></div>
+            <div class="field"><label for="esAdminEmail">מייל מנהל גלובלי (עותק לכל קריאה)</label><input id="esAdminEmail" type="email" dir="ltr"></div>
+            <div id="emailSettingsError" style="display:none;color:var(--danger);font-size:13px;margin-bottom:12px"></div>
+            <div id="emailSettingsSuccess" style="display:none;color:var(--success);font-size:13px;margin-bottom:12px">נשמר בהצלחה.</div>
+            <button type="button" class="primary-button" style="width:100%" id="emailSettingsSaveBtn">שמור</button>
+        </div>
+    </main>
+
+    <!-- VIEW: admin view-as user -->
+    <main class="app" id="view-admin-view-as">
+        <div class="content">
+            <h1 class="page-title">התחזות למשתמש</h1>
+            <p class="page-subtitle">תיכנס לדף הבית של המשתמש הנבחר בדיוק כפי שהוא רואה אותו, ותוכל לשלוח קריאות בשמו לצורך בדיקות. הפעולה מתועדת ומוגבלת ל-IT Admin בלבד.</p>
+            <div class="field"><label for="viewAsUserSelect">בחר משתמש</label><select id="viewAsUserSelect"></select></div>
+            <button type="button" class="primary-button" id="viewAsEnterBtn" disabled>היכנס בתור המשתמש הזה</button>
+        </div>
+    </main>
+
+    <!-- VIEW: admin printers -->
+    <main class="app" id="view-admin-printers">
+        <div class="content">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h1 class="page-title" style="margin:0">קטלוג מדפסות</h1>
+                <button type="button" class="primary-button" id="printerAdminAddBtn">+ הוסף מדפסת</button>
+            </div>
+            <div style="overflow-x:auto">
+                <table class="admin-table" id="printersTable">
+                    <thead><tr><th>שם מדפסת</th><th>IP</th><th>סניף</th><th>הערות</th><th></th></tr></thead>
+                    <tbody id="printersTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- VIEW: admin ticket config (categories/subcategories/urgencies) -->
+    <main class="app" id="view-admin-ticket-config">
+        <div class="content">
+            <h1 class="page-title">ניהול סוגי קריאות</h1>
+            <p class="page-subtitle">קטגוריות, תת-קטגוריות (קבועות או דינמיות, כמו רשימת מדפסות לפי סניף) ודרגות דחיפות — טופס פתיחת הקריאה נבנה מהנתונים כאן.</p>
+
+            <section class="section">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                    <h2 class="section-title" style="margin:0">קטגוריות ותתי-קטגוריות</h2>
+                    <button type="button" class="primary-button" id="tcCategoryAddBtn">+ קטגוריה חדשה</button>
+                </div>
+                <div id="tcCategoriesList" style="display:flex;flex-direction:column;gap:10px"></div>
+            </section>
+
+            <section class="section">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                    <h2 class="section-title" style="margin:0">דרגות דחיפות</h2>
+                    <button type="button" class="primary-button" id="tcUrgencyAddBtn">+ דרגה חדשה</button>
+                </div>
+                <div id="tcUrgenciesList" style="display:flex;flex-direction:column;gap:8px"></div>
+            </section>
+        </div>
+    </main>
+
+    <!-- VIEW: admin procedure config (categories/subcategories/procedures) — follow-up -->
+    <main class="app" id="view-admin-procedure-config">
+        <div class="content">
+            <h1 class="page-title">עריכת נהלי עבודה</h1>
+            <p class="page-subtitle">קטגוריות, תת-קטגוריות וצבעים לתצוגת הנהלים בדף הראשי, וניהול הנהלים עצמם.</p>
+
+            <section class="section">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                    <h2 class="section-title" style="margin:0">קטגוריות ותתי-קטגוריות</h2>
+                    <button type="button" class="primary-button" id="pcCategoryAddBtn">+ קטגוריה חדשה</button>
+                </div>
+                <div id="pcCategoriesList" style="display:flex;flex-direction:column;gap:10px"></div>
+            </section>
+
+            <section class="section">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                    <h2 class="section-title" style="margin:0">נהלים</h2>
+                    <button type="button" class="primary-button" id="pcProcedureAddBtn">+ נוהל חדש</button>
+                </div>
+                <div id="pcProceduresList" style="display:flex;flex-direction:column;gap:8px"></div>
+            </section>
+        </div>
+    </main>
+
+    <!-- VIEW: procedure editor — a dedicated page (not a small modal) with a Word-like
+         rich-text content area, used for both creating and editing. -->
+    <main class="app" id="view-procedure-editor">
+        <div class="content">
+            <h1 class="page-title" id="peTitle">נוהל חדש</h1>
+            <section class="section">
+                <div class="grid-2">
+                    <div class="field"><label for="peCategory">קטגוריה</label><select id="peCategory"></select></div>
+                    <div class="field" id="peSubcategoryField" style="display:none">
+                        <label for="peSubcategory">תת-קטגוריה (אופציונלי)</label><select id="peSubcategory"></select>
+                    </div>
+                </div>
+                <div class="field"><label for="peTitleInput">כותרת</label><input id="peTitleInput" type="text"></div>
+                <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+                    <input id="peIsDraft" type="checkbox" style="width:auto">
+                    <label for="peIsDraft" style="margin:0;color:var(--danger);font-weight:700">טיוטה - עדיין לא פורסם לעובדים</label>
+                </div>
+                <div class="field">
+                    <label>תוכן הנוהל</label>
+                    <div class="rte-toolbar">
+                        <button type="button" class="rte-btn" data-cmd="bold" title="מודגש"><strong>B</strong></button>
+                        <button type="button" class="rte-btn" data-cmd="italic" title="נטוי"><em>I</em></button>
+                        <button type="button" class="rte-btn" data-cmd="underline" title="קו תחתון"><u>U</u></button>
+                        <span class="rte-sep"></span>
+                        <button type="button" class="rte-btn" data-cmd="insertUnorderedList" title="רשימה">•≡</button>
+                        <button type="button" class="rte-btn" data-cmd="insertOrderedList" title="רשימה ממוספרת">1≡</button>
+                        <span class="rte-sep"></span>
+                        <button type="button" class="rte-btn" data-cmd="formatBlock" data-value="H2" title="כותרת">H2</button>
+                        <button type="button" class="rte-btn" data-cmd="formatBlock" data-value="P" title="פסקה רגילה">¶</button>
+                        <span class="rte-sep"></span>
+                        <label class="rte-color-label" title="צבע טקסט">A<input type="color" id="peTextColor" value="#000000"></label>
+                        <label class="rte-color-label" title="צביעת רקע (הדגשה)">🖍️<input type="color" id="peHighlightColor" value="#fff59d"></label>
+                        <span class="rte-sep"></span>
+                        <button type="button" class="rte-btn" data-cmd="removeFormat" title="נקה עיצוב">Tx</button>
+                    </div>
+                    <div id="peContent" class="rte-content" contenteditable="true"></div>
+                </div>
+                <div id="procedureEditorError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+                <div style="display:flex;gap:10px;margin-top:16px">
+                    <button type="button" class="primary-button" style="flex:1" id="peSaveBtn">שמור</button>
+                    <button type="button" class="secondary-button" id="peCancelBtn">ביטול</button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+</div>
+
+<!-- Procedure category modal -->
+<div class="profile-modal-backdrop" id="pcCategoryModalBackdrop">
+    <div class="profile-modal" style="max-width:420px">
+        <div class="profile-modal-header"><h2 id="pcCategoryModalTitle">קטגוריה חדשה</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="pcCategoryName">שם קטגוריה</label><input id="pcCategoryName" type="text"></div>
+            <div class="field"><label for="pcCategoryColor">צבע</label><input id="pcCategoryColor" type="color"></div>
+            <div id="pcCategoryModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="pcCategorySaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="pcCategoryCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<!-- Procedure subcategory modal -->
+<div class="profile-modal-backdrop" id="pcSubcategoryModalBackdrop">
+    <div class="profile-modal" style="max-width:420px">
+        <div class="profile-modal-header"><h2 id="pcSubcategoryModalTitle">תת-קטגוריה חדשה</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="pcSubcategoryName">שם</label><input id="pcSubcategoryName" type="text"></div>
+            <div id="pcSubcategoryModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="pcSubcategorySaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="pcSubcategoryCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<!-- User admin modal — same wizard as the user-request form/review, plus a "הרשאות פורטל"
+     step; applies to both "+ הוסף משתמש" and editing an existing one. -->
+<div class="profile-modal-backdrop" id="userAdminModalBackdrop">
+    <div class="profile-modal" style="max-width:520px">
+        <div class="profile-modal-header"><h2 id="userAdminModalTitle">משתמש חדש</h2></div>
+        <div class="profile-modal-body">
+            <div class="wizard-steps" id="uaWizardSteps"></div>
+
+            <div id="uaStep1">
+                <p class="page-subtitle" style="margin:0 0 10px">שם באנגלית ממלא אוטומטית את שם המשתמש (ניתן לשינוי ידני)</p>
+                <div class="grid-2">
+                    <div class="field"><label for="uaFirstNameEn">שם פרטי (אנגלית)</label><input id="uaFirstNameEn" type="text" dir="ltr"></div>
+                    <div class="field"><label for="uaLastNameEn">שם משפחה (אנגלית)</label><input id="uaLastNameEn" type="text" dir="ltr"></div>
+                </div>
+                <div class="field"><label for="uaUsername">מייל</label>
+                    <div class="email-suffix-row" dir="ltr"><input id="uaUsername" type="text" dir="ltr"><span class="email-suffix" dir="ltr">@rami-levy-stock.co.il</span></div>
+                </div>
+                <div class="grid-2">
+                    <div class="field"><label for="uaFirstName">שם פרטי (עברית)</label><input id="uaFirstName" type="text"></div>
+                    <div class="field"><label for="uaLastName">שם משפחה (עברית)</label><input id="uaLastName" type="text"></div>
+                    <div class="field"><label for="uaPhone">טלפון</label><input id="uaPhone" type="tel" dir="ltr"></div>
+                    <div class="field"><label for="uaBranch">סניף</label><select id="uaBranch"></select></div>
+                </div>
+                <div class="field"><label for="uaRole">תפקיד</label><input id="uaRole" type="text"></div>
+
+                <div class="field">
+                    <label>סוג גישה</label>
+                    <div class="choice-btn-group" data-toggle-group="uaAccessType">
+                        <button type="button" class="choice-btn" data-value="מחשב">עמדת מחשב</button>
+                        <button type="button" class="choice-btn" data-value="מייל">תיבת מייל בלבד</button>
+                    </div>
+                </div>
+
+                <div id="uaComputerBlock" style="display:none">
+                    <div class="field"><label for="uaComputer">עמדת מחשב</label><select id="uaComputer"></select></div>
+                    <div class="field" id="uaNewComputerTypeField" style="display:none">
+                        <label>סוג המחשב החדש</label>
+                        <div class="choice-btn-group" data-toggle-group="uaNewComputerType">
+                            <button type="button" class="choice-btn" data-value="נייח">נייח</button>
+                            <button type="button" class="choice-btn" data-value="נייד">נייד</button>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <div class="folder-collapse-header" id="uaFoldersHeader">
+                            <label>תיקיות משותפות</label>
+                            <span class="folder-collapse-summary" id="uaFoldersSummary">לא נבחרו תיקיות</span>
+                            <span class="folder-collapse-arrow">▾</span>
+                        </div>
+                        <div id="uaFolders" class="folder-checkbox-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="uaStep2" style="display:none">
+                <p class="page-subtitle" style="margin:0 0 10px">הכנת סקריפט הקמה ב-365 (Entra ID) - להרצה ידנית ע"י IT</p>
+                <button type="button" class="secondary-button" id="uaGenerateScriptBtn">הכן סקריפט הקמה</button>
+                <div id="uaScriptResult" style="display:none;margin-top:10px">
+                    <div class="field"><label>מייל מחושב</label><input id="uaScriptEmail" readonly dir="ltr"></div>
+                    <div class="field"><label>סיסמה זמנית (ניתן לשנות)</label>
+                        <div class="email-suffix-row" dir="ltr"><input id="uaScriptPassword" dir="ltr">
+                        <button type="button" class="secondary-button" id="uaCopyPasswordBtn">העתק</button></div>
+                    </div>
+                    <button type="button" class="secondary-button" id="uaCopyCredentialsBtn" style="margin-bottom:10px">העתק מייל+סיסמה לשליחה לעובד</button>
+                    <div class="field"><label>סקריפט</label>
+                        <textarea id="uaScriptBox" class="script-box" rows="8" readonly></textarea>
+                        <button type="button" class="secondary-button" id="uaCopyScriptBtn" style="margin-top:6px">העתק סקריפט</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="uaStep3" style="display:none">
+                <p class="page-subtitle" style="margin:0 0 10px">הרשאות ניהול בתוך הפורטל (מנהל-על בלבד)</p>
+                <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+                    <input id="uaIsITAdmin" type="checkbox" style="width:auto"><label for="uaIsITAdmin" style="margin:0">ניהול IT</label>
+                </div>
+                <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+                    <input id="uaIsProceduresAdmin" type="checkbox" style="width:auto"><label for="uaIsProceduresAdmin" style="margin:0">עריכת נהלים</label>
+                </div>
+                <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+                    <input id="uaIsUserRequestSubmitter" type="checkbox" style="width:auto"><label for="uaIsUserRequestSubmitter" style="margin:0">בקשת הקמת משתמש</label>
+                </div>
+            </div>
+
+            <div id="uaStep4" style="display:none">
+                <p class="page-subtitle" style="margin:0 0 10px">סקירה סופית - לחיצה על "שמור" מקימה/מעדכנת את המשתמש בפורטל</p>
+                <div id="uaSummary" style="font-size:13px;line-height:2"></div>
+            </div>
+
+            <div id="userAdminModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:10px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="secondary-button" id="uaBackBtn" style="display:none">חזרה</button>
+            <button type="button" class="primary-button" style="flex:1" id="uaNextBtn">הבא</button>
+            <button type="button" class="primary-button" style="flex:1;display:none" id="userAdminSaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="userAdminCancelBtn">ביטול</button>
+            <button type="button" class="secondary-button" id="uaDeleteBtn" style="display:none;border-color:var(--danger);color:var(--danger)">מחק משתמש</button>
+        </div>
+    </div>
+</div>
+
+<!-- Computer admin modal -->
+<div class="profile-modal-backdrop" id="computerAdminModalBackdrop">
+    <div class="profile-modal" style="max-width:480px">
+        <div class="profile-modal-header"><h2 id="computerAdminModalTitle">מחשב חדש</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="caComputerName">שם מחשב</label><input id="caComputerName" type="text" dir="ltr"></div>
+            <div class="grid-2">
+                <div class="field"><label for="caType">סוג</label>
+                    <select id="caType"><option value="נייח">נייח</option><option value="נייד">נייד</option></select>
+                </div>
+                <div class="field"><label for="caRam">זיכרון (RAM)</label>
+                    <div class="email-suffix-row"><input id="caRam" type="number" min="0" step="1" dir="ltr"><span class="email-suffix">GB</span></div>
+                </div>
+                <div class="field"><label for="caPrinter">מדפסת ברירת מחדל</label><select id="caPrinter"></select></div>
+                <div class="field"><label for="caAnyDesk">AnyDesk</label>
+                    <div class="email-suffix-row"><input id="caAnyDesk" type="text" dir="ltr">
+                        <a id="caAnyDeskConnect" class="icon-button" href="anydesk:" title="התחברות מרחוק דרך AnyDesk" style="text-decoration:none">🖥️</a></div>
+                </div>
+                <div class="field"><label for="caBranch">סניף</label><select id="caBranch"></select></div>
+            </div>
+            <div class="field"><label for="caNotes">הערות</label><textarea id="caNotes" rows="3"></textarea></div>
+            <div id="computerAdminModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="computerAdminSaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="computerAdminCancelBtn">ביטול</button>
+            <button type="button" class="secondary-button" id="computerAdminDeleteBtn" style="display:none;border-color:var(--danger);color:var(--danger)">מחק מחשב</button>
+        </div>
+    </div>
+</div>
+
+<!-- Branch admin modal -->
+<div class="profile-modal-backdrop" id="branchAdminModalBackdrop">
+    <div class="profile-modal" style="max-width:420px">
+        <div class="profile-modal-header"><h2 id="branchAdminModalTitle">סניף חדש</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="baNumber">מספר סניף</label><input id="baNumber" type="number" dir="ltr"></div>
+            <div class="field"><label for="baName">שם סניף</label><input id="baName" type="text"></div>
+            <div id="branchAdminModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="branchAdminSaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="branchAdminCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<!-- Ticket category admin modal -->
+<div class="profile-modal-backdrop" id="tcCategoryModalBackdrop">
+    <div class="profile-modal" style="max-width:420px">
+        <div class="profile-modal-header"><h2 id="tcCategoryModalTitle">קטגוריה חדשה</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="tcCategoryName">שם קטגוריה</label><input id="tcCategoryName" type="text"></div>
+            <div id="tcCategoryModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="tcCategorySaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="tcCategoryCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<!-- Ticket subcategory admin modal -->
+<div class="profile-modal-backdrop" id="tcSubcategoryModalBackdrop">
+    <div class="profile-modal" style="max-width:420px">
+        <div class="profile-modal-header"><h2 id="tcSubcategoryModalTitle">תת-קטגוריה חדשה</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="tcSubcategoryName">שם</label><input id="tcSubcategoryName" type="text"></div>
+            <div class="field"><label style="display:flex;align-items:center;gap:8px;font-weight:400"><input type="checkbox" id="tcSubcategoryDynamic" style="width:auto">תת-קטגוריה דינמית (מבוססת נתונים, לא רשימה קבועה)</label></div>
+            <div class="field" id="tcSubcategoryDynamicSourceField" style="display:none">
+                <label for="tcSubcategoryDynamicSource">מקור הנתונים</label>
+                <select id="tcSubcategoryDynamicSource">
+                    <option value="printers-by-branch">רשימת מדפסות לפי סניף המשתמש</option>
+                </select>
+            </div>
+            <div id="tcSubcategoryModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="tcSubcategorySaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="tcSubcategoryCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<!-- Ticket urgency admin modal -->
+<div class="profile-modal-backdrop" id="tcUrgencyModalBackdrop">
+    <div class="profile-modal" style="max-width:420px">
+        <div class="profile-modal-header"><h2 id="tcUrgencyModalTitle">דרגת דחיפות חדשה</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="tcUrgencyName">שם הדרגה</label><input id="tcUrgencyName" type="text"></div>
+            <div class="field"><label for="tcUrgencyDescription">הסבר (מוצג ליד הדרגה בטופס)</label><input id="tcUrgencyDescription" type="text"></div>
+            <div class="field"><label for="tcUrgencyColor">צבע</label><input id="tcUrgencyColor" type="color"></div>
+            <p class="page-subtitle" style="margin:0">הסדר (מהכי פחות דחוף להכי דחוף) נקבע לפי גרירה ברשימה, אחרי השמירה.</p>
+            <div id="tcUrgencyModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="tcUrgencySaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="tcUrgencyCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<!-- Shared folder admin modal -->
+<div class="profile-modal-backdrop" id="sharedFolderAdminModalBackdrop">
+    <div class="profile-modal" style="max-width:420px">
+        <div class="profile-modal-header"><h2 id="sharedFolderAdminModalTitle">תיקייה חדשה</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="sfName">שם תיקייה</label><input id="sfName" type="text"></div>
+            <div class="field"><label for="sfObjectId">Entra Group Object ID</label><input id="sfObjectId" type="text" dir="ltr"></div>
+            <div id="sharedFolderAdminModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="sharedFolderAdminSaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="sharedFolderAdminCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<!-- Printer admin modal -->
+<div class="profile-modal-backdrop" id="printerAdminModalBackdrop">
+    <div class="profile-modal" style="max-width:420px">
+        <div class="profile-modal-header"><h2 id="printerAdminModalTitle">מדפסת חדשה</h2></div>
+        <div class="profile-modal-body">
+            <div class="field"><label for="paPrinterName">שם מדפסת</label><input id="paPrinterName" type="text" dir="ltr"></div>
+            <div class="field"><label for="paIp">IP</label><input id="paIp" type="text" dir="ltr"></div>
+            <div class="field"><label for="paBranch">סניף</label><select id="paBranch"></select></div>
+            <div class="field"><label for="paNotes">הערות</label><textarea id="paNotes" rows="3"></textarea></div>
+            <div id="printerAdminModalError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions">
+            <button type="button" class="primary-button" style="flex:1" id="printerAdminSaveBtn">שמור</button>
+            <button type="button" class="secondary-button" id="printerAdminCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<!-- User request detail modal (review + script) -->
+<div class="profile-modal-backdrop" id="userRequestDetailBackdrop">
+    <div class="profile-modal" style="max-width:560px">
+        <div class="profile-modal-header"><h2 id="userRequestDetailTitle"></h2></div>
+        <div class="profile-modal-body">
+            <div class="wizard-steps" id="urdWizardSteps"></div>
+
+            <div id="urdStep1">
+                <div class="grid-2">
+                    <div class="field"><label for="urdFirstNameHe">שם פרטי (עברית)</label><input id="urdFirstNameHe" type="text"></div>
+                    <div class="field"><label for="urdLastNameHe">שם משפחה (עברית)</label><input id="urdLastNameHe" type="text"></div>
+                    <div class="field"><label for="urdFirstNameEn">שם פרטי (אנגלית)</label><input id="urdFirstNameEn" type="text" dir="ltr"></div>
+                    <div class="field"><label for="urdLastNameEn">שם משפחה (אנגלית)</label><input id="urdLastNameEn" type="text" dir="ltr"></div>
+                </div>
+                <div class="field"><label for="urdBranch">סניף</label><select id="urdBranch"></select></div>
+                <div class="field"><label for="urdRole">תפקיד</label><input id="urdRole" type="text"></div>
+
+                <div class="field">
+                    <label>סוג גישה</label>
+                    <div class="choice-btn-group" data-toggle-group="urdAccessType">
+                        <button type="button" class="choice-btn" data-value="מחשב">עמדת מחשב</button>
+                        <button type="button" class="choice-btn" data-value="מייל">תיבת מייל בלבד</button>
+                    </div>
+                </div>
+
+                <div id="urdComputerBlock">
+                    <div id="urdProcurementStatus" style="display:none;font-size:13px;background:#fff7e6;border:1px solid #f59e0b;color:#92400e;border-radius:8px;padding:10px;margin-bottom:10px">
+                        <span id="urdProcurementStatusText"></span><br>
+                        <button type="button" class="secondary-button" id="urdCreateComputerBtn" style="margin-top:8px">רשום מחשב שהתקבל</button>
+                    </div>
+                    <div class="field">
+                        <label for="urdComputerSelect">עמדת מחשב</label>
+                        <select id="urdComputerSelect"></select>
+                    </div>
+                    <div class="field" id="urdNewComputerTypeField" style="display:none">
+                        <label>סוג המחשב המוזמן</label>
+                        <div class="choice-btn-group" data-toggle-group="urdNewComputerType">
+                            <button type="button" class="choice-btn" data-value="נייח">נייח</button>
+                            <button type="button" class="choice-btn" data-value="נייד">נייד</button>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <div class="folder-collapse-header" id="urdFoldersHeader">
+                            <label>תיקיות משותפות</label>
+                            <span class="folder-collapse-summary" id="urdFoldersSummary">לא נבחרו תיקיות</span>
+                            <span class="folder-collapse-arrow">▾</span>
+                        </div>
+                        <div id="urdFolders" class="folder-checkbox-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="urdStep2" style="display:none">
+                <div class="field"><label>מייל מחושב</label><input id="urdSuggestedEmail" readonly dir="ltr"></div>
+                <div class="field"><label>סיסמה זמנית (ניתן לשנות)</label>
+                    <div class="email-suffix-row" dir="ltr"><input id="urdScriptPassword" dir="ltr">
+                    <button type="button" class="secondary-button" id="urdCopyPasswordBtn">העתק</button></div>
+                </div>
+                <div class="field"><label>סקריפט הקמה (Cloud Shell / PowerShell)</label>
+                    <textarea id="urdScript" class="script-box" rows="10" readonly></textarea>
+                    <button type="button" class="secondary-button" id="urdCopyScriptBtn" style="margin-top:6px">העתק סקריפט</button>
+                </div>
+                <p style="font-size:12px;color:var(--muted);margin:8px 0 0">העתק והרץ ב-Cloud Shell/PowerShell, ואז המשך לשלב הבא.</p>
+            </div>
+
+            <div id="urdStep3" style="display:none">
+                <p class="page-subtitle" style="margin:0 0 10px">הרשאות ניהול בתוך הפורטל (מנהל-על בלבד) - יוענקו למשתמש עם הקמתו</p>
+                <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+                    <input id="urdIsITAdmin" type="checkbox" style="width:auto"><label for="urdIsITAdmin" style="margin:0">ניהול IT</label>
+                </div>
+                <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+                    <input id="urdIsProceduresAdmin" type="checkbox" style="width:auto"><label for="urdIsProceduresAdmin" style="margin:0">עריכת נהלים</label>
+                </div>
+                <div class="field" style="flex-direction:row;align-items:center;gap:8px">
+                    <input id="urdIsUserRequestSubmitter" type="checkbox" style="width:auto"><label for="urdIsUserRequestSubmitter" style="margin:0">בקשת הקמת משתמש</label>
+                </div>
+            </div>
+
+            <div id="urdStep4" style="display:none">
+                <div class="field"><label>הודעת ברוכים-הבאים למשתמש</label>
+                    <textarea id="urdWelcomeMessage" class="script-box" rows="5" readonly></textarea>
+                    <button type="button" class="secondary-button" id="urdCopyWelcomeBtn" style="margin-top:6px">העתק הודעה</button>
+                </div>
+                <p style="font-size:12px;color:var(--muted);margin:8px 0 0">בלחיצה על "סימון כהוקם" יוקם המשתמש בפורטל (כמו בניהול משתמשים) ויישלח מייל אוטומטי אל <strong id="urdRequesterEmailNote"></strong> עם פרטי ההתחברות.</p>
+            </div>
+
+            <div id="userRequestDetailError" style="display:none;color:var(--danger);font-size:13px;margin-top:6px"></div>
+        </div>
+        <div class="profile-modal-actions" style="flex-wrap:wrap">
+            <button type="button" class="secondary-button" id="urdBackBtn" style="display:none">חזרה</button>
+            <button type="button" class="primary-button" id="urdNextBtn">הבא</button>
+            <button type="button" class="primary-button" id="urdMarkCompletedBtn" style="display:none">סימון כהוקם</button>
+            <button type="button" class="secondary-button" id="urdCancelBtn">ביטול</button>
+        </div>
+    </div>
+</div>
+
+
+<script src="js/vendor/msal-browser.min.js"></script>
+<script type="module" src="js/main.js"></script>
 </body>
 </html>
