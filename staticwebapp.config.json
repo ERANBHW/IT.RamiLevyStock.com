@@ -1,12 +1,7 @@
 {
   "routes": [
-    { "route": "/index.html", "allowedRoles": ["authenticated"] },
-    { "route": "/app.html", "allowedRoles": ["authenticated"], "headers": { "Cache-Control": "no-cache" } },
-    { "route": "/*", "allowedRoles": ["authenticated"] }
+    { "route": "/app.html", "headers": { "Cache-Control": "no-cache" } }
   ],
-  "responseOverrides": {
-    "401": { "redirect": "/.auth/login/aad", "statusCode": 302 }
-  },
   "globalHeaders": {
     "X-Frame-Options": "DENY",
     "X-Content-Type-Options": "nosniff"
