@@ -1,0 +1,49 @@
+name: Deploy Pages (frontend only)
+
+# Publishes only the static frontend files GitHub Pages actually needs to serve.
+# Everything else in the repo (infra/, api/, PROJECT_STATUS.md, etc.) must never be
+# reachable from the public site — see the incident this fixed: the previous "deploy
+# from branch root" Pages source served the entire repository, including schema.sql,
+# seed data, and backend source, with no auth in front of any of it.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'common.js'
+      - 'common.css'
+      - 'robots.txt'
+      - 'CNAME'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stage only the public frontend files
+        run: |
+          mkdir -p _site
+          cp index.html common.js common.css robots.txt CNAME _site/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

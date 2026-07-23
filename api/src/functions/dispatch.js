@@ -168,6 +168,13 @@ app.http('dispatch', {
 
     try {
       const caller = await loadCaller(identity);
+      // A valid Entra ID token only proves the caller belongs to the tenant — it says
+      // nothing about whether IT has actually provisioned them into this portal. Every
+      // action requires an existing Users row, no exceptions (there is no self-service
+      // "request access" flow).
+      if (!caller.row) {
+        return { status: 403, jsonBody: { ok: false, error: 'לא רשום במערכת' } };
+      }
       const result = await entityRoutes[action](payload, caller);
       return { jsonBody: result };
     } catch (err) {
