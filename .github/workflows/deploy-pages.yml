@@ -11,7 +11,7 @@ on:
     branches: [main]
     paths:
       - 'index.html'
-      - 'common.js'
+      - 'js/**'
       - 'common.css'
       - 'robots.txt'
       - 'CNAME'
@@ -39,7 +39,8 @@ jobs:
       - name: Stage only the public frontend files
         run: |
           mkdir -p _site
-          cp index.html common.js common.css robots.txt CNAME _site/
+          cp index.html common.css robots.txt CNAME _site/
+          cp -r js _site/
 
       - uses: actions/upload-pages-artifact@v3
         with:
