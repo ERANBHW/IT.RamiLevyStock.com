@@ -18,7 +18,7 @@ var msalInstance = new msal.PublicClientApplication({
   auth: {
     clientId: MSAL_SPA_CLIENT_ID,
     authority: 'https://login.microsoftonline.com/' + MSAL_TENANT_ID,
-    redirectUri: window.location.origin + '/index.html',
+    redirectUri: window.location.origin + '/app.html',
   },
   cache: { cacheLocation: 'sessionStorage' },
 });
@@ -49,7 +49,7 @@ export var Portal = (function () {
   var REDIRECT_ATTEMPT_KEY = 'portalAuthRedirectAttempted';
 
   // The Static Web App's own built-in auth gate has already identified the user by the
-  // time this code runs (it's what let index.html load at all) — reuse that identity as
+  // time this code runs (it's what let app.html load at all) — reuse that identity as
   // MSAL's loginHint so the silent/redirect requests are unambiguous. Without it, a
   // browser signed into more than one Microsoft account (e.g. Edge's own work-profile
   // sign-in alongside the tenant session) can make AAD render an actual account-picker
