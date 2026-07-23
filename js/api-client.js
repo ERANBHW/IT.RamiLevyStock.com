@@ -46,10 +46,19 @@ export var Portal = (function () {
     }
   }
 
+  var REDIRECT_ATTEMPT_KEY = 'portalAuthRedirectAttempted';
+
   async function loadIdentity() {
     await msalInstance.initialize();
 
-    var redirectResult = await msalInstance.handleRedirectPromise();
+    var redirectResult = null;
+    try {
+      redirectResult = await msalInstance.handleRedirectPromise();
+    } catch (e) {
+      // A broken/expired redirect response (stale state from an interrupted previous
+      // attempt) — treat it the same as "no account yet" rather than throwing.
+      redirectResult = null;
+    }
     if (redirectResult && redirectResult.account) account = redirectResult.account;
 
     if (!account) {
@@ -57,11 +66,26 @@ export var Portal = (function () {
       if (accounts.length) account = accounts[0];
     }
 
-    if (!account) {
+    if (account) {
+      sessionStorage.removeItem(REDIRECT_ATTEMPT_KEY);
+    } else {
+      // Some browser/account combinations (seen with Edge signed in to a work profile)
+      // can make ssoSilent's hidden-iframe check bounce through a real interactive
+      // redirect instead of failing cleanly, so handleRedirectPromise() never resolves
+      // into an account and we'd otherwise retry ssoSilent -> loginRedirect forever.
+      // This flag caps it at one interactive attempt per tab: if we already redirected
+      // away and came back with still no account, stop and surface a clear retry
+      // instead of silently looping.
+      if (sessionStorage.getItem(REDIRECT_ATTEMPT_KEY) === '1') {
+        sessionStorage.removeItem(REDIRECT_ATTEMPT_KEY);
+        throw new Error('ההתחברות לא הושלמה. רענן/י את הדף ונסה/י שוב.');
+      }
       try {
         var ssoResult = await msalInstance.ssoSilent({ scopes: [API_SCOPE] });
         account = ssoResult.account;
+        sessionStorage.removeItem(REDIRECT_ATTEMPT_KEY);
       } catch (e) {
+        sessionStorage.setItem(REDIRECT_ATTEMPT_KEY, '1');
         await msalInstance.loginRedirect({ scopes: [API_SCOPE] });
         return null; // navigates away
       }
